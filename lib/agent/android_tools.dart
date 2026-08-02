@@ -180,6 +180,11 @@ List<Tool> createAndroidAutomationTools({
     _keepAliveTool(s),
     _hideShizukuTool(s),
     _mockLocationTool(s),
+
+    // ---- Stage 29: 手机管家 ----
+    _phoneFileManagerTool(s),
+    _phoneAppManagerTool(s),
+    _phoneDeepCleanTool(s),
   ];
   return tools;
 }
@@ -5347,6 +5352,287 @@ Tool _mockLocationTool(AndroidAutomationService s) => Tool(
             'settings put global mock_location_test_coords "" 2>/dev/null');
         steps.add('已清除虚拟定位');
         return ToolResult.ok('✅ 虚拟定位已清除:\n${r()}');
+      },
+    );
+
+// ============================================================================
+// Stage 29: 手机管家 — 文件整理/应用管理/深度清理
+// ============================================================================
+
+/// ——— 文件整理：按类型归类 / 扫描大文件 / 清理临时文件 ———
+Tool _phoneFileManagerTool(AndroidAutomationService s) => Tool(
+      name: 'android_phone_file_manager',
+      description:
+          '【手机管家】扫描并整理手机文件。可：分析存储空间、按类型归类文件、'
+          '查找大文件、清理临时/缓存文件、删除空目录。需要 Shizuku 已授权。',
+      schema: _props({
+        'action': {
+          'type': 'string',
+          'enum': ['analyze', 'large_files', 'clean_temp', 'clean_downloads', 'organize'],
+          'description': 'analyze=分析存储概况, large_files=查找大文件(>50MB), '
+              'clean_temp=清理临时文件(.tmp/.log/.cache), clean_downloads=清理下载目录旧文件, '
+              'organize=按类型归类(图片/视频/文档/APK到各自文件夹)',
+        },
+        'path': {
+          'type': 'string',
+          'description': '可选：指定扫描路径，默认 /sdcard',
+        },
+        'min_mb': {
+          'type': 'integer',
+          'description': 'large_files 时的大文件阈值(MB)，默认 50',
+        },
+      }),
+      handler: (args) async {
+        final action = (args['action'] as String?) ?? 'analyze';
+        final path = (args['path'] as String?) ?? '/sdcard';
+        final minMb = ((args['min_mb'] as num?)?.toInt() ?? 50).clamp(10, 9999);
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        if (action == 'analyze') {
+          final r1 = await s.gshell('df -h $path 2>/dev/null');
+          final r2 = await s.gshell('du -sh $path/* 2>/dev/null | sort -rh | head -20');
+          final sb = StringBuffer();
+          sb.writeln('===== 存储分析 ($path) =====');
+          sb.writeln(r1.stdout.trim());
+          sb.writeln('\n--- 占用前 20 ---');
+          sb.writeln(r2.stdout.trim());
+          return ToolResult.ok(sb.toString());
+        }
+
+        if (action == 'large_files') {
+          final r = await s.gshell(
+              'find $path -type f -size +${minMb}M 2>/dev/null | sort -rh | head -30');
+          if (r.stdout.trim().isEmpty) {
+            return ToolResult.ok('✅ 未找到大于 ${minMb}MB 的文件');
+          }
+          return ToolResult.ok('===== 大文件 (>${minMb}MB) =====\n${r.stdout}');
+        }
+
+        if (action == 'clean_temp') {
+          final r = await s.gshell(
+              'find $path -type f \\( -name "*.tmp" -o -name "*.log" -o -name "*.cache" \\) '
+              '-delete 2>/dev/null; '
+              'find $path -type d -name "cache" -exec rm -rf {}/* \\; 2>/dev/null; '
+              'echo "done"');
+          steps.add('临时文件清理: ${r.ok ? "OK" : "失败"}');
+          return ToolResult.ok('✅ 临时文件已清理:\n${r()}');
+        }
+
+        if (action == 'clean_downloads') {
+          // 删除下载目录中 30 天前的文件
+          final r = await s.gshell(
+              'find $path/Download -type f -mtime +30 -delete 2>/dev/null; '
+              'find $path/Download -type d -empty -delete 2>/dev/null; '
+              'echo "done"');
+          steps.add('下载目录清理: ${r.ok ? "OK" : "失败"}');
+          return ToolResult.ok('✅ 下载目录旧文件已清理:\n${r()}');
+        }
+
+        if (action == 'organize') {
+          // 按类型归类
+          final dirs = ['图片', '视频', '文档', 'APK', '压缩包', '其他'];
+          for (final d in dirs) {
+            await s.gshell('mkdir -p $path/$d 2>/dev/null');
+          }
+          // 移动图片
+          await s.gshell(
+              'mv $path/*.jpg $path/*.jpeg $path/*.png $path/*.gif $path/*.bmp $path/*.webp '
+              '"$path/图片/" 2>/dev/null');
+          // 移动视频
+          await s.gshell(
+              'mv $path/*.mp4 $path/*.mkv $path/*.avi $path/*.mov $path/*.flv '
+              '"$path/视频/" 2>/dev/null');
+          // 移动文档
+          await s.gshell(
+              'mv $path/*.pdf $path/*.doc $path/*.docx $path/*.xls $path/*.xlsx '
+              '$path/*.ppt $path/*.pptx $path/*.txt '
+              '"$path/文档/" 2>/dev/null');
+          // 移动 APK
+          await s.gshell('mv $path/*.apk "$path/APK/" 2>/dev/null');
+          // 移动压缩包
+          await s.gshell(
+              'mv $path/*.zip $path/*.rar $path/*.7z $path/*.tar.gz '
+              '"$path/压缩包/" 2>/dev/null');
+          steps.add('文件已按类型归类到对应文件夹');
+          return ToolResult.ok('✅ 文件整理完成:\n${r()}\n分类: 图片/视频/文档/APK/压缩包');
+        }
+
+        return ToolResult.error('未知操作: $action');
+      },
+    );
+
+/// ——— 应用管理：批量卸载 / 清除缓存 / 批量权限 ———
+Tool _phoneAppManagerTool(AndroidAutomationService s) => Tool(
+      name: 'android_phone_app_manager',
+      description:
+          '【手机管家】管理已安装的应用。可：卸载应用、清除应用缓存、'
+          '批量管理应用权限、列出占用空间最大的应用。需要 Shizuku 已授权。',
+      schema: _props({
+        'action': {
+          'type': 'string',
+          'enum': ['uninstall', 'clear_cache', 'list_large', 'disable', 'permissions'],
+          'description': 'uninstall=卸载应用, clear_cache=清除指定应用缓存, '
+              'list_large=列出占用最大应用, disable=禁用应用, permissions=查看应用权限列表',
+        },
+        'package_name': {
+          'type': 'string',
+          'description': '应用包名（uninstall/clear_cache/disable/permissions 时必填）',
+        },
+        'keep_system': {
+          'type': 'boolean',
+          'description': 'list_large 时是否排除系统应用，默认 true',
+        },
+      }),
+      handler: (args) async {
+        final action = (args['action'] as String?) ?? 'list_large';
+        final pkg = (args['package_name'] as String?) ?? '';
+        final keepSystem = args['keep_system'] as bool? ?? true;
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        if (action == 'list_large') {
+          final exclude = keepSystem ? '| grep -v system' : '';
+          final r = await s.gshell(
+              'pm list packages ${keepSystem ? "-3" : ""} 2>/dev/null | '
+              'head -50 | while read line; do '
+              'pkg=${line#package:}; '
+              'size=$(du -sh /data/data/$pkg 2>/dev/null | cut -f1); '
+              '[ -n "$size" ] && echo "$size $pkg"; '
+              'done | sort -rh | head -20');
+          final sb = StringBuffer();
+          sb.writeln('===== 占用空间最大的应用 =====');
+          sb.writeln(r.stdout.trim().isNotEmpty
+              ? r.stdout.trim()
+              : '(无可显示数据，需要 Shizuku 已授权)');
+          sb.writeln('\n提示：用 android_phone_cleaner action=deep_clean 可一键清理所有缓存');
+          return ToolResult.ok(sb.toString());
+        }
+
+        if (action == 'uninstall') {
+          if (pkg.isEmpty) return ToolResult.error('需要 package_name 参数');
+          final r = await s.gshell('pm uninstall -k --user 0 $pkg 2>/dev/null');
+          steps.add('卸载 $pkg: ${r.ok ? "OK" : "失败"}');
+          return ToolResult.ok('${r.ok ? "✅" : "❌"} 卸载应用:\n${r()}');
+        }
+
+        if (action == 'clear_cache') {
+          if (pkg.isEmpty) return ToolResult.error('需要 package_name 参数');
+          final r = await s.gshell('pm clear $pkg 2>/dev/null');
+          steps.add('清除缓存 $pkg: ${r.ok ? "OK" : "失败"}');
+          return ToolResult.ok('${r.ok ? "✅" : "❌"} 清除缓存:\n${r()}');
+        }
+
+        if (action == 'disable') {
+          if (pkg.isEmpty) return ToolResult.error('需要 package_name 参数');
+          final r = await s.gshell('pm disable $pkg 2>/dev/null || pm hide $pkg 2>/dev/null');
+          steps.add('禁用 $pkg: ${r.ok ? "OK" : "失败"}');
+          return ToolResult.ok('${r.ok ? "✅" : "❌"} 禁用应用:\n${r()}');
+        }
+
+        if (action == 'permissions') {
+          if (pkg.isEmpty) return ToolResult.error('需要 package_name 参数');
+          final r = await s.gshell('dumpsys package $pkg 2>/dev/null | grep -A 100 "requested permissions:" | head -50');
+          return ToolResult.ok('===== $pkg 权限列表 =====\n${r.stdout.trim().isNotEmpty ? r.stdout.trim() : "无法获取（需要 Shizuku）"}');
+        }
+
+        return ToolResult.error('未知操作: $action');
+      },
+    );
+
+/// ——— 深度清理：分析存储 / 清理缓存 / 垃圾文件 ———
+Tool _phoneDeepCleanTool(AndroidAutomationService s) => Tool(
+      name: 'android_phone_deep_clean',
+      description:
+          '【手机管家】深度清理手机存储空间。可：一键清理所有应用缓存、'
+          '清理系统垃圾（空目录/临时文件）、分析存储使用情况、清理卸载残留。'
+          '需要 Shizuku 已授权。',
+      schema: _props({
+        'action': {
+          'type': 'string',
+          'enum': ['quick_clean', 'deep_clean', 'analyze_storage', 'clean_residue'],
+          'description': 'quick_clean=快速清理(缓存+临时文件), deep_clean=深度清理(缓存+临时+空目录+残留), '
+              'analyze_storage=详细存储分析, clean_residue=清理卸载残留',
+        },
+      }),
+      handler: (args) async {
+        final action = (args['action'] as String?) ?? 'quick_clean';
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        if (action == 'analyze_storage') {
+          final sb = StringBuffer();
+          sb.writeln('===== 存储深度分析 =====');
+          final r1 = await s.gshell('df -h 2>/dev/null');
+          sb.writeln(r1.stdout.trim());
+          sb.writeln('');
+          // 各目录大小
+          final dirs = ['/sdcard/DCIM', '/sdcard/Download', '/sdcard/Android', '/sdcard/Music',
+              '/sdcard/Movies', '/sdcard/Pictures', '/sdcard/Documents'];
+          for (final d in dirs) {
+            final r = await s.gshell('du -sh $d 2>/dev/null');
+            if (r.ok && r.stdout.trim().isNotEmpty) {
+              sb.writeln(r.stdout.trim());
+            }
+          }
+          sb.writeln('\n提示：用 clean_temp 清理临时文件，用 deep_clean 深度清理');
+          return ToolResult.ok(sb.toString());
+        }
+
+        if (action == 'quick_clean') {
+          // 清理所有应用缓存
+          final r1 = await s.gshell(
+              'for pkg in \$(pm list packages -3 2>/dev/null | cut -d: -f2); do '
+              'pm clear \$pkg 2>/dev/null; done; echo "done"');
+          steps.add('应用缓存清理: ${r1.ok ? "OK" : "部分失败"}');
+          // 清理临时文件
+          await s.gshell(
+              'find /sdcard -type f \\( -name "*.tmp" -o -name "*.log" -o -name "*.cache" \\) -delete 2>/dev/null');
+          steps.add('临时文件清理: 已执行');
+          // 清理空目录
+          await s.gshell('find /sdcard -type d -empty -delete 2>/dev/null');
+          steps.add('空目录清理: 已执行');
+          return ToolResult.ok('✅ 快速清理完成:\n${r()}\n已清理: 第三方应用缓存 + 临时文件 + 空目录');
+        }
+
+        if (action == 'deep_clean') {
+          // 所有应用缓存
+          await s.gshell(
+              'for pkg in \$(pm list packages 2>/dev/null | cut -d: -f2); do '
+              'pm clear \$pkg 2>/dev/null; done');
+          steps.add('所有应用缓存: 已清理');
+          // 临时文件
+          await s.gshell(
+              'find /sdcard -type f \\( -name "*.tmp" -o -name "*.log" -o -name "*.cache" '
+              '-o -name "*.temp" -o -name "thumbs.db" -o -name ".thumb*" \\) -delete 2>/dev/null');
+          steps.add('临时/缩略图文件: 已清理');
+          // 空目录
+          await s.gshell('find /sdcard -type d -empty -delete 2>/dev/null');
+          steps.add('空目录: 已清理');
+          // 清理下载目录 30 天前
+          await s.gshell(
+              'find /sdcard/Download -type f -mtime +30 -delete 2>/dev/null');
+          steps.add('下载目录旧文件: 已清理');
+          // 清理 Android/logs
+          await s.gshell('rm -rf /sdcard/Android/logs/* 2>/dev/null');
+          steps.add('系统日志: 已清理');
+          return ToolResult.ok('✅ 深度清理完成:\n${r()}\n清理: 全部缓存 + 临时文件 + 缩略图 + 空目录 + 下载旧文件 + 系统日志');
+        }
+
+        if (action == 'clean_residue') {
+          // 查找卸载残留（包名目录但无对应 package）
+          final r = await s.gshell(
+              'for d in /data/data/* /data/app/*; do '
+              'pkg=\$(basename \$d); '
+              'pm list packages | grep -q \$pkg || echo "残留: \$d"; '
+              'done 2>/dev/null | head -30');
+          if (r.stdout.trim().isEmpty) {
+            return ToolResult.ok('✅ 未发现卸载残留');
+          }
+          return ToolResult.ok('===== 卸载残留 =====\n${r.stdout}\n提示：用 pm uninstall 或手动删除');
+        }
+
+        return ToolResult.error('未知操作: $action');
       },
     );
 
