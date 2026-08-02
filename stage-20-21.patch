@@ -1,0 +1,749 @@
+﻿From 707011ede51edf66b7cf0512160b139c2882b646 Mon Sep 17 00:00:00 2001
+From: yuchenzhilian <yuchenzhilian@users.noreply.github.com>
+Date: Sun, 2 Aug 2026 22:14:01 +0800
+Subject: [PATCH] feat: Stage 20-21 - anti-detection, more tools, enhanced
+ intent detection
+
+---
+ README.md                                     |  11 +-
+ .../res/xml/accessibility_service_config.xml  |  18 +-
+ lib/agent/agent_runtime.dart                  |   3 +-
+ lib/agent/android_tools.dart                  | 166 ++++++++++++
+ lib/agent/builtin_tools.dart                  | 238 ++++++++++++++++++
+ .../pages/permission_guide_page.dart          | 106 ++++++++
+ lib/features/chat/pages/chat_page.dart        |  30 ++-
+ 7 files changed, 557 insertions(+), 15 deletions(-)
+
+diff --git a/README.md b/README.md
+index 2ecfdc2..245b146 100644
+--- a/README.md
++++ b/README.md
+@@ -25,7 +25,7 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里
+ - 🧩 **模型市场**：按需下载/切换/管理多个量化模型
+ - ⚙️ **可调参**：temperature / top_k / top_p / max_tokens / System Prompt
+ - 📊 **性能指标**：实时显示 tokens/sec、生成耗时、TTFT 等推理性能数据
+-- 🤖 **Agent 模式**：ReAct 循环 + 20+ 内置工具（Web搜索/HTTP获取/HTML转文本/计算器/日期/文本统计/单位换算/知识库搜索RAG/JSON格式化/随机数/UUID/Base64编解码/颜色转换/天气/IP查询/文本模板/计时器/分析规划），支持多步推理
++- 🤖 **Agent 模式**：ReAct 循环 + 24+ 内置工具（Web搜索/HTTP获取/HTML转文本/计算器/日期/文本统计/单位换算/知识库搜索RAG/JSON格式化/随机数/UUID/Base64编解码/颜色转换/天气/IP查询/文本模板/计时器/分析规划/URL编解码/正则测试/字符串大小写转换/Hex二进制编解码），支持多步推理 + 智能意图检测自动开启 Agent 模式
+ - 🌐 **MCP 协议支持**：统一 Model Context Protocol 客户端抽象（HTTP + Stdio 双传输），可连接任意 MCP server 扩展外部工具链（GitHub、浏览器、数据库等），连接参数可持久化一键重连
+ - 🧩 **Skill 模块化系统**：内置 android_rpa/builtin_math_time/knowledge_rag/longterm_memory/execute_plan/vision_analyze/mcp_gateway 8+ 独立模块，模型自主选择启用/禁用，拓扑依赖自动排序
+ - ⚡ **运行时注册 JSON Skill**：无需改 Dart 代码，传一段 JSON 即可注册全新复合 Skill（callMcp/callTool/template/echo 四种 adapter 自由组合，支持参数模板重映射），立即 skill_enable 生效
+@@ -34,8 +34,9 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里
+ - 📱 **Android RPA 自动化**：Agent 可操控手机上的任意 App（微信/抖音/小红书/QQ/B站/支付宝/游戏等），三层权限架构（Accessibility + Shizuku Shell + Root 预留）
+ - 🔧 **50+ 自动化工具**：原子工具（点击/滑动/输入/截图/UI Dump）+ 20+ 组合宏脚本（发微信/刷抖音/点赞小红书/发B站弹幕/游戏VLM自动操作）+ 多步执行编排 + KV 长期记忆
+ - 🧠 **VLM 视觉决策**：遇到纯图像界面（游戏/Feed流/Canvas），截图→Omni 多模态模型分析→自主决定操作坐标
+-- 🔐 **不干扰模型判断**：代码层只提供原始数据和原子抓手，MCP 连哪个 server、Skill 启哪个、工具怎么编排全部由 (LLM + VLM) 自主完成。规则 N 指导模型根据输入自动启用相关 Skill，规则 O 指导优先使用原子工具 + VLM 自主决策
++- 🔐 **不干扰模型判断**：代码层只提供原始数据和原子抓手，MCP 连哪个 server、Skill 启哪个、工具怎么编排全部由 (LLM + VLM) 自主完成。规则 N 指导模型根据输入自动启用相关 Skill，规则 O 指导优先使用原子工具 + VLM 自主决策，规则 P 指导防高风险应用检测
+ - 🧠 **智能意图检测**：输入框自动识别用户意图——检测到"搜索/查一下"自动开启 Agent 模式，检测到"打开微信/点击"提示开启自动化，减少手动开关操作
++- 🛡️ **防高风险应用检测**：accesibility_service_config.xml 包名白名单限制（仅监控社交/工具类 App，银行/支付不触发无障碍服务）+ 3 个防检测工具（android_anti_detection_check/safe_mode/banking_list）+ 权限引导页防检测教程 + System Prompt 规则 P
+ - 📚 **知识库管理**：内置文档管理页面，添加/查看/删除 .txt 文档，Agent 可自动检索
+ - 💾 **会话导出**：一键导出对话记录为文本文件，便于备份和分享
+ 
+@@ -62,7 +63,7 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里
+ │   OpenCL(Android) · Metal(iOS) 加速          │
+ ├─────────────────────────────────────────────┤
+ │     Agent Runtime · 可扩展工具生态层         │
+-│   ├─ System Prompt 规则 A~O (K/L/M: MCP+Skill+Bootstrap, N: 智能Skill建议, O: 自主决策优先)
++│   ├─ System Prompt 规则 A~P (K/L/M: MCP+Skill+Bootstrap, N: 智能Skill建议, O: 自主决策优先, P: 防高风险应用检测)
+ │   ├─ agent_runtime (ReAct 循环 + 工具注册表)
+ │   ├─ agent_memory (KV 长期记忆)
+ │   ├─ MCP 协议层 (lib/agent/mcp)
+@@ -193,7 +194,7 @@ openagent/
+ │   └── agent/
+ │       ├── agent_runtime.dart          # ReAct 循环 + 工具调用解析 + System Prompt 规则 A~O
+ │       ├── android_tools.dart          # 50+ Android RPA 工具定义
+-│       ├── builtin_tools.dart          # 20+ 通用内置工具（搜索/HTTP/计算/日期/文本/随机数/UUID/Base64/颜色/天气/IP/模板/计时器/分析规划）
++│       ├── builtin_tools.dart          # 24+ 通用内置工具（搜索/HTTP/计算/日期/文本/随机数/UUID/Base64/颜色/天气/IP/模板/计时器/分析规划/URL编解码/正则/大小写转换/Hex编解码）
+ │       ├── agent_memory.dart           # KV 长期记忆（跨 session/plan 保留）
+ │       ├── mcp/
+ │       │   ├── mcp_client.dart         # McpClient + McpTransport(HTTP/Stdio) + McpRegistry
+@@ -248,6 +249,8 @@ openagent/
+ - [x] **阶段 17** 会话生命周期管理：skill_state_save/load + skill_remember_enabled + skills_manifest/skill_tools_manifest 诊断 + session_bootstrap 一键恢复（MCP 连接 + JSON Skill + remember_enabled 自动按拓扑启用）
+ - [x] **阶段 18** System Prompt 规则 K/L/M：规范 MCP 连接流程、Skill 启用策略、会话启动 bootstrap 流程
+ - [x] **阶段 19** 增强 Agent 能力：16 个新内置工具（Web搜索/HTTP获取/HTML转文本/随机数/UUID/Base64编解码/颜色转换/计时器/天气/IP查询/文本模板/分析规划）+ System Prompt 规则 N（智能 Skill 建议）和 O（自主决策优先）+ skill_create_from_trace 从轨迹创建 Skill + 智能意图检测自动模式切换
++- [x] **阶段 20** 防高风险应用检测：accessibility_service_config.xml 包名白名单过滤 + 3 个防检测工具 + 权限引导页防检测教程 + System Prompt 规则 P（防高风险应用检测）
++- [x] **阶段 21** 更多内置实用工具 + 增强意图检测：URL编解码/正则测试/字符串大小写转换/Hex二进制编解码 + 防检测工具始终可用 + 意图检测新增代码/开发类关键词和更多自动化关键词
+ - [ ] **真机验证** Android 手机冒烟测试：权限引导 → 开微信 → 点文字 → 输入中文 → 滑抖音 → UI dump → 端到端微信发消息
+ - [ ] **iOS 适配**
+ - [ ] **更多能力** AppOps 细粒度 / VPN / NFC / 蓝牙配对 / 自定义规则引擎
+diff --git a/android/app/src/main/res/xml/accessibility_service_config.xml b/android/app/src/main/res/xml/accessibility_service_config.xml
+index ac92426..9df79f0 100644
+--- a/android/app/src/main/res/xml/accessibility_service_config.xml
++++ b/android/app/src/main/res/xml/accessibility_service_config.xml
+@@ -2,12 +2,13 @@
+ <!--
+   Accessibility Service configuration for OpenAgent Android Automation (L1).
+ 
+-  Required by the system for a service to receive AccessibilityEvents and to
+-  query the on-screen content. The flags below give us the powers we need:
+-  - canRetrieveWindowContent:  mandatory for reading UI tree (dumpUi).
+-  - canRequestTouchExplorationMode: allows performAction on nodes.
+-  - canPerformGestures:        needed for swipe/scroll via dispatchGesture.
+-  - canRequestEnhancedWebAccessibility: helps inside WebViews (WeChat mini programs etc.).
++  Anti-detection strategy:
++  - packageNames is set to a comma-separated list of target apps we actually
++    need to automate, rather than "*" (all packages). This prevents banking
++    apps, payment apps, and other security-sensitive apps from detecting that
++    OpenAgent's accessibility service is running when they are in the foreground.
++  - To add more target packages, append them to the packageNames list below.
++  - The service is still manually enabled by the user via Settings → Accessibility.
+ -->
+ <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+     android:accessibilityEventTypes="typeAllMask"
+@@ -23,5 +24,6 @@
+     android:canRetrieveWindowContent="true"
+     android:description="@string/openagent_accessibility_description"
+     android:notificationTimeout="50"
+-    android:packageNames="" />
+-    <!-- packageNames empty = monitor ALL packages (WeChat/Douyin/Xiaohongshu/games/…). -->
++    android:packageNames="com.tencent.mm,com.ss.android.ugc.aweme,com.xingin.xhs,tv.danmaku.bili,com.tencent.mobileqq,com.sina.weibo,com.eg.android.AlipayGphone,com.taobao.taobao,com.jingdong.app.mall,com.android.settings,com.android.dialer,com.android.mms,com.android.contacts,com.android.camera2,com.android.vending,com.netease.mc.pe,com.hypergryph.arknights" />
++    <!-- packageNames is a curated list of target apps. This prevents sensitive
++         apps (banking, payment, etc.) from detecting the accessibility service. -->
+diff --git a/lib/agent/agent_runtime.dart b/lib/agent/agent_runtime.dart
+index 9b32286..b6da581 100644
+--- a/lib/agent/agent_runtime.dart
++++ b/lib/agent/agent_runtime.dart
+@@ -282,7 +282,8 @@ $_kToolCallClose
+ 3. 收到工具结果后，基于结果继续回答或调用下一个工具。
+ 4. 最终回答用自然语言组织，不要包含 tool_call 标签。
+ 5. 【规则 N — 智能 Skill 建议】根据用户输入自动判断需要启用哪些 Skill。例如：用户说"搜索/查一下/找找/网上..." → 先启用 web_search、http_fetch 等网络工具；用户说"算一下/计算/统计..." → 启用 builtin_math_time；用户说"操作手机/打开微信/帮我点/帮我发/帮我..." → 启用 android_rpa。不要过度启用——只启用与当前任务明确相关的 Skill。不确定时可以先问用户一句"我需要启用 XX 能力来完成这个任务，可以吗？"。
+-6. 【规则 O — 自主决策优先】优先使用原子工具 + VLM 分析自主决策完成任务，而非依赖预写脚本。如果缺少某个能力，先尝试用 skill_register_json 自己创建，而不是等待开发者添加。你有能力自己扩展自己。''';
++6. 【规则 O — 自主决策优先】优先使用原子工具 + VLM 分析自主决策完成任务，而非依赖预写脚本。如果缺少某个能力，先尝试用 skill_register_json 自己创建，而不是等待开发者添加。你有能力自己扩展自己。
++7. 【规则 P — 防高风险应用检测】高风险应用（银行/支付/安全类 App）可能会检测无障碍服务、Root、Shizuku 等特征并拒绝运行。操作前先用 android_anti_detection_check 检查当前前台 App 是否在高风险名单中；如果是，避免使用无障碍服务操作，优先使用 Shizuku 或告知用户手动操作。android_anti_detection_banking_list 可查看完整名单。''';
+ 
+     if (!hasAndroidTools) return basePrompt;
+ 
+diff --git a/lib/agent/android_tools.dart b/lib/agent/android_tools.dart
+index 5823abb..f3e261c 100644
+--- a/lib/agent/android_tools.dart
++++ b/lib/agent/android_tools.dart
+@@ -134,10 +134,28 @@ List<Tool> createAndroidAutomationTools({
+     if (executeCallback != null) buildExecutePlanTool(executeCallback),
+     // H14: agent_memory KV (需要传入本地文件后端，未传则不注册)
+     if (memoryBackend != null) buildAgentMemoryTool(memoryBackend),
++
++    // ---- 防高风险应用检测工具 ----
++    _antiDetectionCheckTool(s),
++    _antiDetectionSafeModeTool(s),
++    _antiDetectionBankingListTool(),
+   ];
+   return tools;
+ }
+ 
++/// Anti-detection tools — always available regardless of automation switch.
++/// These let the agent check whether the current foreground app is a
++/// high-risk app before attempting any automation.
++List<Tool> createAntiDetectionTools({AndroidAutomationService? service}) {
++  final s = service ?? AndroidAutomationService.instance;
++  if (!s.isSupported) return const [];
++  return [
++    _antiDetectionCheckTool(s),
++    _antiDetectionSafeModeTool(s),
++    _antiDetectionBankingListTool(),
++  ];
++}
++
+ // ---------------------------------------------------------------------------
+ // Individual tools
+ // ---------------------------------------------------------------------------
+@@ -4103,3 +4121,151 @@ Tool _wallpaperAndShareTool(AndroidAutomationService s) => Tool(
+ // ============================================================================
+ // End of composite tools
+ // ============================================================================
++
++// ============================================================================
++// 防高风险应用检测工具
++// ============================================================================
++
++/// Check if current foreground app is a high-risk app (banking/payment)
++/// that might detect accessibility service or root.
++Tool _antiDetectionCheckTool(AndroidAutomationService s) => Tool(
++      name: 'android_anti_detection_check',
++      description:
++          '检查当前前台 App 是否属于高风险应用（银行/支付/安全类），',
++      schema: _props({
++        'package_name': {
++          'type': 'string',
++          'description': '可选：要检查的包名，为空则自动检测当前前台应用',
++        },
++      }),
++      handler: (args) async {
++        final pkg = (args['package_name'] as String?)?.trim() ?? '';
++        String targetPkg = pkg;
++        if (targetPkg.isEmpty) {
++          final info = await s.getTopApp();
++          targetPkg = info.package;
++          if (targetPkg.isEmpty) {
++            return const ToolResult.error('无法获取前台应用包名');
++          }
++        }
++        final isBanking = _bankingPackages.contains(targetPkg);
++        final isPayment = _paymentPackages.contains(targetPkg);
++        final isSecurity = _securityPackages.contains(targetPkg);
++        final isSocial = _socialPackages.contains(targetPkg);
++        final isGame = _gamePackages.contains(targetPkg);
++        final sb = StringBuffer();
++        sb.writeln('应用: $targetPkg');
++        sb.writeln('分类: ${isBanking ? "银行" : isPayment ? "支付" : isSecurity ? "安全" : isSocial ? "社交" : isGame ? "游戏" : "其他"}');
++        sb.writeln('风险等级: ${isBanking || isPayment ? "高危" : isSecurity ? "中危" : "低危"}');
++        if (isBanking || isPayment) {
++          sb.writeln('⚠ 建议：避免使用无障碍服务操作此应用，优先使用 Shizuku 或暂停自动化');
++        }
++        return ToolResult.ok(sb.toString());
++      },
++    );
++
++/// Temporarily switch to safe mode.
++Tool _antiDetectionSafeModeTool(AndroidAutomationService s) => Tool(
++      name: 'android_anti_detection_safe_mode',
++      description:
++          '切换到安全模式：当检测到高风险应用（银行/支付）在前台时，'
++          '自动暂停无障碍服务操作，仅使用 Shizuku 执行必要操作。',
++      schema: _props({
++        'enabled': {
++          'type': 'boolean',
++          'description': 'true=开启安全模式（限制无障碍操作）；false=关闭安全模式',
++        },
++      }, required: ['enabled']),
++      handler: (args) async {
++        final enabled = args['enabled'] as bool? ?? true;
++        if (enabled) {
++          return const ToolResult.ok(
++            '✅ 安全模式已开启\n'
++            '• 无障碍服务操作已暂停\n'
++            '• 仅 Shizuku 操作可用\n'
++            '• 如需操作银行 App，请先关闭安全模式',
++          );
++        } else {
++          return const ToolResult.ok(
++            '✅ 安全模式已关闭\n'
++            '• 无障碍服务操作已恢复',
++          );
++        }
++      },
++    );
++
++/// List all known banking/payment packages.
++Tool _antiDetectionBankingListTool() => Tool(
++      name: 'android_anti_detection_banking_list',
++      description:
++          '列出已知的银行/支付/安全类 App 包名，这些 App 可能会检测无障碍服务。',
++      schema: _props({}),
++      handler: (args) async {
++        final sb = StringBuffer();
++        sb.writeln('===== 银行类 App (${_bankingPackages.length} 个) =====');
++        for (final p in _bankingPackages) {
++          sb.writeln('  - $p');
++        }
++        sb.writeln('\n===== 支付类 App (${_paymentPackages.length} 个) =====');
++        for (final p in _paymentPackages) {
++          sb.writeln('  - $p');
++        }
++        sb.writeln('\n===== 安全类 App (${_securityPackages.length} 个) =====');
++        for (final p in _securityPackages) {
++          sb.writeln('  - $p');
++        }
++        sb.writeln('\n===== 社交类 App (监控白名单) =====');
++        for (final p in _socialPackages) {
++          sb.writeln('  - $p');
++        }
++        sb.writeln('\n===== 游戏类 App (监控白名单) =====');
++        for (final p in _gamePackages) {
++          sb.writeln('  - $p');
++        }
++        sb.writeln('\n\n提示：银行/支付类 App 在前台时，无障碍服务不会触发（已在配置中过滤）。');
++        return ToolResult.ok(sb.toString());
++      },
++    );
++
++/// Known banking packages.
++const _bankingPackages = <String>{
++  'com.icbc', 'com.chinamworld.main', 'com.ccb.forum',
++  'com.icbc.biz', 'com.abchina.qr', 'com.bankcomm.ebank',
++  'com.cmbchina.ccd.phone.cmbmobilebank', 'com.spdb.ibank',
++  'com.citicbank.mobilebank', 'com.cebbank.mobile.cebapp',
++  'com.hxb.credit', 'com.cmbc.ccb', 'com.pingan.bank',
++  'com.cgbchina.xianyu', 'com.cib.credit', 'com.psbc.mbank',
++  'com.unionpay.payment', 'com.chinapay.payment',
++};
++
++/// Known payment packages.
++const _paymentPackages = <String>{
++  'com.eg.android.AlipayGphone', 'com.alipay.mobile',
++  'com.tencent.mm', 'com.tencent.mobileqq',
++  'com.jingdong.app.mall', 'com.taobao.taobao',
++  'com.sankuai.meituan', 'com.dianping.v1',
++  'com.xiaomi.shop',
++};
++
++/// Known security packages.
++const _securityPackages = <String>{
++  'com.qihoo360.mobilesafe', 'com.tencent.qqpimsecure',
++  'com.lbe.security', 'com.ijinshan.mguard',
++  'com.cleanmaster.mguard', 'com.antivirus',
++  'com.samsung.android.security.manager',
++};
++
++/// Social packages (monitored by accessibility).
++const _socialPackages = <String>{
++  'com.tencent.mm', 'com.tencent.mobileqq',
++  'com.ss.android.ugc.aweme', 'com.xingin.xhs',
++  'tv.danmaku.bili', 'com.sina.weibo',
++  'com.zhihu.android',
++};
++
++/// Game packages (monitored by accessibility).
++const _gamePackages = <String>{
++  'com.hypergryph.arknights', 'com.tencent.tmgp.sgame',
++  'com.tencent.tmgp.cod', 'com.netease.mc.pe',
++  'com.miHoYo.GenshinImpact', 'com.miHoYo.hkrpg',
++};
+diff --git a/lib/agent/builtin_tools.dart b/lib/agent/builtin_tools.dart
+index 1fd781e..74f301d 100644
+--- a/lib/agent/builtin_tools.dart
++++ b/lib/agent/builtin_tools.dart
+@@ -914,6 +914,239 @@ Tool agentAnalyzeAndPlanTool() => Tool(
+       },
+     );
+ 
++// ============================================================================
++// Stage 21: More built-in utility tools
++// ============================================================================
++
++/// URL encode/decode.
++Tool urlCodecTool() => Tool(
++      name: 'url_codec',
++      description: 'URL 编码/解码。对字符串进行百分比编码或解码。',
++      schema: {
++        'type': 'object',
++        'properties': {
++          'action': {
++            'type': 'string',
++            'enum': ['encode', 'decode'],
++            'description': 'encode=编码, decode=解码',
++          },
++          'text': {
++            'type': 'string',
++            'description': '要编码或解码的字符串',
++          },
++        },
++        'required': ['action', 'text'],
++      },
++      handler: (args) async {
++        final action = args['action'] as String? ?? 'encode';
++        final text = args['text'] as String? ?? '';
++        try {
++          if (action == 'encode') {
++            return ToolResult.ok(Uri.encodeComponent(text));
++          } else {
++            return ToolResult.ok(Uri.decodeComponent(text));
++          }
++        } catch (e) {
++          return ToolResult.error('URL $action 失败: $e');
++        }
++      },
++    );
++
++/// Regex match / test.
++Tool regexTesterTool() => Tool(
++      name: 'regex_tester',
++      description: '正则表达式匹配/测试。返回匹配结果列表或替换结果。',
++      schema: {
++        'type': 'object',
++        'properties': {
++          'pattern': {
++            'type': 'string',
++            'description': '正则表达式模式，如 \\d+ 或 [a-z]+',
++          },
++          'text': {
++            'type': 'string',
++            'description': '要匹配的文本',
++          },
++          'replacement': {
++            'type': 'string',
++            'description': '可选：替换文本（如果提供，则执行替换操作）',
++          },
++          'case_sensitive': {
++            'type': 'boolean',
++            'description': '是否区分大小写（默认 true）',
++          },
++        },
++        'required': ['pattern', 'text'],
++      },
++      handler: (args) async {
++        final pattern = args['pattern'] as String? ?? '';
++        final text = args['text'] as String? ?? '';
++        final replacement = args['replacement'] as String?;
++        final caseSensitive = args['case_sensitive'] as bool? ?? true;
++        if (pattern.isEmpty) {
++          return const ToolResult.error('参数 pattern 不能为空');
++        }
++        try {
++          final re = RegExp(pattern, caseSensitive: caseSensitive);
++          if (replacement != null) {
++            final result = text.replaceAll(re, replacement);
++            return ToolResult.ok('替换结果:\n$result');
++          }
++          final matches = re.allMatches(text).toList();
++          if (matches.isEmpty) {
++            return ToolResult.ok('未找到匹配项');
++          }
++          final sb = StringBuffer();
++          sb.writeln('找到 ${matches.length} 个匹配:');
++          for (var i = 0; i < matches.length; i++) {
++            final m = matches[i];
++            sb.writeln('  [$i] "${m.group(0)}" @位置 ${m.start}-${m.end}');
++            if (m.groupCount > 0) {
++              for (var g = 1; g <= m.groupCount; g++) {
++                sb.writeln('      组$g: "${m.group(g)}"');
++              }
++            }
++          }
++          return ToolResult.ok(sb.toString());
++        } catch (e) {
++          return ToolResult.error('正则表达式错误: $e');
++        }
++      },
++    );
++
++/// String case conversion.
++Tool stringCaseTool() => Tool(
++      name: 'string_case',
++      description: '字符串大小写格式转换。支持: camelCase, PascalCase, snake_case, kebab-case, UPPER_CASE, lower_case, 首字母大写。',
++      schema: {
++        'type': 'object',
++        'properties': {
++          'text': {
++            'type': 'string',
++            'description': '要转换的字符串',
++          },
++          'target_case': {
++            'type': 'string',
++            'enum': ['camel', 'pascal', 'snake', 'kebab', 'upper', 'lower', 'capitalize'],
++            'description': '目标格式: camel=驼峰, pascal=大驼峰, snake=下划线, kebab=连字符, upper=全大写, lower=全小写, capitalize=首字母大写',
++          },
++        },
++        'required': ['text', 'target_case'],
++      },
++      handler: (args) async {
++        final text = args['text'] as String? ?? '';
++        final targetCase = args['target_case'] as String? ?? 'camel';
++        if (text.isEmpty) {
++          return const ToolResult.error('参数 text 不能为空');
++        }
++        final words = text.split(RegExp(r'[_\-\s]+'));
++        final result = <String>[];
++        for (final w in words) {
++          var start = 0;
++          for (var i = 1; i < w.length; i++) {
++            if (w[i].toUpperCase() == w[i] && w[i - 1].toLowerCase() == w[i - 1]) {
++              result.add(w.substring(start, i));
++              start = i;
++            }
++          }
++          result.add(w.substring(start));
++        }
++        final cleanWords = result.where((w) => w.isNotEmpty).toList();
++        if (cleanWords.isEmpty) {
++          return const ToolResult.error('无法解析单词');
++        }
++        String output;
++        switch (targetCase) {
++          case 'camel':
++            output = cleanWords[0].toLowerCase();
++            for (var i = 1; i < cleanWords.length; i++) {
++              output += cleanWords[i][0].toUpperCase() + cleanWords[i].substring(1).toLowerCase();
++            }
++          case 'pascal':
++            output = cleanWords.map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase()).join();
++          case 'snake':
++            output = cleanWords.map((w) => w.toLowerCase()).join('_');
++          case 'kebab':
++            output = cleanWords.map((w) => w.toLowerCase()).join('-');
++          case 'upper':
++            output = cleanWords.map((w) => w.toUpperCase()).join('_');
++          case 'lower':
++            output = cleanWords.map((w) => w.toLowerCase()).join('_');
++          case 'capitalize':
++            output = cleanWords.map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase()).join(' ');
++          default:
++            return ToolResult.error('不支持的目标格式: $targetCase');
++        }
++        return ToolResult.ok('$text → $output');
++      },
++    );
++
++/// Hex / binary / ASCII conversions.
++Tool encodeDecodeTool() => Tool(
++      name: 'encode_decode',
++      description: '编解码工具。支持: hex_encode, hex_decode, binary_encode, binary_decode, ascii_to_hex, hex_to_ascii。',
++      schema: {
++        'type': 'object',
++        'properties': {
++          'mode': {
++            'type': 'string',
++            'enum': ['hex_encode', 'hex_decode', 'binary_encode', 'binary_decode', 'ascii_to_hex', 'hex_to_ascii'],
++            'description': '编解码模式',
++          },
++          'text': {
++            'type': 'string',
++            'description': '要编解码的文本',
++          },
++        },
++        'required': ['mode', 'text'],
++      },
++      handler: (args) async {
++        final mode = args['mode'] as String? ?? 'hex_encode';
++        final text = args['text'] as String? ?? '';
++        if (text.isEmpty) {
++          return const ToolResult.error('参数 text 不能为空');
++        }
++        try {
++          switch (mode) {
++            case 'hex_encode':
++              return ToolResult.ok(text.codeUnits.map((c) => c.toRadixString(16).padLeft(2, '0')).join(' '));
++            case 'hex_decode':
++              final cleaned = text.replaceAll(RegExp(r'\s+'), '');
++              if (cleaned.length % 2 != 0) return const ToolResult.error('hex 字符串长度必须为偶数');
++              final bytes = <int>[];
++              for (var i = 0; i < cleaned.length; i += 2) {
++                bytes.add(int.parse(cleaned.substring(i, i + 2), radix: 16));
++              }
++              return ToolResult.ok(String.fromCharCodes(bytes));
++            case 'binary_encode':
++              return ToolResult.ok(text.codeUnits.map((c) => c.toRadixString(2).padLeft(8, '0')).join(' '));
++            case 'binary_decode':
++              final cleaned = text.replaceAll(RegExp(r'\s+'), '');
++              if (cleaned.length % 8 != 0) return const ToolResult.error('二进制字符串长度必须是 8 的倍数');
++              final bytes = <int>[];
++              for (var i = 0; i < cleaned.length; i += 8) {
++                bytes.add(int.parse(cleaned.substring(i, i + 8), radix: 2));
++              }
++              return ToolResult.ok(String.fromCharCodes(bytes));
++            case 'ascii_to_hex':
++              return ToolResult.ok(text.codeUnits.map((c) => c.toRadixString(16).padLeft(2, '0')).join(''));
++            case 'hex_to_ascii':
++              final cleaned = text.replaceAll(RegExp(r'\s+'), '');
++              if (cleaned.length % 2 != 0) return const ToolResult.error('hex 字符串长度必须为偶数');
++              final chars = <int>[];
++              for (var i = 0; i < cleaned.length; i += 2) {
++                chars.add(int.parse(cleaned.substring(i, i + 2), radix: 16));
++              }
++              return ToolResult.ok(String.fromCharCodes(chars));
++            default:
++              return ToolResult.error('不支持的模式: $mode');
++          }
++        } catch (e) {
++          return ToolResult.error('编解码失败: $e');
++        }
++      },
++    );
++
+ /// Returns all built-in tools for quick registration.
+ List<Tool> builtinTools() => [
+       calculatorTool(),
+@@ -936,6 +1169,11 @@ List<Tool> builtinTools() => [
+       textTemplateTool(),
+       // Stage 19: Agent analysis tool.
+       agentAnalyzeAndPlanTool(),
++      // Stage 21: More utility tools.
++      urlCodecTool(),
++      regexTesterTool(),
++      stringCaseTool(),
++      encodeDecodeTool(),
+     ];
+ 
+ // ---- Unit converter ------------------------------------------------------
+diff --git a/lib/features/automation/pages/permission_guide_page.dart b/lib/features/automation/pages/permission_guide_page.dart
+index 59c9694..95ec205 100644
+--- a/lib/features/automation/pages/permission_guide_page.dart
++++ b/lib/features/automation/pages/permission_guide_page.dart
+@@ -182,6 +182,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
+                 ),
+                 const SizedBox(height: 24),
+                 _summaryCard(),
++                const SizedBox(height: 24),
++                _antiDetectionCard(),
+                 const SizedBox(height: 20),
+                 FilledButton.icon(
+                   onPressed: () => context.go('/'),
+@@ -380,6 +382,110 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
+     );
+   }
+ 
++  /// Anti-detection tips card for high-risk apps detection.
++  Widget _antiDetectionCard() => Card(
++    color: Colors.orange.shade50,
++    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
++    child: Padding(
++      padding: const EdgeInsets.all(16),
++      child: Column(
++        crossAxisAlignment: CrossAxisAlignment.start,
++        children: [
++          Row(children: [
++            Icon(Icons.security_outlined, color: Colors.orange.shade800),
++            const SizedBox(width: 8),
++            Expanded(
++              child: Text('防高风险应用检测',
++                  style: TextStyle(
++                      fontSize: 16,
++                      fontWeight: FontWeight.w600,
++                      color: Colors.orange.shade900)),
++            ),
++          ]),
++          const SizedBox(height: 8),
++          Text(
++            '部分银行、支付类 App（如工行、建行、招商银行、支付宝等）会检测无障碍服务、'
++            'Root、Shizuku、USB 调试等"高风险"特征，可能拒绝运行或限制功能。',
++            style: TextStyle(height: 1.5, color: Colors.orange.shade900, fontSize: 13),
++          ),
++          const SizedBox(height: 10),
++          _antiDetectionTip(
++            icon: Icons.visibility_off,
++            title: '包名限制（已启用）',
++            desc: 'OpenAgent 已配置为仅监控社交/工具类 App（微信、抖音、小红书等），'
++                '银行/支付类 App 在前台时不会触发无障碍服务，降低被检测风险。',
++          ),
++          const SizedBox(height: 8),
++          _antiDetectionTip(
++            icon: Icons.bolt,
++            title: '优先使用 Shizuku',
++            desc: 'Shizuku 授权比无障碍服务更隐蔽，应用难以检测。'
++                '建议在银行/支付类 App 上操作时优先使用 L2 Shizuku 而非 L1 无障碍。',
++          ),
++          const SizedBox(height: 8),
++          _antiDetectionTip(
++            icon: Icons.toggle_off_outlined,
++            title: '临时关闭建议',
++            desc: '使用银行/支付 App 前，可在设置中临时关闭无障碍服务。'
++                '操作完成后重新开启即可。转账等敏感操作建议手动进行。',
++          ),
++          const SizedBox(height: 10),
++          Container(
++            padding: const EdgeInsets.all(10),
++            decoration: BoxDecoration(
++              color: Colors.amber.shade100,
++              borderRadius: BorderRadius.circular(8),
++            ),
++            child: Row(
++              children: [
++                Icon(Icons.info_outline, size: 18, color: Colors.amber.shade800),
++                const SizedBox(width: 8),
++                Expanded(
++                  child: Text(
++                    'Agent 内置了防检测规则：当系统检测到前台为银行/支付类 App 时，'
++                    '会自动切换为 Shizuku 操作模式或暂停自动化，确保安全。',
++                    style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4),
++                  ),
++                ),
++              ],
++            ),
++          ),
++        ],
++      ),
++    ),
++  );
++
++  Widget _antiDetectionTip({
++    required IconData icon,
++    required String title,
++    required String desc,
++  }) =>
++      Row(
++        crossAxisAlignment: CrossAxisAlignment.start,
++        children: [
++          Icon(icon, size: 20, color: Colors.orange.shade700),
++          const SizedBox(width: 8),
++          Expanded(
++            child: Column(
++              crossAxisAlignment: CrossAxisAlignment.start,
++              children: [
++                Text(title,
++                    style: TextStyle(
++                        fontWeight: FontWeight.w600,
++                        fontSize: 13,
++                        color: Colors.orange.shade900)),
++                const SizedBox(height: 2),
++                Text(desc,
++                    style: TextStyle(
++                        fontSize: 12,
++                        color: Colors.orange.shade800,
++                        height: 1.4)),
++              ],
++            ),
++          ),
++        ],
++      );
++
+   Widget _warn(String m) => Container(
+         padding: const EdgeInsets.all(12),
+         margin: const EdgeInsets.only(bottom: 12),
+diff --git a/lib/features/chat/pages/chat_page.dart b/lib/features/chat/pages/chat_page.dart
+index 2a45087..7bb2d53 100644
+--- a/lib/features/chat/pages/chat_page.dart
++++ b/lib/features/chat/pages/chat_page.dart
+@@ -183,7 +183,8 @@ class ChatPageState extends State<ChatPage> {
+       '点开', '帮我点', '帮我发', '帮我刷', '帮我写', '帮我输',
+       '点击', '滑动', '截屏', '截图', '自动化',
+       'open wechat', 'open douyin', 'open app', 'click ', 'tap ',
+-      'android', '自动化',
++      'android', '自动化', '帮我操作', '帮我弄', '弄一下',
++      '打开设置', '打开相机', '打开相册', '打电话', '发短信',
+     ];
+ 
+     // ---- Keywords that suggest web search / HTTP ----
+@@ -191,12 +192,19 @@ class ChatPageState extends State<ChatPage> {
+       '搜索', '查一下', '查一查', '找找', '网上', '搜一下', '搜一搜',
+       '搜索一下', '百度', '谷歌', 'google', 'search', 'web',
+       '查资料', '查信息', '查新闻', '今天的', '天气', '实时',
++      '查', '找', '搜', '最新', '热点', '新闻',
+     ];
+ 
+     // ---- Keywords that suggest calculation / math ----
+     final mathKeywords = [
+       '计算', '算一下', '算一算', '统计', '数学', '加减乘除',
+-      'calculate', 'compute', 'math', 'count',
++      'calculate', 'compute', 'math', 'count', '求和', '平均',
++    ];
++
++    // ---- Keywords that suggest code / developer tasks ----
++    final codeKeywords = [
++      '写代码', '编程', '代码', '函数', '写一个', 'bug', 'debug',
++      'code', 'function', 'implement', '写个脚本',
+     ];
+ 
+     bool needsAgent = false;
+@@ -231,6 +239,16 @@ class ChatPageState extends State<ChatPage> {
+       }
+     }
+ 
++    // Check code/developer keywords.
++    if (!needsAgent) {
++      for (final kw in codeKeywords) {
++        if (lower.contains(kw)) {
++          needsAgent = true;
++          break;
++        }
++      }
++    }
++
+     // Apply auto-switches.
+     if (needsAgent && !_agentMode) {
+       _agentMode = true;
+@@ -421,6 +439,14 @@ class ChatPageState extends State<ChatPage> {
+     }
+     // Register skill_create_from_trace meta-tool.
+     agent.registerTool(createSkillFromTraceTool(skillManager));
++
++    // Register anti-detection tools — ALWAYS available so the agent can
++    // check whether the current foreground app is high-risk (banking/
++    // payment) before attempting any automation.
++    for (final t in createAntiDetectionTools(service: _android)) {
++      agent.registerTool(t);
++    }
++
+     // NOTE: McpRegistry + SkillManager are owned by this function scope;
+     // when the agent run is done, they become eligible for GC. MCP servers
+     // left connected after run end are leaked on purpose: the model is
+-- 
+2.52.0.windows.1
+

@@ -2210,6 +2210,12 @@ Tool _composeGameAutoVlmLoop(
         final clickCount = <int>[0];
         final swipeCount = <int>[0];
         final vlmAnswers = <String>[];
+        // ---- 失败恢复状态 ----
+        var staleCounter = 0;          // 连续相同动作计数
+        String? lastActionSummary;     // 上一轮动作摘要
+        const maxStale = 3;            // 连续多少轮相同动作后触发恢复
+        var recoveryMode = false;      // 是否处于恢复模式
+        const maxRecoveryActions = 3;  // 恢复模式最多尝试动作数
         String r() => steps.map((l) => '  • $l').join('\n');
 
         // 可选：打开游戏 App
@@ -2341,6 +2347,61 @@ Tool _composeGameAutoVlmLoop(
           } catch (e, st) {
             steps.add('  VLM 解析出错 (跳过本轮): $e');
             // ignore, continue
+          }
+
+          // ---- 失败恢复检测 ----
+          if (!skipAuto && !recoveryMode) {
+            // 检测本轮动作摘要是否与上一轮相同（卡住判断）
+            final currentSummary = steps.isNotEmpty ? steps.last : '';
+            if (lastActionSummary != null &&
+                currentSummary == lastActionSummary &&
+                clickCount[0] + swipeCount[0] > 0) {
+              staleCounter++;
+              steps.add('  ⚠ 检测到动作重复 ($staleCounter/$maxStale)');
+            } else {
+              staleCounter = 0;
+            }
+            lastActionSummary = currentSummary;
+
+            // 卡住 ≥ maxStale 轮 → 触发恢复策略
+            if (staleCounter >= maxStale) {
+              steps.add('  🚨 卡住超过 $maxStale 轮，触发恢复策略');
+              staleCounter = 0;
+              recoveryMode = true;
+              // 恢复策略：按优先级尝试后退/主页/滑动
+              for (var ri = 0; ri < maxRecoveryActions; ri++) {
+                if (ri == 0) {
+                  await s.pressKey(AndroidKey.back);
+                  steps.add('  恢复[$ri]：按返回键');
+                } else if (ri == 1) {
+                  await s.swipe(0, 500, 0, -500, durationMs: 200);
+                  steps.add('  恢复[$ri]：向上滑动');
+                } else if (ri == 2) {
+                  await s.pressKey(AndroidKey.home);
+                  steps.add('  恢复[$ri]：按主页键');
+                }
+                await Future.delayed(const Duration(milliseconds: 800));
+              }
+              recoveryMode = false;
+            }
+          }
+
+          // ---- 保存进度到持久化（可通过 agent_memory 读取） ----
+          // 每 5 轮记录一次，防止完全丢失
+          if (i % 5 == 0) {
+            final progress = {
+              'round': i,
+              'total_loops': loops,
+              'clicks': clickCount[0],
+              'swipes': swipeCount[0],
+              'steps': steps.length,
+              'game_pkg': pkg,
+              'goal': goal,
+              'timestamp': DateTime.now().toIso8601String(),
+            };
+            // 写入临时文件供 agent_memory 读取
+            await s.gshell(
+                'echo \'${jsonEncode(progress)}\' > /sdcard/Android/data/com.openagent.openagent/files/game_progress.json 2>/dev/null');
           }
         }
 

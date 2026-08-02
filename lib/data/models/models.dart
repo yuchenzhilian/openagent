@@ -368,6 +368,7 @@ class AutomationPermissionStatus {
     this.shizukuGranted = false,
     this.screenshotGranted = false,
     this.usageStatsGranted = false,
+    this.notificationListenerGranted = false,
     this.warningDismissed = false,
   });
 
@@ -383,6 +384,9 @@ class AutomationPermissionStatus {
   /// PACKAGE_USAGE_STATS (应用使用统计)：让 Agent 能查到当前前台 App。
   final bool usageStatsGranted;
 
+  /// 通知监听权限是否已启用。
+  final bool notificationListenerGranted;
+
   /// 用户是否已了解风险并点击了"我知道了"。
   final bool warningDismissed;
 
@@ -391,6 +395,7 @@ class AutomationPermissionStatus {
     bool? shizukuGranted,
     bool? screenshotGranted,
     bool? usageStatsGranted,
+    bool? notificationListenerGranted,
     bool? warningDismissed,
   }) =>
       AutomationPermissionStatus(
@@ -398,6 +403,7 @@ class AutomationPermissionStatus {
         shizukuGranted: shizukuGranted ?? this.shizukuGranted,
         screenshotGranted: screenshotGranted ?? this.screenshotGranted,
         usageStatsGranted: usageStatsGranted ?? this.usageStatsGranted,
+        notificationListenerGranted: notificationListenerGranted ?? this.notificationListenerGranted,
         warningDismissed: warningDismissed ?? this.warningDismissed,
       );
 
@@ -406,6 +412,7 @@ class AutomationPermissionStatus {
         'shizuku': shizukuGranted,
         'screenshot': screenshotGranted,
         'usage_stats': usageStatsGranted,
+        'notification_listener': notificationListenerGranted,
         'warning_dismissed': warningDismissed,
       };
 
@@ -415,6 +422,7 @@ class AutomationPermissionStatus {
         shizukuGranted: j['shizuku'] as bool? ?? false,
         screenshotGranted: j['screenshot'] as bool? ?? false,
         usageStatsGranted: j['usage_stats'] as bool? ?? false,
+        notificationListenerGranted: j['notification_listener'] as bool? ?? false,
         warningDismissed: j['warning_dismissed'] as bool? ?? false,
       );
 }

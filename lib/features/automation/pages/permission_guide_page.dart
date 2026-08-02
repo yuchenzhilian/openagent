@@ -61,6 +61,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
           cfg.automation.screenshotGranted,
       usageStatsGranted: runtimeStatus.usageStatsGranted ||
           cfg.automation.usageStatsGranted,
+      notificationListenerGranted: runtimeStatus.notificationListenerGranted ||
+          cfg.automation.notificationListenerGranted,
     );
     if (!mounted) return;
     setState(() {
@@ -148,6 +150,109 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                   ],
                 ),
                 const SizedBox(height: 10),
+                Card(
+                  elevation: 1,
+                  color: Colors.amber.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Icon(Icons.auto_fix_high, color: Colors.amber.shade800),
+                          const SizedBox(width: 8),
+                          const Text('一键自动授权',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                                color: Colors.amber,
+                                borderRadius: BorderRadius.circular(4)),
+                            child: const Text('自动',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ]),
+                        const SizedBox(height: 8),
+                        Text(
+                          '如果已开启 Shizuku，可一键自动授予以下权限，无需手动跳转设置：',
+                          style: TextStyle(
+                              height: 1.45,
+                              color: Colors.grey.shade800,
+                              fontSize: 13),
+                        ),
+                        const SizedBox(height: 12),
+                        _autoGrantButton(
+                          '自动启用无障碍服务',
+                          Icons.accessibility_new,
+                          _status.shizukuGranted && !_status.accessibilityEnabled,
+                          () async {
+                            final r = await _svc.gshell(
+                                'settings put secure enabled_accessibility_services '
+                                'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentAccessibilityService 2>/dev/null');
+                            if (r.ok) {
+                              await _svc.gshell('settings put secure accessibility_enabled 1');
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('✅ 无障碍服务已自动启用')));
+                              await _refresh();
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        _autoGrantButton(
+                          '自动启用通知监听',
+                          Icons.notifications,
+                          _status.shizukuGranted && !_status.notificationListenerGranted,
+                          () async {
+                            await _svc.gshell(
+                                'settings put secure enabled_notification_listeners '
+                                'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
+                            await _svc.gshell(
+                                'settings put secure enabled_notification_assistant '
+                                'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
+                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('✅ 通知监听已自动启用')));
+                            await _refresh();
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        _autoGrantButton(
+                          '授予 WRITE_SECURE_SETTINGS',
+                          Icons.security,
+                          _status.shizukuGranted,
+                          () async {
+                            final r = await _svc.gshell(
+                                'pm grant com.openagent.openagent android.permission.WRITE_SECURE_SETTINGS 2>/dev/null');
+                            if (r.ok && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('✅ WRITE_SECURE_SETTINGS 已授予')));
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        _autoGrantButton(
+                          '授予 DUMP（查看所有 App 信息）',
+                          Icons.info,
+                          _status.shizukuGranted,
+                          () async {
+                            await _svc.gshell(
+                                'pm grant com.openagent.openagent android.permission.DUMP 2>/dev/null');
+                            await _svc.gshell(
+                                'pm grant com.openagent.openagent android.permission.PACKAGE_USAGE_STATS 2>/dev/null');
+                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('✅ DUMP + PACKAGE_USAGE_STATS 已授予')));
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 _permissionTile(
                   tier: '辅助',
                   name: '应用使用统计 (查询前台 App)',
@@ -194,6 +299,24 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
             ),
     );
   }
+
+  Widget _autoGrantButton(
+    String label,
+    IconData icon,
+    bool enabled,
+    VoidCallback onPressed,
+  ) =>
+      OutlinedButton.icon(
+        onPressed: enabled ? onPressed : null,
+        icon: Icon(icon, size: 18),
+        label: Text(label, style: const TextStyle(fontSize: 13)),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: enabled ? Colors.amber.shade800 : Colors.grey,
+          side: BorderSide(
+              color: enabled ? Colors.amber.shade300 : Colors.grey.shade300),
+          minimumSize: const Size(double.infinity, 40),
+        ),
+      );
 
   Widget _warningCard() => Card(
         color: Colors.red.shade50,
