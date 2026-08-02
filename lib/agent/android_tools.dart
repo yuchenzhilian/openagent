@@ -61,6 +61,10 @@ List<Tool> createAndroidAutomationTools({
     if (visionAnalyze != null) _screenChangeDetectTool(s, visionAnalyze),
     if (visionAnalyze != null) _visionAnalyzeRegionTool(s, visionAnalyze),
     _screenHashTool(s),
+    // Stage 32: 深化工具
+    _shizukuSimplifiedTool(s),
+    _permissionSelfHealTool(s),
+    _agentExecutionLogTool(s),
     _waitTool(),
     _waitForTextTool(s),
     _installApkTool(s),
@@ -5239,6 +5243,289 @@ Tool _visionAnalyzeRegionTool(
             '请关注屏幕中 x=${x.toStringAsFixed(2)}, y=${y.toStringAsFixed(2)}, '
             'w=${w.toStringAsFixed(2)}, h=${h.toStringAsFixed(2)} 的区域。$q');
         return ToolResult.ok('📷 区域分析结果:\n$answer');
+      },
+    );
+
+// ============================================================================
+// Stage 32: 深化 — Shizuku 简化/权限自愈/Agent 执行日志
+// ============================================================================
+
+/// ——— Shizuku 授权简化：无线 ADB 替代方案 ———
+Tool _shizukuSimplifiedTool(AndroidAutomationService s) => Tool(
+      name: 'android_shizuku_simplified',
+      description:
+          '【深化】Shizuku 授权简化版。如果 Shizuku App 未安装或未授权，'
+          '可尝试用无线 ADB 替代方案（需开发者选项 + 无线调试已开启）。'
+          '提供完整的 Shizuku 授权引导和状态检查。',
+      schema: _props({
+        'action': {
+          'type': 'string',
+          'enum': ['check', 'setup_wireless_adb', 'guide', 'status_all'],
+          'description': 'check=检查 Shizuku 状态, setup_wireless_adb=尝试无线 ADB 连接, '
+              'guide=显示完整授权向导, status_all=检查所有权限状态',
+        },
+        'adb_port': {
+          'type': 'integer',
+          'description': '无线 ADB 端口号（默认 5555，从开发者选项的无线调试中获取）',
+        },
+      }),
+      handler: (args) async {
+        final action = (args['action'] as String?) ?? 'check';
+        final adbPort = ((args['adb_port'] as num?)?.toInt() ?? 5555).clamp(1024, 65535);
+        final sb = StringBuffer();
+
+        if (action == 'check') {
+          sb.writeln('===== Shizuku 状态检查 =====');
+          // Check if Shizuku app is installed
+          final r1 = await s.gshell('pm list packages | grep shizuku 2>/dev/null');
+          sb.writeln('Shizuku 安装: ${r1.ok && r1.stdout.contains('shizuku') ? "✅ 已安装" : "❌ 未安装"}');
+          // Check if Shizuku is running
+          final r2 = await s.gshell('ps -ef | grep shizuku 2>/dev/null');
+          sb.writeln('Shizuku 运行: ${r2.ok && r2.stdout.contains('shizuku') ? "✅ 运行中" : "❌ 未运行"}');
+          // Check wireless ADB
+          final r3 = await s.gshell('getprop service.adb.tcp.port 2>/dev/null');
+          sb.writeln('无线 ADB: ${r3.ok && r3.stdout.trim().isNotEmpty ? "✅ 端口 ${r3.stdout.trim()}" : "❌ 未开启"}');
+          // Check developer options
+          final r4 = await s.gshell('settings get global development_settings_enabled 2>/dev/null');
+          sb.writeln('开发者选项: ${r4.stdout.trim() == "1" ? "✅ 已开启" : "❌ 未开启"}');
+          sb.writeln('');
+          sb.writeln('💡 建议：');
+          if (!r1.ok || !r1.stdout.contains('shizuku')) {
+            sb.writeln('1. 安装 Shizuku: 从 moe.shizuku.privileged.api 下载');
+          }
+          if (!r2.ok || !r2.stdout.contains('shizuku')) {
+            sb.writeln('2. 启动 Shizuku: 打开 App → 点击"启动"');
+          }
+          sb.writeln('3. 或用 setup_wireless_adb 尝试无线 ADB 替代方案');
+          return ToolResult.ok(sb.toString());
+        }
+
+        if (action == 'setup_wireless_adb') {
+          // Try to enable wireless ADB
+          final r1 = await s.gshell('settings put global development_settings_enabled 1 2>/dev/null');
+          final r2 = await s.gshell('settings put global adb_wifi_enabled 1 2>/dev/null');
+          final r3 = await s.gshell('setprop service.adb.tcp.port $adbPort 2>/dev/null');
+          // Restart adbd
+          final r4 = await s.gshell('stop adbd; start adbd 2>/dev/null');
+          sb.writeln('===== 无线 ADB 设置 =====');
+          sb.writeln('开发者选项: ${r1.ok ? "已开启" : "失败"}');
+          sb.writeln('无线调试: ${r2.ok ? "已开启" : "失败"}');
+          sb.writeln('ADB 端口: $adbPort');
+          sb.writeln('ADB 重启: ${r4.ok ? "OK" : "可能需手动重启"}');
+          if (r1.ok || r2.ok) {
+            sb.writeln('\n✅ 无线 ADB 已配置。');
+            sb.writeln('现在可以在 PC 上连接: adb connect 设备IP:$adbPort');
+            sb.writeln('或在手机上用 Shizuku 的"无线调试"启动方式。');
+          } else {
+            sb.writeln('\n❌ 配置失败。可能需要 root 权限。');
+            sb.writeln('建议：手动在 设置 → 开发者选项 → 无线调试 中开启。');
+          }
+          return ToolResult.ok(sb.toString());
+        }
+
+        if (action == 'guide') {
+          sb.writeln('===== Shizuku 授权完整向导 =====');
+          sb.writeln('');
+          sb.writeln('📱 方式一：Shizuku App（推荐）');
+          sb.writeln('  1. 下载安装: https://shizuku.rikka.app/download/');
+          sb.writeln('  2. 打开 App → 点击"启动"');
+          sb.writeln('  3. 如果弹出授权，点击"允许"');
+          sb.writeln('  4. 回到本 App → 权限引导页查看状态');
+          sb.writeln('');
+          sb.writeln('📱 方式二：无线 ADB（无需安装 App）');
+          sb.writeln('  1. 设置 → 关于手机 → 连续点击"版本号"7 次开启开发者选项');
+          sb.writeln('  2. 设置 → 系统 → 开发者选项 → 开启"无线调试"');
+          sb.writeln('  3. 使用 android_shizuku_simplified action=setup_wireless_adb');
+          sb.writeln('  4. 或在 PC 上执行: adb connect 设备IP:5555');
+          sb.writeln('');
+          sb.writeln('📱 方式三：Root 设备');
+          sb.writeln('  如果已 Root，Shizuku 会自动获得权限。');
+          sb.writeln('');
+          sb.writeln('💡 授权后可用 android_auto_grant_* 工具自动授予其他权限。');
+          return ToolResult.ok(sb.toString());
+        }
+
+        if (action == 'status_all') {
+          sb.writeln('===== 全部权限状态 =====');
+          // 无障碍
+          final r1 = await s.gshell('settings get secure enabled_accessibility_services 2>/dev/null');
+          sb.writeln('无障碍服务: ${r1.stdout.contains('openagent') ? "✅" : "❌"}');
+          // 通知监听
+          final r2 = await s.gshell('settings get secure enabled_notification_listeners 2>/dev/null');
+          sb.writeln('通知监听: ${r2.stdout.contains('openagent') ? "✅" : "❌"}');
+          // 应用使用统计
+          final r3 = await s.gshell('settings get secure enabled_notification_assistant 2>/dev/null');
+          sb.writeln('通知助理: ${r3.stdout.contains('openagent') ? "✅" : "❌"}');
+          // Shizuku
+          final r4 = await s.gshell('ps -ef | grep shizuku 2>/dev/null');
+          sb.writeln('Shizuku: ${r4.stdout.contains('shizuku') ? "✅" : "❌"}');
+          // 截图权限 (MediaProjection)
+          final r5 = await s.gshell('dumpsys media_projection 2>/dev/null | grep -i "granted\\|active" | head -5');
+          sb.writeln('截图权限: ${r5.ok && r5.stdout.trim().isNotEmpty ? "✅" : "❌(需截图时临时授权)"}');
+          // WRITE_SECURE_SETTINGS
+          final r6 = await s.gshell('dumpsys package com.openagent.openagent 2>/dev/null | grep -i "WRITE_SECURE_SETTINGS" | head -3');
+          sb.writeln('WRITE_SECURE_SETTINGS: ${r6.ok && r6.stdout.contains('granted') ? "✅" : "❌(需 Shizuku 授权)"}');
+          sb.writeln('\n💡 用 android_auto_grant_* 工具可自动授权缺失项。');
+          return ToolResult.ok(sb.toString());
+        }
+
+        return ToolResult.error('未知操作: $action');
+      },
+    );
+
+/// ——— 权限自愈：自动检测并修复丢失的权限 ———
+Tool _permissionSelfHealTool(AndroidAutomationService s) => Tool(
+      name: 'android_permission_self_heal',
+      description:
+          '【深化】权限自愈。自动检测所有关键权限的状态，'
+          '对已丢失的权限尝试自动重新授权。需要 Shizuku 已授权。'
+          '适合在 Agent 检测到操作失败时调用（如点击无效、截图失败等）。',
+      schema: _props({
+        'action': {
+          'type': 'string',
+          'enum': ['check_and_fix', 'check_only', 'fix_all'],
+          'description': 'check_and_fix=检查并自动修复, check_only=仅检查不修复, fix_all=尝试修复所有缺失权限',
+        },
+      }),
+      handler: (args) async {
+        final action = (args['action'] as String?) ?? 'check_and_fix';
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+        final sb = StringBuffer();
+
+        // 检查阶段
+        final issues = <String>[];
+        final checks = <String, Future<bool> Function(){}>
+        {
+          '无障碍服务': () async {
+            final r = await s.gshell('settings get secure enabled_accessibility_services 2>/dev/null');
+            return r.stdout.contains('openagent');
+          },
+          '通知监听': () async {
+            final r = await s.gshell('settings get secure enabled_notification_listeners 2>/dev/null');
+            return r.stdout.contains('openagent');
+          },
+          'Shizuku 运行': () async {
+            final r = await s.gshell('ps -ef | grep shizuku 2>/dev/null');
+            return r.stdout.contains('shizuku');
+          },
+        };
+
+        for (final entry in checks.entries) {
+          final ok = await entry.value();
+          if (!ok) issues.add(entry.key);
+        }
+
+        sb.writeln('===== 权限自检 =====');
+        if (issues.isEmpty) {
+          sb.writeln('✅ 所有权限正常');
+          if (action == 'check_only') return ToolResult.ok(sb.toString());
+          return ToolResult.ok('${sb.toString()}\n无需修复');
+        }
+        sb.writeln('❌ 发现 ${issues.length} 个问题:');
+        for (final issue in issues) {
+          sb.writeln('  - $issue');
+        }
+
+        if (action == 'check_only') return ToolResult.ok(sb.toString());
+
+        // 修复阶段
+        sb.writeln('\n===== 修复 =====');
+        for (final issue in issues) {
+          switch (issue) {
+            case '无障碍服务':
+              final r = await s.gshell(
+                  'settings put secure enabled_accessibility_services '
+                  'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentAccessibilityService 2>/dev/null');
+              await s.gshell('settings put secure accessibility_enabled 1 2>/dev/null');
+              steps.add('无障碍服务: ${r.ok ? "已修复" : "修复失败"}');
+              break;
+            case '通知监听':
+              final r = await s.gshell(
+                  'settings put secure enabled_notification_listeners '
+                  'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
+              steps.add('通知监听: ${r.ok ? "已修复" : "修复失败"}');
+              break;
+            case 'Shizuku 运行':
+              final r = await s.gshell('am start -n moe.shizuku.privileged.api/.MainActivity 2>/dev/null');
+              steps.add('Shizuku 启动: ${r.ok ? "已启动" : "修复失败（需手动打开 Shizuku App）"}');
+              break;
+          }
+        }
+
+        sb.writeln(r());
+        sb.writeln('\n💡 如果仍有问题，用 android_shizuku_simplified action=guide 查看完整授权向导。');
+        return ToolResult.ok(sb.toString());
+      },
+    );
+
+/// ——— Agent 执行日志/回溯 ———
+Tool _agentExecutionLogTool(AndroidAutomationService s) => Tool(
+      name: 'android_agent_execution_log',
+      description:
+          '【深化】Agent 执行日志与回溯。记录最近执行的操作步骤、结果、耗时，'
+          '支持回溯查看历史操作。适合在 Agent 执行失败时分析原因。',
+      schema: _props({
+        'action': {
+          'type': 'string',
+          'enum': ['show', 'clear', 'save', 'stats'],
+          'description': 'show=显示最近执行日志, clear=清除日志, '
+              'save=保存日志到文件, stats=执行统计',
+        },
+        'lines': {
+          'type': 'integer',
+          'description': '显示的行数（默认 20）',
+        },
+      }),
+      handler: (args) async {
+        final action = (args['action'] as String?) ?? 'show';
+        final lines = ((args['lines'] as num?)?.toInt() ?? 20).clamp(5, 200);
+        final logPath = '/sdcard/Android/data/com.openagent.openagent/files/agent_execution.log';
+        final sb = StringBuffer();
+
+        if (action == 'show') {
+          final r = await s.gshell('tail -n $lines "$logPath" 2>/dev/null');
+          if (r.ok && r.stdout.trim().isNotEmpty) {
+            sb.writeln('===== Agent 执行日志 (最近 $lines 行) =====');
+            sb.writeln(r.stdout.trim());
+          } else {
+            sb.writeln('📝 暂无执行日志。');
+            sb.writeln('Agent 执行操作时会自动记录到 $logPath');
+          }
+          return ToolResult.ok(sb.toString());
+        }
+
+        if (action == 'clear') {
+          await s.gshell('echo "" > "$logPath" 2>/dev/null');
+          return ToolResult.ok('✅ 执行日志已清除');
+        }
+
+        if (action == 'save') {
+          final savePath = '/sdcard/Download/agent_log_${DateTime.now().millisecondsSinceEpoch}.txt';
+          final r = await s.gshell('cp "$logPath" "$savePath" 2>/dev/null');
+          return r.ok
+              ? ToolResult.ok('✅ 日志已保存到: $savePath')
+              : ToolResult.error('保存失败');
+        }
+
+        if (action == 'stats') {
+          final r = await s.gshell('wc -l "$logPath" 2>/dev/null | awk \'{print \$1}\'');
+          final totalLines = int.tryParse(r.stdout.trim()) ?? 0;
+          sb.writeln('===== 执行统计 =====');
+          sb.writeln('日志总行数: $totalLines');
+          if (totalLines > 0) {
+            // 统计成功/失败
+            final success = await s.gshell('grep -c "✅\\|成功\\|OK" "$logPath" 2>/dev/null');
+            final failed = await s.gshell('grep -c "❌\\|失败\\|error" "$logPath" 2>/dev/null');
+            sb.writeln('成功操作: ${success.stdout.trim()}');
+            sb.writeln('失败操作: ${failed.stdout.trim()}');
+            sb.writeln('成功率: ${totalLines > 0 ? ((int.tryParse(success.stdout.trim()) ?? 0) * 100 / totalLines).toStringAsFixed(1) : 0}%');
+          }
+          sb.writeln('\n路径: $logPath');
+          return ToolResult.ok(sb.toString());
+        }
+
+        return ToolResult.error('未知操作: $action');
       },
     );
 

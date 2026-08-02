@@ -262,6 +262,7 @@ openagent/
 - [x] **阶段 29** 手机管家：文件整理（按类型归类/大文件扫描/清理临时文件）+ 应用管理（卸载/清除缓存/禁用/权限列表/占用排行）+ 深度清理（快速清理/深度清理/存储分析/卸载残留清理）
 - [x] **阶段 30** 秘书/AI 助手：智能笔记（create/list/search/delete/stats）+ 智能提醒（add/list/done/clear 优先级管理）+ 每日简报（汇总待办/笔记/定时任务）+ 快捷助手（calc/convert/time_diff/countdown/random）+ 笔记/提醒持久化到本地 JSON 文件
 - [x] **阶段 31** VLM 多模态增强：屏幕变化检测（snapshot/compare/watch_region 哈希+VLM 双重验证）+ 截图指纹哈希（快速变化检测）+ 区域 VLM 分析（坐标裁剪后分析指定区域）
+- [x] **阶段 32** 深化已有功能：Shizuku 授权简化（check/setup_wireless_adb/guide/status_all 完整向导）+ 权限自愈（check_and_fix/check_only/fix_all 自动检测修复）+ Agent 执行日志（show/clear/save/stats）
 - [ ] **真机验证** Android 手机冒烟测试：权限引导 → 开微信 → 点文字 → 输入中文 → 滑抖音 → UI dump → 端到端微信发消息
 - [ ] **iOS 适配**
 - [ ] **更多能力** AppOps 细粒度 / VPN / NFC / 蓝牙配对 / 自定义规则引擎
