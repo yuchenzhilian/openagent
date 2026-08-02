@@ -1,5 +1,7 @@
 // Settings: sampling parameters and system prompt. Loads the current
 // AppConfig from disk on init, and persists changes via FileStorageService.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mnn_llm/mnn_llm.dart';
 
