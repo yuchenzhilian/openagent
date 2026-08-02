@@ -17,6 +17,25 @@ class AndroidAutomationService {
 
   static const _channel = MethodChannel('com.openagent.automation');
 
+  /// 权限状态缓存，减少重复查询系统。
+  AutomationPermissionStatus? _cachedStatus;
+  DateTime _cacheTimestamp = DateTime(2000);
+  static const Duration _cacheTtl = Duration(seconds: 30);
+
+  /// 使权限缓存失效，下次查询将重新获取。
+  void invalidatePermissionCache() {
+    _cacheTimestamp = DateTime(2000);
+  }
+
+  /// 获取缓存的权限状态（如果未过期），否则返回 null。
+  AutomationPermissionStatus? get cachedPermissionStatus {
+    if (_cachedStatus != null &&
+        DateTime.now().difference(_cacheTimestamp) < _cacheTtl) {
+      return _cachedStatus;
+    }
+    return null;
+  }
+
   /// Throws on non-Android platforms (which is expected — callers should gate
   /// on [isSupported] before invoking anything else).
   bool get isSupported =>
@@ -31,8 +50,14 @@ class AndroidAutomationService {
   /// running on a Kotlin host that still ships the older bridge. Also merges
   /// in [AutomationPermissionStatus.warningDismissed] from AppConfig (it's
   /// persisted to disk, not a runtime Android flag).
+  ///
+  /// 使用缓存：30 秒内重复调用返回缓存结果，减少系统查询。
   Future<AutomationPermissionStatus> refreshStatus() async {
     if (!isSupported) return const AutomationPermissionStatus();
+    // 优先返回缓存
+    final cached = cachedPermissionStatus;
+    if (cached != null) return cached;
+
     final storage = FileStorageService();
     final saved = await storage.loadAppConfig();
 
@@ -41,7 +66,7 @@ class AndroidAutomationService {
       final m = await _channel
           .invokeMapMethod<String, dynamic>('android_get_permission_status');
       if (m != null && m.isNotEmpty) {
-        return AutomationPermissionStatus(
+        _cachedStatus = AutomationPermissionStatus(
           accessibilityEnabled: m['accessibility_enabled'] == true,
           shizukuGranted: m['shizuku_granted'] == true,
           screenshotGranted: (m['screenshot_granted'] == true) ||
@@ -49,6 +74,8 @@ class AndroidAutomationService {
           usageStatsGranted: m['usage_stats_granted'] == true,
           warningDismissed: saved.automation.warningDismissed,
         );
+        _cacheTimestamp = DateTime.now();
+        return _cachedStatus!;
       }
     } catch (_) {
       // ignore — fall back to legacy two-bool call below.
@@ -59,12 +86,14 @@ class AndroidAutomationService {
         false;
     final shizuku =
         await _channel.invokeMethod<bool>('is_shizuku_available') ?? false;
-    return AutomationPermissionStatus(
+    _cachedStatus = AutomationPermissionStatus(
       accessibilityEnabled: a11y,
       shizukuGranted: shizuku,
       screenshotGranted: saved.automation.screenshotGranted,
       warningDismissed: saved.automation.warningDismissed,
     );
+    _cacheTimestamp = DateTime.now();
+    return _cachedStatus!;
   }
 
   /// Raw aggregate permission/status map — used by [androidGetPermissionStatus]

@@ -234,7 +234,9 @@ Tool _openAppTool(AndroidAutomationService s) => Tool(
         final ok = await s.openApp(pkg);
         return ok
             ? ToolResult.ok('已打开 $pkg（若没看到界面，可能需要等待加载）')
-            : ToolResult.error('打开 $pkg 失败（应用未安装或缺少启动 Intent）');
+            : ToolResult.error('打开 $pkg 失败。可能原因：应用未安装 | 应用被禁用 | 需要 Shizuku 权限。'
+                '建议：用 android_gshell "pm list packages" 确认安装状态，'
+                '或用 android_permission_self_heal action=check_and_fix 检查权限。');
       },
     );
 
@@ -260,7 +262,10 @@ Tool _clickByTextTool(AndroidAutomationService s) => Tool(
         final ok = await s.clickByText(text, exact: exact);
         return ok
             ? ToolResult.ok('已点击文字 "$text"')
-            : ToolResult.error('未找到文字为 "$text" 的可点击控件，可能需要先 dump_ui 看控件');
+            : ToolResult.error('未找到文字为 "$text" 的可点击控件。'
+                '可能原因：页面未加载完成 | 文字在不可见区域 | 需要滚动。'
+                '建议：先 android_dump_ui 查看当前页面控件，'
+                '或用 android_scroll_to_text 滚动查找。');
       },
     );
 
@@ -371,8 +376,9 @@ Tool _inputTextTool(AndroidAutomationService s) => Tool(
         if (text == null) return const ToolResult.error('缺少参数 text');
         final ok = await s.inputText(text);
         return ok
-            ? ToolResult.ok('已输入：$text')
-            : ToolResult.error('输入失败（请先点击输入框获得焦点）');
+            ? ToolResult.ok('已输入文字')
+            : ToolResult.error('输入失败。可能原因：输入框未获得焦点 | 输入法未就绪 | 无障碍权限不足。'
+                '建议：先用 android_click_by_text 点击输入框获得焦点，再重试输入。');
       },
     );
 
@@ -425,6 +431,12 @@ Tool _dumpUiTool(AndroidAutomationService s) => Tool(
       handler: (args) async {
         final limit = args['limit'] as int? ?? 80;
         final summary = await s.dumpUiSummary(limit: limit);
+        if (summary.isEmpty) {
+          return const ToolResult.error('dump_ui 返回为空。'
+              '可能原因：无障碍服务未开启 | 当前页面无文字控件（游戏/Canvas/图片）。'
+              '建议：用 android_permission_self_heal 检查无障碍状态，'
+              '或用 android_vision_analyze 进行视觉分析。');
+        }
         return ToolResult.ok(summary);
       },
     );

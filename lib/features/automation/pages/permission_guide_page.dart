@@ -34,9 +34,9 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
   void initState() {
     super.initState();
     _refresh();
-    // Poll every 2s so the UI reflects when the user returns from Settings.
+    // Poll every 5s so the UI reflects when the user returns from Settings.
     _refreshTimer =
-        Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
+        Timer.periodic(const Duration(seconds: 5), (_) => _refresh());
   }
 
   @override
@@ -65,10 +65,18 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
           cfg.automation.notificationListenerGranted,
     );
     if (!mounted) return;
+    final allEnabled = merged.accessibilityEnabled &&
+        merged.shizukuGranted &&
+        merged.screenshotGranted &&
+        merged.usageStatsGranted;
     setState(() {
       _status = merged;
       _loading = false;
     });
+    // 所有权限已开启时，停止轮询
+    if (allEnabled && _refreshTimer != null && _refreshTimer!.isActive) {
+      _refreshTimer?.cancel();
+    }
     // Persist merged status back so the Agent runtime can pick it up.
     if (merged != cfg.automation) {
       await widget.storage
@@ -285,7 +293,24 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                   status: _status.screenshotGranted,
                   onTap: _requestScreenshot,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                // 一键全授权按钮（需 Shizuku 已授权）
+                if (_status.shizukuGranted) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _allInOneGrant,
+                      icon: const Icon(Icons.auto_fix_high, size: 20),
+                      label: const Text('一键全授权（无障碍 + 通知 + 安全设置 + DUMP）'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.amber.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
                 _summaryCard(),
                 const SizedBox(height: 24),
                 _antiDetectionCard(),
@@ -317,6 +342,53 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
           minimumSize: const Size(double.infinity, 40),
         ),
       );
+
+  /// 一键全授权：按顺序执行所有自动授权操作。
+  Future<void> _allInOneGrant() async {
+    if (!_status.shizukuGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('需要先开启 Shizuku 权限')),
+      );
+      return;
+    }
+    final results = <String>[];
+    // 1) 无障碍服务
+    final r1 = await _svc.gshell(
+        'settings put secure enabled_accessibility_services '
+        'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentAccessibilityService 2>/dev/null');
+    await _svc.gshell('settings put secure accessibility_enabled 1 2>/dev/null');
+    results.add('无障碍: ${r1.ok ? "✅" : "❌"}');
+
+    // 2) 通知监听
+    final r2 = await _svc.gshell(
+        'settings put secure enabled_notification_listeners '
+        'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
+    results.add('通知监听: ${r2.ok ? "✅" : "❌"}');
+
+    // 3) WRITE_SECURE_SETTINGS
+    final r3 = await _svc.gshell(
+        'pm grant com.openagent.openagent android.permission.WRITE_SECURE_SETTINGS 2>/dev/null');
+    results.add('安全设置: ${r3.ok ? "✅" : "❌"}');
+
+    // 4) DUMP + PACKAGE_USAGE_STATS
+    final r4a = await _svc.gshell(
+        'pm grant com.openagent.openagent android.permission.DUMP 2>/dev/null');
+    final r4b = await _svc.gshell(
+        'pm grant com.openagent.openagent android.permission.PACKAGE_USAGE_STATS 2>/dev/null');
+    results.add('DUMP+统计: ${r4a.ok && r4b.ok ? "✅" : "❌"}');
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('一键全授权完成\n${results.join(" | ")}'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+    // 清除缓存并刷新
+    _svc.invalidatePermissionCache();
+    await _refresh();
+  }
 
   Widget _warningCard() => Card(
         color: Colors.red.shade50,

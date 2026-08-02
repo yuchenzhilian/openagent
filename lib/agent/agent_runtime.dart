@@ -17,6 +17,7 @@
 // can be parsed from a streamed buffer without look-ahead.
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:mnn_llm/mnn_llm.dart';
 
@@ -152,13 +153,21 @@ class LocalMnnAgentRuntime implements AgentRuntime {
 
   final MnnLlmSession _session;
   final Map<String, Tool> _tools = {};
-  final int maxSteps;
+  int maxSteps;
+  static const Duration _defaultToolTimeout = Duration(seconds: 30);
+  static const Duration _logMaxAge = Duration(hours: 24);
+  static const int _logMaxLines = 5000;
+  static const int _logTrimTarget = 3000;
+  int _consecutivePermissionErrors = 0;
 
   /// When true the system prompt adds Android-automation specific rules
   /// (dump the UI first, prefer click_by_text/click_by_id, wait for page
   /// transitions, …). Auto-enabled by ChatPage when the first tool with
   /// name starting with `android_` is registered.
   final bool androidMode;
+
+  /// 动态调整最大推理步数。
+  void setMaxSteps(int steps) => maxSteps = steps.clamp(1, 100);
 
   @override
   void registerTool(Tool tool) => _tools[tool.name] = tool;
@@ -368,11 +377,79 @@ $_kToolCallClose
     if (tool == null) {
       return ToolResult.error('未知工具: $name');
     }
+    final stopwatch = Stopwatch()..start();
     try {
-      return await tool.handler(args);
+      final result = await tool.handler(args).timeout(_defaultToolTimeout);
+      stopwatch.stop();
+      _logExecution(name, args, result, stopwatch.elapsedMilliseconds);
+      // 检测权限相关错误，累计计数
+      if (result.isError && _isPermissionError(result.output)) {
+        _consecutivePermissionErrors++;
+        if (_consecutivePermissionErrors >= 2) {
+          _consecutivePermissionErrors = 0;
+          // 返回增强的错误信息，附带修复建议
+          return ToolResult.error(
+              '${result.output}\n\n'
+              '[系统检测到权限问题] 连续多次操作因权限失败。\n'
+              '建议: 调用 android_permission_self_heal action=check_and_fix 自动修复权限。\n'
+              '或调用 android_shizuku_simplified action=check 查看权限状态。');
+        }
+      } else {
+        // 非权限错误或成功，重置计数器
+        _consecutivePermissionErrors = 0;
+      }
+      return result;
+    } on TimeoutException {
+      stopwatch.stop();
+      final err = ToolResult.error('工具执行超时 (${_defaultToolTimeout.inSeconds}秒): $name');
+      _logExecution(name, args, err, stopwatch.elapsedMilliseconds);
+      return err;
     } catch (e) {
-      return ToolResult.error('工具执行失败: $e');
+      stopwatch.stop();
+      final err = ToolResult.error('工具执行失败: $e');
+      _logExecution(name, args, err, stopwatch.elapsedMilliseconds);
+      return err;
     }
+  }
+
+  /// 检测错误信息是否与权限相关。
+  bool _isPermissionError(String message) {
+    final keywords = [
+      '权限', 'permission', 'denied', 'WRITE_SECURE', 'ACCESS_',
+      '拒绝', '未授权', 'forbidden', 'not granted',
+      'Shizuku', 'shizuku', 'accessibility', '无障碍',
+    ];
+    final lower = message.toLowerCase();
+    return keywords.any((k) => lower.contains(k.toLowerCase()));
+  }
+
+  /// 记录工具执行日志到文件。
+  void _logExecution(String toolName, Map<String, dynamic> args, ToolResult result, int ms) {
+    try {
+      final logPath = '/sdcard/Android/data/com.openagent.openagent/files/agent_execution.log';
+      final file = File(logPath);
+      final argSummary = args.toString().length > 80
+          ? '${args.toString().substring(0, 80)}...'
+          : args.toString();
+      final line = '[${DateTime.now().toIso8601String()}] $toolName | $argSummary | ${result.isError ? "ERROR" : "OK"} | ${ms}ms\n';
+      file.writeAsStringSync(line, mode: FileMode.append);
+      // 控制日志大小：超过 5000 行时截断
+      _trimLogIfNeeded(file);
+    } catch (_) {
+      // 日志写入失败不影响主流程
+    }
+  }
+
+  /// 日志文件超过 5000 行时保留后 3000 行。
+  void _trimLogIfNeeded(File file) {
+    try {
+      if (!file.existsSync()) return;
+      final lines = file.readAsLinesSync();
+      if (lines.length > _logMaxLines) {
+        final trimmed = lines.sublist(lines.length - _logTrimTarget);
+        file.writeAsStringSync('${trimmed.join('\n')}\n');
+      }
+    } catch (_) {}
   }
 
   @override
