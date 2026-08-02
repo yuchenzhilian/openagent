@@ -1,0 +1,337 @@
+// Data models for OpenAgent.
+//
+// Hand-written immutable classes (no freezed/codegen) so the project compiles
+// without `build_runner`. Each model has copyWith + JSON for simple
+// persistence via shared_preferences / file storage.
+import 'dart:convert';
+
+/// Role of a chat message.
+enum MessageRole { system, user, assistant }
+
+MessageRole _roleFromString(String s) => switch (s) {
+      'system' => MessageRole.system,
+      'assistant' => MessageRole.assistant,
+      _ => MessageRole.user,
+    };
+String _roleToString(MessageRole r) => switch (r) {
+      MessageRole.system => 'system',
+      MessageRole.assistant => 'assistant',
+      MessageRole.user => 'user',
+    };
+
+/// A single message in a conversation.
+class ChatMessage {
+  ChatMessage({
+    required this.role,
+    required this.content,
+    DateTime? timestamp,
+    this.isStreaming = false,
+    this.mediaPaths = const [],
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  final MessageRole role;
+  String content;
+  final DateTime timestamp;
+  bool isStreaming;
+
+  /// File paths of images / audio attached to this message (user messages
+  /// only). Empty for text-only turns. Persisted so history replay shows the
+  /// original attachments.
+  final List<String> mediaPaths;
+
+  ChatMessage copyWith({
+    MessageRole? role,
+    String? content,
+    DateTime? timestamp,
+    bool? isStreaming,
+    List<String>? mediaPaths,
+  }) =>
+      ChatMessage(
+        role: role ?? this.role,
+        content: content ?? this.content,
+        timestamp: timestamp ?? this.timestamp,
+        isStreaming: isStreaming ?? this.isStreaming,
+        mediaPaths: mediaPaths ?? this.mediaPaths,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'role': _roleToString(role),
+        'content': content,
+        'timestamp': timestamp.toIso8601String(),
+        if (mediaPaths.isNotEmpty) 'media_paths': mediaPaths,
+      };
+
+  factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(
+        role: _roleFromString(j['role'] as String? ?? 'user'),
+        content: j['content'] as String? ?? '',
+        timestamp: j['timestamp'] != null
+            ? DateTime.parse(j['timestamp'] as String)
+            : null,
+        mediaPaths: (j['media_paths'] as List?)
+                ?.map((e) => e as String)
+                .toList() ??
+            const [],
+      );
+}
+
+/// A conversation session.
+class ChatSession {
+  ChatSession({
+    required this.id,
+    required this.title,
+    required this.messages,
+    required this.createdAt,
+    this.modelId,
+  });
+
+  final String id;
+  String title;
+  List<ChatMessage> messages;
+  final DateTime createdAt;
+  String? modelId;
+
+  ChatSession copyWith({
+    String? id,
+    String? title,
+    List<ChatMessage>? messages,
+    DateTime? createdAt,
+    String? modelId,
+  }) =>
+      ChatSession(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        messages: messages ?? List.of(this.messages),
+        createdAt: createdAt ?? this.createdAt,
+        modelId: modelId ?? this.modelId,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'messages': messages.map((m) => m.toJson()).toList(),
+        'createdAt': createdAt.toIso8601String(),
+        'modelId': modelId,
+      };
+
+  factory ChatSession.fromJson(Map<String, dynamic> j) => ChatSession(
+        id: j['id'] as String,
+        title: j['title'] as String? ?? '新对话',
+        messages: (j['messages'] as List? ?? [])
+            .map((m) => ChatMessage.fromJson(m as Map<String, dynamic>))
+            .toList(),
+        createdAt: j['createdAt'] != null
+            ? DateTime.parse(j['createdAt'] as String)
+            : DateTime.now(),
+        modelId: j['modelId'] as String?,
+      );
+}
+
+/// Whether a model is text-only or multimodal.
+enum ModelType { text, omni }
+
+/// Metadata describing a downloadable model (mirrors tools/model_list.json).
+class ModelInfo {
+  const ModelInfo({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.sizeMb,
+    required this.ramMb,
+    required this.quant,
+    required this.type,
+    required this.downloadUrl,
+    required this.configFilename,
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final int sizeMb;
+  final int ramMb;
+  final String quant;
+  final ModelType type;
+  final String downloadUrl;
+  final String configFilename;
+
+  factory ModelInfo.fromJson(Map<String, dynamic> j) => ModelInfo(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        description: j['description'] as String? ?? '',
+        sizeMb: (j['size_mb'] as num).toInt(),
+        ramMb: (j['ram_mb'] as num).toInt(),
+        quant: j['quant'] as String? ?? 'Q4',
+        type: (j['type'] as String?) == 'omni'
+            ? ModelType.omni
+            : ModelType.text,
+        downloadUrl: j['download_url'] as String,
+        configFilename: j['config_filename'] as String? ?? 'config.json',
+      );
+}
+
+/// Sampling / generation parameters passed to MNN-LLM at runtime.
+class SamplingConfig {
+  const SamplingConfig({
+    this.temperature = 0.7,
+    this.topK = 40,
+    this.topP = 0.9,
+    this.maxNewTokens = 1024,
+    this.repetitionPenalty = 1.1,
+  });
+
+  final double temperature;
+  final int topK;
+  final double topP;
+  final int maxNewTokens;
+  final double repetitionPenalty;
+
+  SamplingConfig copyWith({
+    double? temperature,
+    int? topK,
+    double? topP,
+    int? maxNewTokens,
+    double? repetitionPenalty,
+  }) =>
+      SamplingConfig(
+        temperature: temperature ?? this.temperature,
+        topK: topK ?? this.topK,
+        topP: topP ?? this.topP,
+        maxNewTokens: maxNewTokens ?? this.maxNewTokens,
+        repetitionPenalty: repetitionPenalty ?? this.repetitionPenalty,
+      );
+
+  /// Serialise to the JSON shape expected by mnn_llm_set_config.
+  Map<String, dynamic> toJson() => {
+        'temperature': temperature,
+        'top_k': topK,
+        'top_p': topP,
+        'max_new_tokens': maxNewTokens,
+        'repetition_penalty': repetitionPenalty,
+      };
+
+  factory SamplingConfig.fromJson(Map<String, dynamic> j) => SamplingConfig(
+        temperature: (j['temperature'] as num?)?.toDouble() ?? 0.7,
+        topK: (j['top_k'] as num?)?.toInt() ?? 40,
+        topP: (j['top_p'] as num?)?.toDouble() ?? 0.9,
+        maxNewTokens: (j['max_new_tokens'] as num?)?.toInt() ?? 1024,
+        repetitionPenalty:
+            (j['repetition_penalty'] as num?)?.toDouble() ?? 1.1,
+      );
+}
+
+/// App-wide configuration persisted across launches.
+class AppConfig {
+  const AppConfig({
+    this.activeModelId,
+    this.systemPrompt = '',
+    this.sampling = const SamplingConfig(),
+    this.automation = const AutomationPermissionStatus(),
+  });
+
+  final String? activeModelId;
+  final String systemPrompt;
+  final SamplingConfig sampling;
+  final AutomationPermissionStatus automation;
+
+  AppConfig copyWith({
+    String? activeModelId,
+    String? systemPrompt,
+    SamplingConfig? sampling,
+    AutomationPermissionStatus? automation,
+  }) =>
+      AppConfig(
+        activeModelId: activeModelId ?? this.activeModelId,
+        systemPrompt: systemPrompt ?? this.systemPrompt,
+        sampling: sampling ?? this.sampling,
+        automation: automation ?? this.automation,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'active_model_id': activeModelId,
+        'system_prompt': systemPrompt,
+        'sampling': sampling.toJson(),
+        'automation': automation.toJson(),
+      };
+
+  factory AppConfig.fromJson(Map<String, dynamic> j) => AppConfig(
+        activeModelId: j['active_model_id'] as String?,
+        systemPrompt: j['system_prompt'] as String? ?? '',
+        sampling: j['sampling'] != null
+            ? SamplingConfig.fromJson(j['sampling'] as Map<String, dynamic>)
+            : const SamplingConfig(),
+        automation: j['automation'] != null
+            ? AutomationPermissionStatus.fromJson(
+                j['automation'] as Map<String, dynamic>)
+            : const AutomationPermissionStatus(),
+      );
+
+  String encode() => jsonEncode(toJson());
+  static AppConfig decode(String s) {
+    if (s.isEmpty) return const AppConfig();
+    try {
+      return AppConfig.fromJson(jsonDecode(s) as Map<String, dynamic>);
+    } catch (_) {
+      return const AppConfig();
+    }
+  }
+}
+
+/// Runtime status of the Android automation permission layers.
+///
+/// Used by the Permission Guide page to show authorised / not-yet-granted
+/// indicators, and by the Agent runtime to pick the best backend (L1 or L2).
+class AutomationPermissionStatus {
+  const AutomationPermissionStatus({
+    this.accessibilityEnabled = false,
+    this.shizukuGranted = false,
+    this.screenshotGranted = false,
+    this.usageStatsGranted = false,
+    this.warningDismissed = false,
+  });
+
+  /// L1 基础层：Android 无障碍服务是否已启用。
+  final bool accessibilityEnabled;
+
+  /// L2 进阶层：Shizuku 高级权限是否已授权。
+  final bool shizukuGranted;
+
+  /// MediaProjection 截图权限是否授权过。
+  final bool screenshotGranted;
+
+  /// PACKAGE_USAGE_STATS (应用使用统计)：让 Agent 能查到当前前台 App。
+  final bool usageStatsGranted;
+
+  /// 用户是否已了解风险并点击了"我知道了"。
+  final bool warningDismissed;
+
+  AutomationPermissionStatus copyWith({
+    bool? accessibilityEnabled,
+    bool? shizukuGranted,
+    bool? screenshotGranted,
+    bool? usageStatsGranted,
+    bool? warningDismissed,
+  }) =>
+      AutomationPermissionStatus(
+        accessibilityEnabled: accessibilityEnabled ?? this.accessibilityEnabled,
+        shizukuGranted: shizukuGranted ?? this.shizukuGranted,
+        screenshotGranted: screenshotGranted ?? this.screenshotGranted,
+        usageStatsGranted: usageStatsGranted ?? this.usageStatsGranted,
+        warningDismissed: warningDismissed ?? this.warningDismissed,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'accessibility': accessibilityEnabled,
+        'shizuku': shizukuGranted,
+        'screenshot': screenshotGranted,
+        'usage_stats': usageStatsGranted,
+        'warning_dismissed': warningDismissed,
+      };
+
+  factory AutomationPermissionStatus.fromJson(Map<String, dynamic> j) =>
+      AutomationPermissionStatus(
+        accessibilityEnabled: j['accessibility'] as bool? ?? false,
+        shizukuGranted: j['shizuku'] as bool? ?? false,
+        screenshotGranted: j['screenshot'] as bool? ?? false,
+        usageStatsGranted: j['usage_stats'] as bool? ?? false,
+        warningDismissed: j['warning_dismissed'] as bool? ?? false,
+      );
+}

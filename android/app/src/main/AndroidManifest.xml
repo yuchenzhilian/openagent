@@ -1,0 +1,205 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- =============== 网络 / 基础 =============== -->
+    <!-- Required to download models from ModelScope and stream responses. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- Required for voice input (multimodal models). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <!-- Storage – legacy (SDK 28 and below). -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+    <!-- Android 13+ granular storage (相册/视频/音频查询). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
+
+    <!-- =============== 截图 / 前台服务 / 通知 =============== -->
+    <!-- Required by MediaProjection (screenshots) to capture screen content. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
+    <!-- Required by Accessibility foreground service (Android 14+) – prevents crashes on newer builds. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_ACCESSIBILITY"/>
+    <!-- H17 / 可能的录屏或长时间自动化 (Android 14+ fallback 类型). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <!-- Post notifications (required for foreground service + MediaProjection on Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- =============== App 可见性 / 包查询 (Android 11+) =============== -->
+    <!-- 允许 agent 看到手机上所有已安装 App 的包名/状态（否则只能看到 manifest queries 里显式写出来的）。 -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission"/>
+    <!-- Required by UsageStatsManager to query the top-most app (Agent can see WeChat/Douyin). -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions"/>
+    <!-- 悬浮窗 / 调试面板 (可选). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+
+    <!-- =============== 短信 / 电话 / 双卡 (H11 短信工具 / H17 通话记录) =============== -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS"/>
+    <uses-permission android:name="android.permission.CALL_PHONE"/>
+    <uses-permission android:name="android.permission.READ_CALL_LOG"/>
+    <uses-permission android:name="android.permission.WRITE_CALL_LOG"/>
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS"/>
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+    <uses-permission android:name="android.permission.READ_SMS"/>
+    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+    <uses-permission android:name="android.permission.RECEIVE_MMS"/>
+
+    <!-- =============== 联系人 (H11) =============== -->
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
+    <uses-permission android:name="android.permission.WRITE_CONTACTS"/>
+    <uses-permission android:name="android.permission.GET_ACCOUNTS"/>
+
+    <!-- =============== 定位 / WiFi 扫描 (H15 WiFi 扫描 + 附近 AP) =============== -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+
+    <!-- =============== 相机 / 拍照 (H17) =============== -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+
+    <!-- =============== 传感器 (H11) =============== -->
+    <uses-permission android:name="android.permission.BODY_SENSORS"/>
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+
+    <!-- =============== 蓝牙 / NFC (系统信息 / 互联) =============== -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
+    <uses-permission android:name="android.permission.NFC"/>
+
+    <!-- =============== 壁纸 / 系统设置 =============== -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER"/>
+    <uses-permission android:name="android.permission.SET_WALLPAPER_HINTS"/>
+    <!-- 修改系统亮度/屏幕超时等 (通过 settings put secure 需要 WRITE_SETTINGS, 运行时引导用户授权). -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions"/>
+    <!-- 通知栏 / NotificationListener (H10 notifications). -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
+
+    <!-- =============== 安装/卸载 APK (install_apk_tool) =============== -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES"/>
+
+    <!-- =============== 无障碍服务 (Shizuku 可选) =============== -->
+    <!-- 通过 adb/开发者选项中手动授权；manifest 中声明不提升权限，但可以给系统看到我们支持它。 -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions"/>
+    <uses-permission android:name="android.permission.DUMP"
+        tools:ignore="ProtectedPermissions"/>
+
+    <application
+        android:label="OpenAgent"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:allowBackup="true"
+        android:usesCleartextTraffic="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <!-- ============= OpenAgent Android Automation ============= -->
+        <!-- L1: Accessibility service. User must enable in Settings. -->
+        <service
+            android:name=".automation.OpenAgentAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config"/>
+        </service>
+
+        <!-- L1.5: NotificationListenerService (可选) – 用于 H10 / H15 可靠读取通知栏. -->
+        <service
+            android:name=".automation.OpenAgentNotificationListener"
+            android:label="OpenAgent Notification Access"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService"/>
+            </intent-filter>
+        </service>
+
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Allow our Agent to open arbitrary target apps via launch intent. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.LAUNCHER"/>
+        </intent>
+        <!-- 常见目标 App 包名显式声明 (即使没 QUERY_ALL_PACKAGES 也能看到这些). -->
+        <package android:name="com.tencent.mm"/>          <!-- 微信 -->
+        <package android:name="com.tencent.mobileqq"/>    <!-- QQ -->
+        <package android:name="com.ss.android.ugc.aweme"/> <!-- 抖音 -->
+        <package android:name="com.ss.android.ugc.aweme.mobile"/>
+        <package android:name="com.xingin.xhs"/>          <!-- 小红书 -->
+        <package android:name="tv.danmaku.bili"/>         <!-- B站 -->
+        <package android:name="com.eg.android.AlipayGphone"/> <!-- 支付宝 -->
+        <package android:name="com.taobao.taobao"/>       <!-- 淘宝 -->
+        <package android:name="com.jingdong.app.mall"/>   <!-- 京东 -->
+        <package android:name="com.sina.weibo"/>          <!-- 微博 -->
+        <package android:name="com.tencent.tmgp.sgame"/>  <!-- 王者荣耀 -->
+        <package android:name="com.tencent.tmgp.cod"/>    <!-- 使命召唤手游 -->
+        <package android:name="com.netease.mc.pe"/>       <!-- 我的世界(网易) -->
+        <package android:name="com.android.settings"/>    <!-- 系统设置 -->
+        <package android:name="com.android.dialer"/>
+        <package android:name="com.android.mms"/>
+        <package android:name="com.android.contacts"/>
+        <package android:name="com.android.camera2"/>
+        <!-- Shizuku App (optional; used for L2 shell privileges). -->
+        <package android:name="moe.shizuku.privileged.api"/>
+    </queries>
+</manifest>

@@ -1,0 +1,59 @@
+{
+  "models": [
+    {
+      "id": "Qwen3-0.6B-MNN",
+      "name": "Qwen3 0.6B (Chat)",
+      "description": "最小尺寸，适合入门验证。中英双语对话。",
+      "size_mb": 600,
+      "ram_mb": 700,
+      "quant": "Q4",
+      "type": "text",
+      "download_url": "https://modelscope.cn/models/MNN/Qwen3-0.6B-MNN",
+      "config_filename": "config.json"
+    },
+    {
+      "id": "Qwen3-1.7B-MNN",
+      "name": "Qwen3 1.7B (Chat)",
+      "description": "体积与效果均衡，推荐日常使用。",
+      "size_mb": 1300,
+      "ram_mb": 1500,
+      "quant": "Q4",
+      "type": "text",
+      "download_url": "https://modelscope.cn/models/MNN/Qwen3-1.7B-MNN",
+      "config_filename": "config.json"
+    },
+    {
+      "id": "Qwen3-4B-MNN",
+      "name": "Qwen3 4B (Chat)",
+      "description": "更强能力，需旗舰机型（6GB+ 可用内存）。",
+      "size_mb": 2800,
+      "ram_mb": 3200,
+      "quant": "Q4",
+      "type": "text",
+      "download_url": "https://modelscope.cn/models/MNN/Qwen3-4B-MNN",
+      "config_filename": "config.json"
+    },
+    {
+      "id": "Qwen2.5-Omni-7B-MNN",
+      "name": "Qwen2.5-Omni 7B",
+      "description": "多模态：文本 + 图像 + 语音。需 8GB+ 内存设备。",
+      "size_mb": 7000,
+      "ram_mb": 8000,
+      "quant": "Q4",
+      "type": "omni",
+      "download_url": "https://modelscope.cn/models/MNN/Qwen2.5-Omni-7B-MNN",
+      "config_filename": "config.json"
+    },
+    {
+      "id": "DeepSeek-R1-1.5B-Qwen-MNN",
+      "name": "DeepSeek-R1 1.5B (Qwen)",
+      "description": "推理增强模型，支持 thinking 模式。",
+      "size_mb": 1100,
+      "ram_mb": 1300,
+      "quant": "Q4",
+      "type": "text",
+      "download_url": "https://modelscope.cn/models/MNN/DeepSeek-R1-1.5B-Qwen-MNN",
+      "config_filename": "config.json"
+    }
+  ]
+}

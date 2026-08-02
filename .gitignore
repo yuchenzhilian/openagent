@@ -1,0 +1,80 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/generated_plugin_registrant.*
+
+# IDE
+.idea/
+.vscode/
+.trae/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+
+# Android
+**/android/.gradle/
+**/android/.cxx/
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/key.properties
+*.jks
+
+# iOS / Xcode
+**/ios/Flutter/
+**/ios/Pods/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/.symlinks/
+
+# Native build artifacts
+*.o
+*.obj
+*.so
+*.a
+*.dylib
+*.dll
+*.framework
+
+# MNN prebuilt (downloaded by script, not committed due to size)
+packages/mnn_llm/third_party/mnn/
+
+# Build tools (JDK, CMake) stored locally to avoid Chinese-character path issues
+tools/jdk/
+tools/cmake/
+
+# Pub cache (relocated to avoid Chinese-character path issues with NDK/CMake)
+.pub-cache/
+
+# Temporary log files from build/test runs
+*_out.txt
+*_err.txt
+*_output.txt
+*_error.txt
+
+# Large model files (never commit)
+*.mnn
+*.mnn.weight
+*.gguf
+*.bin
+!**/third_party/**/*.so
+/models/
+*.log
+
+# Coverage
+coverage/

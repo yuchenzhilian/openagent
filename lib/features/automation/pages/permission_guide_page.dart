@@ -1,0 +1,437 @@
+// Permission guide page for Android automation layers.
+//
+// Walks the user through enabling the 3 tiers of privilege needed for the
+// full OpenAgent Android-automation experience, with status indicators and
+// big "跳转开启" action buttons that deep-link to the right Settings screen.
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../data/models/models.dart';
+import '../../../data/services/android_automation_service.dart';
+import '../../../data/services/file_storage_service.dart';
+
+class PermissionGuidePage extends StatefulWidget {
+  const PermissionGuidePage({
+    super.key,
+    required this.storage,
+  });
+
+  final FileStorageService storage;
+
+  @override
+  State<PermissionGuidePage> createState() => _PermissionGuidePageState();
+}
+
+class _PermissionGuidePageState extends State<PermissionGuidePage> {
+  final AndroidAutomationService _svc = AndroidAutomationService.instance;
+  AutomationPermissionStatus _status = const AutomationPermissionStatus();
+  bool _loading = true;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+    // Poll every 2s so the UI reflects when the user returns from Settings.
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    if (!_svc.isSupported) {
+      setState(() => _loading = false);
+      return;
+    }
+    final cfg = await widget.storage.loadAppConfig();
+    final runtimeStatus = await _svc.refreshStatus();
+    final merged = cfg.automation.copyWith(
+      accessibilityEnabled: runtimeStatus.accessibilityEnabled ||
+          cfg.automation.accessibilityEnabled,
+      shizukuGranted:
+          runtimeStatus.shizukuGranted || cfg.automation.shizukuGranted,
+      screenshotGranted: runtimeStatus.screenshotGranted ||
+          cfg.automation.screenshotGranted,
+      usageStatsGranted: runtimeStatus.usageStatsGranted ||
+          cfg.automation.usageStatsGranted,
+    );
+    if (!mounted) return;
+    setState(() {
+      _status = merged;
+      _loading = false;
+    });
+    // Persist merged status back so the Agent runtime can pick it up.
+    if (merged != cfg.automation) {
+      await widget.storage
+          .saveAppConfig(cfg.copyWith(automation: merged));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final supported = _svc.isSupported;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('自动化权限引导'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/'),
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (!supported)
+                  _warn(
+                      '当前平台不是 Android，自动化功能仅在 Android 真机上可用（可在模拟器或真机上运行）。'),
+                if (!_status.warningDismissed) ...[
+                  _warningCard(),
+                  const SizedBox(height: 16),
+                ],
+                const Text('三层权限架构 + 辅助授权',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(
+                  '越往下能力越强，设置也越多。首版建议开启 L1 + 辅助「应用使用统计」即可覆盖微信/抖音/小红书 95% 操作场景。'
+                  'L2 (Shizuku) 适合游戏/精准坐标；L3 (截图) 仅在 Omni 视觉时开启。',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                _permissionTile(
+                  tier: 'L1',
+                  name: '无障碍服务 (Accessibility)',
+                  description:
+                      '能识别屏幕上的文字/按钮、执行点击/滑动/输入。覆盖微信/抖音/小红书等标准 App 90% 操作场景。',
+                  icon: Icons.accessibility_new,
+                  color: Colors.green,
+                  status: _status.accessibilityEnabled,
+                  onTap: () async {
+                    await _svc.openAccessibilitySettings();
+                  },
+                ),
+                const SizedBox(height: 10),
+                _permissionTile(
+                  tier: 'L2',
+                  name: 'Shizuku 高级权限',
+                  description:
+                      '实现精准坐标点击、滑动、任意硬件按键、静默安装 APK、截图等游戏控制场景需开启此项。需安装 Shizuku App 并一次性授权。',
+                  icon: Icons.bolt,
+                  color: Colors.orange,
+                  status: _status.shizukuGranted,
+                  onTap: () async {
+                    final ok = await _svc.openShizukuApp();
+                    if (!ok && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                '未检测到 Shizuku，请先从应用商店或官网 moe.shizuku.privileged.api 下载安装')),
+                      );
+                    }
+                  },
+                  extra: [
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: _showShizukuGuide,
+                      icon: const Icon(Icons.help_outline, size: 18),
+                      label: const Text('如何启用 Shizuku？(向导)'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _permissionTile(
+                  tier: '辅助',
+                  name: '应用使用统计 (查询前台 App)',
+                  description:
+                      '让 Agent 能实时检测当前在前台运行的应用（例如"打开微信后 Agent 确认在微信再动手点击"）。'
+                      '未开启时会退回 dumpsys shell fallback（需 Shizuku）。',
+                  icon: Icons.query_stats,
+                  color: Colors.lightBlue,
+                  status: _status.usageStatsGranted,
+                  onTap: () async {
+                    await _svc.openUsageAccessSettings();
+                  },
+                  extra: [
+                    const SizedBox(height: 6),
+                    Text(
+                      '  💡 授予后 Agent 可"先确认在对的 App 再操作"，避免误点到其他应用。',
+                      style: TextStyle(
+                          color: Colors.grey.shade600, fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _permissionTile(
+                  tier: 'L3',
+                  name: '屏幕截图 (MediaProjection)',
+                  description:
+                      '配合 Omni 多模态模型看懂抖音/游戏等无文字界面，再决定操作。使用时会弹出一次性录屏授权。',
+                  icon: Icons.screenshot_monitor,
+                  color: Colors.indigo,
+                  status: _status.screenshotGranted,
+                  onTap: _requestScreenshot,
+                ),
+                const SizedBox(height: 24),
+                _summaryCard(),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: () => context.go('/'),
+                  icon: const Icon(Icons.chat_outlined),
+                  label: const Text('返回对话页开始使用'),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _warningCard() => Card(
+        color: Colors.red.shade50,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(Icons.warning_amber, color: Colors.red.shade700),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text('风险提示',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red.shade900))),
+              ]),
+              const SizedBox(height: 8),
+              Text(
+                '开启以上权限后，OpenAgent Agent 将可在您授权的范围内操控手机：打开应用、点击、输入文字等。'
+                '请仅在您信任的场景下使用；所有操作均在本地完成，不会上传任何隐私数据。'
+                '若出现误触请立即关闭对应权限。',
+                style: TextStyle(height: 1.5, color: Colors.red.shade800),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red.shade800),
+                  onPressed: () async {
+                    final cfg = await widget.storage.loadAppConfig();
+                    await widget.storage.saveAppConfig(cfg.copyWith(
+                        automation: cfg.automation
+                            .copyWith(warningDismissed: true)));
+                    await _refresh();
+                  },
+                  child: const Text('我已知晓风险，继续开启'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _permissionTile({
+    required String tier,
+    required String name,
+    required String description,
+    required IconData icon,
+    required Color color,
+    required bool status,
+    required VoidCallback onTap,
+    List<Widget> extra = const [],
+  }) =>
+      Card(
+        elevation: 1,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Icon(icon, color: color, size: 28)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(4)),
+                            child: Text(tier,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child: Text(name,
+                                  style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600))),
+                          _statusChip(status,
+                              okLabel: '已开启', badLabel: '未开启'),
+                        ]),
+                        const SizedBox(height: 6),
+                        Text(description,
+                            style: TextStyle(
+                                height: 1.45,
+                                color: Colors.grey.shade700,
+                                fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.icon(
+                  onPressed: _status.warningDismissed ? onTap : null,
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: const Text('去开启 / 跳转到设置'),
+                ),
+              ),
+              ...extra,
+            ],
+          ),
+        ),
+      );
+
+  Widget _statusChip(bool ok, {required String okLabel, required String badLabel}) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: ok ? Colors.green.shade100 : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(ok ? okLabel : badLabel,
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: ok ? Colors.green.shade800 : Colors.grey.shade700)),
+      );
+
+  Widget _summaryCard() {
+    final score = [
+      _status.accessibilityEnabled,
+      _status.shizukuGranted,
+      _status.screenshotGranted,
+    ].where((e) => e).length;
+    final tier = score == 0
+        ? '暂不可用'
+        : score == 1
+            ? '基础模式 (L1)：仅操作标准 App'
+            : score == 2
+                ? '进阶模式 (L1+L2)：支持游戏坐标点击'
+                : '完整模式：全部功能可用';
+    final color = score == 0
+        ? Colors.grey
+        : score == 1
+            ? Colors.green
+            : score == 2
+                ? Colors.orange
+                : Colors.indigo;
+    return Card(
+      color: color.withValues(alpha: 0.08),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(children: [
+          Icon(Icons.verified_outlined, size: 30, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('当前等级 $score / 3',
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 2),
+                Text(tier,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: color.shade800)),
+              ],
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _warn(String m) => Container(
+        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+            color: Colors.amber.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.amber.shade300)),
+        child: Text(m, style: TextStyle(color: Colors.amber.shade900)),
+      );
+
+  void _requestScreenshot() async {
+    // NOTE: MediaProjection permission must be granted from an Activity via
+    // the Intent returned by createScreenCaptureIntent. The MethodChannel
+    // bridge doesn't carry the ActivityResult launch flow yet.
+    // Calling takeScreenshot() now exercises the Shizuku screencap path first.
+    final path = await _svc.takeScreenshot();
+    if (!mounted) return;
+    if (path != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('截图成功 (Shizuku 路径)：$path')));
+      final cfg = await widget.storage.loadAppConfig();
+      await widget.storage.saveAppConfig(cfg.copyWith(
+          automation:
+              cfg.automation.copyWith(screenshotGranted: true)));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('需先在手机上手动允许截图权限（首次调用会弹出系统级录屏确认）')));
+    }
+    await _refresh();
+  }
+
+  void _showShizukuGuide() {
+    showDialog(
+        context: context,
+        builder: (c) => AlertDialog(
+              title: const Text('启用 Shizuku 步骤'),
+              scrollable: true,
+              content: const Text(
+                '1. 在应用商店或官网下载安装 Shizuku App。\n'
+                '2. 将手机通过 USB 连接电脑，开启「USB 调试」。\n'
+                '3. 电脑端执行：\n'
+                '   adb shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh\n'
+                '4. 返回 Shizuku App，确认显示「服务已启动」。\n'
+                '5. 回到本页，Shizuku 状态会自动变为「已开启」。\n\n'
+                '如无电脑，可通过「无线调试」配对方式启用 Shizuku。',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(c),
+                  child: const Text('知道了'),
+                ),
+              ],
+            ));
+  }
+}

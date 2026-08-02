@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenAgent</string>
+    <!--
+      Shown inside Android Settings → Accessibility → Services → OpenAgent.
+      MUST explain WHY we need this permission — required for Google Play policy.
+    -->
+    <string name="openagent_accessibility_description">
+        允许 OpenAgent 代理助手在您的授权下，通过无障碍服务模拟点击、滑动、输入等操作，
+        用于自动化您指定的任务（如操作微信、抖音、小红书等应用、自动点赞/收藏等）。
+        所有操作仅在本设备本地执行，不会上传任何数据到云端。您可随时在设置中关闭此权限。
+    </string>
+</resources>

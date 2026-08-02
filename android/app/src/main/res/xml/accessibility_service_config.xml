@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Accessibility Service configuration for OpenAgent Android Automation (L1).
+
+  Required by the system for a service to receive AccessibilityEvents and to
+  query the on-screen content. The flags below give us the powers we need:
+  - canRetrieveWindowContent:  mandatory for reading UI tree (dumpUi).
+  - canRequestTouchExplorationMode: allows performAction on nodes.
+  - canPerformGestures:        needed for swipe/scroll via dispatchGesture.
+  - canRequestEnhancedWebAccessibility: helps inside WebViews (WeChat mini programs etc.).
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeAllMask"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="
+        flagDefault
+        |flagRetrieveInteractiveWindows
+        |flagIncludeNotImportantViews
+        |flagRequestTouchExplorationMode
+        |flagRequestEnhancedWebAccessibility
+        |flagReportViewIds"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/openagent_accessibility_description"
+    android:notificationTimeout="50"
+    android:packageNames="" />
+    <!-- packageNames empty = monitor ALL packages (WeChat/Douyin/Xiaohongshu/games/…). -->
