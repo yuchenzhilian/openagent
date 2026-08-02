@@ -129,6 +129,72 @@ class ChatSession {
 /// Whether a model is text-only or multimodal.
 enum ModelType { text, omni }
 
+/// Source of the LLM (on-device or cloud).
+enum ModelSource { local, cloud }
+
+/// Cloud LLM configuration. Empty [apiKey] for Ollama (no key required).
+class CloudModelConfig {
+  const CloudModelConfig({
+    this.provider = 'openai',
+    this.baseUrl = '',
+    this.apiKey = '',
+    this.model = '',
+    this.systemPrompt = '',
+    this.temperature = 0.7,
+    this.maxTokens = 2048,
+  });
+
+  /// Provider id: openai / deepseek / qwen / doubao / groq / ollama / anthropic / custom
+  final String provider;
+  final String baseUrl;
+  final String apiKey;
+  final String model;
+  final String systemPrompt;
+  final double temperature;
+  final int maxTokens;
+
+  CloudModelConfig copyWith({
+    String? provider,
+    String? baseUrl,
+    String? apiKey,
+    String? model,
+    String? systemPrompt,
+    double? temperature,
+    int? maxTokens,
+  }) =>
+      CloudModelConfig(
+        provider: provider ?? this.provider,
+        baseUrl: baseUrl ?? this.baseUrl,
+        apiKey: apiKey ?? this.apiKey,
+        model: model ?? this.model,
+        systemPrompt: systemPrompt ?? this.systemPrompt,
+        temperature: temperature ?? this.temperature,
+        maxTokens: maxTokens ?? this.maxTokens,
+      );
+
+  bool get isConfigured => model.isNotEmpty;
+
+  Map<String, dynamic> toJson() => {
+        'provider': provider,
+        'base_url': baseUrl,
+        'api_key': apiKey,
+        'model': model,
+        'system_prompt': systemPrompt,
+        'temperature': temperature,
+        'max_tokens': maxTokens,
+      };
+
+  factory CloudModelConfig.fromJson(Map<String, dynamic> j) => CloudModelConfig(
+        provider: j['provider'] as String? ?? 'openai',
+        baseUrl: j['base_url'] as String? ?? '',
+        apiKey: j['api_key'] as String? ?? '',
+        model: j['model'] as String? ?? '',
+        systemPrompt: j['system_prompt'] as String? ?? '',
+        temperature: (j['temperature'] as num?)?.toDouble() ?? 0.7,
+        maxTokens: (j['max_tokens'] as num?)?.toInt() ?? 2048,
+      );
+}
+
 /// Metadata describing a downloadable model (mirrors tools/model_list.json).
 class ModelInfo {
   const ModelInfo({
@@ -225,24 +291,32 @@ class AppConfig {
     this.systemPrompt = '',
     this.sampling = const SamplingConfig(),
     this.automation = const AutomationPermissionStatus(),
+    this.modelSource = ModelSource.local,
+    this.cloud = const CloudModelConfig(),
   });
 
   final String? activeModelId;
   final String systemPrompt;
   final SamplingConfig sampling;
   final AutomationPermissionStatus automation;
+  final ModelSource modelSource;
+  final CloudModelConfig cloud;
 
   AppConfig copyWith({
     String? activeModelId,
     String? systemPrompt,
     SamplingConfig? sampling,
     AutomationPermissionStatus? automation,
+    ModelSource? modelSource,
+    CloudModelConfig? cloud,
   }) =>
       AppConfig(
         activeModelId: activeModelId ?? this.activeModelId,
         systemPrompt: systemPrompt ?? this.systemPrompt,
         sampling: sampling ?? this.sampling,
         automation: automation ?? this.automation,
+        modelSource: modelSource ?? this.modelSource,
+        cloud: cloud ?? this.cloud,
       );
 
   Map<String, dynamic> toJson() => {
@@ -250,6 +324,8 @@ class AppConfig {
         'system_prompt': systemPrompt,
         'sampling': sampling.toJson(),
         'automation': automation.toJson(),
+        'model_source': modelSource.name,
+        'cloud': cloud.toJson(),
       };
 
   factory AppConfig.fromJson(Map<String, dynamic> j) => AppConfig(
@@ -262,6 +338,13 @@ class AppConfig {
             ? AutomationPermissionStatus.fromJson(
                 j['automation'] as Map<String, dynamic>)
             : const AutomationPermissionStatus(),
+        modelSource: ModelSource.values.firstWhere(
+          (e) => e.name == (j['model_source'] as String? ?? 'local'),
+          orElse: () => ModelSource.local,
+        ),
+        cloud: j['cloud'] != null
+            ? CloudModelConfig.fromJson(j['cloud'] as Map<String, dynamic>)
+            : const CloudModelConfig(),
       );
 
   String encode() => jsonEncode(toJson());

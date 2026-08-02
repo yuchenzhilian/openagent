@@ -31,3 +31,5 @@ export 'src/mnn_llm_bindings.dart'
 export 'src/mnn_llm_session.dart'
     show MnnLlmSession, MnnChatResult, MnnChatStatus;
 export 'src/mnn_omni_session.dart' show MnnOmniSession;
+export 'src/cloud_llm_session.dart'
+    show CloudLlmSession, CloudLlmConfig, CloudLlmPresets, CloudProvider;

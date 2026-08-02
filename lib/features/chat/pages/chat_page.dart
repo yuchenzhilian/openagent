@@ -46,7 +46,9 @@ class ChatPageState extends State<ChatPage> {
   late final ModelRepository _modelRepo;
   MnnLlmSession? _session;
   MnnOmniSession? _omniSession;
+  CloudLlmSession? _cloudSession;
   ModelType _modelType = ModelType.text;
+  bool _usingCloud = false;
   List<ChatSession> _sessions = [];
   ChatSession? _current;
   AppConfig _config = const AppConfig();
@@ -104,8 +106,54 @@ class ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _ensureModelLoaded() async {
+    // ---- Cloud LLM path (no local model required) ----
+    if (_config.modelSource == ModelSource.cloud && _config.cloud.isConfigured) {
+      final cloudKey = '${_config.cloud.provider}:${_config.cloud.model}';
+      if (cloudKey == _loadedModelId && _cloudSession != null) return;
+      _session?.dispose();
+      _omniSession?.dispose();
+      _cloudSession?.dispose();
+      _session = null;
+      _omniSession = null;
+      setState(() => _modelLoading = true);
+      try {
+        _cloudSession = await CloudLlmSession.create(
+          CloudLlmConfig(
+            provider: _mapCloudProvider(_config.cloud.provider),
+            apiKey: _config.cloud.apiKey,
+            model: _config.cloud.model,
+            baseUrl: _config.cloud.baseUrl.isEmpty ? null : _config.cloud.baseUrl,
+            systemPrompt: _config.cloud.systemPrompt.isNotEmpty
+                ? _config.cloud.systemPrompt
+                : _config.systemPrompt,
+            temperature: _config.cloud.temperature,
+            maxTokens: _config.cloud.maxTokens,
+          ),
+        );
+        _usingCloud = true;
+        _modelType = ModelType.text; // cloud is text-only
+        _loadedModelId = cloudKey;
+        _statusLine = '☁️ 已连接云端 LLM: ${_config.cloud.provider} / ${_config.cloud.model}';
+      } catch (e) {
+        _cloudSession = null;
+        _loadedModelId = null;
+        _statusLine = '云端 LLM 初始化失败: $e';
+      } finally {
+        if (mounted) setState(() => _modelLoading = false);
+      }
+      // Cloud LLM doesn't support Agent mode in this initial integration.
+      if (_agentMode) {
+        _agentMode = false;
+      }
+      return;
+    }
+
+    // ---- Local model path ----
     final modelId = _config.activeModelId;
     if (modelId == null || modelId == _loadedModelId) return;
+    _cloudSession?.dispose();
+    _cloudSession = null;
+    _usingCloud = false;
     final downloaded = await widget.storage.isModelDownloaded(modelId);
     if (!downloaded) {
       _statusLine = '模型 $modelId 未下载，请到模型市场下载';
@@ -164,11 +212,33 @@ class ChatPageState extends State<ChatPage> {
     }
   }
 
+  CloudProvider _mapCloudProvider(String p) {
+    switch (p) {
+      case 'openai':
+        return CloudProvider.openai;
+      case 'deepseek':
+        return CloudProvider.deepseek;
+      case 'qwen':
+        return CloudProvider.qwenDashScope;
+      case 'doubao':
+        return CloudProvider.doubao;
+      case 'groq':
+        return CloudProvider.groq;
+      case 'ollama':
+        return CloudProvider.ollama;
+      case 'anthropic':
+        return CloudProvider.anthropic;
+      default:
+        return CloudProvider.custom;
+    }
+  }
+
   /// Whether the active model supports multimodal input (images / audio).
   bool get _isOmni => _modelType == ModelType.omni;
 
-  /// Whether there is any active session (text or omni).
-  bool get _hasSession => _session != null || _omniSession != null;
+  /// Whether there is any active session (text or omni or cloud).
+  bool get _hasSession =>
+      _session != null || _omniSession != null || _cloudSession != null;
 
   /// Smart intent detection — analyzes user input and auto-enables agent mode
   /// and/or automation when appropriate, so the user doesn't have to toggle
@@ -298,8 +368,15 @@ class ChatPageState extends State<ChatPage> {
     _scrollToBottom();
 
     try {
-      if (_agentMode && !_isOmni && _session != null) {
+      if (_agentMode && !_isOmni && !_usingCloud && _session != null) {
         await _runAgent(prompt, assistantMsg);
+      } else if (_usingCloud && _cloudSession != null) {
+        final stream = _cloudSession!.chatStream(prompt);
+        await for (final chunk in stream) {
+          if (!mounted) return;
+          setState(() => assistantMsg.content += chunk);
+          _scrollToBottom();
+        }
       } else {
         final stream = _isOmni
             ? _omniSession!.chatStream(prompt, mediaPaths: media)
@@ -530,6 +607,7 @@ class ChatPageState extends State<ChatPage> {
   void _stop() {
     _session?.stop();
     _omniSession?.stop();
+    _cloudSession?.stop();
   }
 
   void _newSession() {

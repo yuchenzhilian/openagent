@@ -26,6 +26,7 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - ⚙️ **可调参**：temperature / top_k / top_p / max_tokens / System Prompt
 - 📊 **性能指标**：实时显示 tokens/sec、生成耗时、TTFT 等推理性能数据
 - 🤖 **Agent 模式**：ReAct 循环 + 30+ 内置工具（Web搜索/HTTP获取/HTML转文本/计算器/日期/文本统计/单位换算/知识库搜索RAG/JSON格式化/随机数/UUID/Base64编解码/颜色转换/天气/IP查询/文本模板/计时器/分析规划/URL编解码/正则测试/字符串大小写转换/Hex二进制编解码/哈希/CSV↔JSON/Markdown表格/密码生成/日期计算），支持多步推理 + 智能意图检测自动开启 Agent 模式 + 工具调用统计（耗时/成功失败计数）
+- ☁️ **云端 LLM 接入（可选）**：通过 URL + API Key + Model ID 接入任意 OpenAI 兼容端点（OpenAI / DeepSeek / 通义千问 DashScope / 豆包 / Groq / Ollama 本地代理 / Anthropic Claude / 自定义），纯 Dart HTTP 流式，不引入第三方 SDK。设置页带「测试连接」按钮一键验证
 - 🌐 **MCP 协议支持**：统一 Model Context Protocol 客户端抽象（HTTP + Stdio 双传输），可连接任意 MCP server 扩展外部工具链（GitHub、浏览器、数据库等），连接参数可持久化一键重连
 - 🧩 **Skill 模块化系统**：内置 android_rpa/builtin_math_time/knowledge_rag/longterm_memory/execute_plan/vision_analyze/mcp_gateway 8+ 独立模块，模型自主选择启用/禁用，拓扑依赖自动排序
 - ⚡ **运行时注册 JSON Skill**：无需改 Dart 代码，传一段 JSON 即可注册全新复合 Skill（callMcp/callTool/template/echo 四种 adapter 自由组合，支持参数模板重映射），立即 skill_enable 生效
@@ -252,6 +253,7 @@ openagent/
 - [x] **阶段 20** 防高风险应用检测：accessibility_service_config.xml 包名白名单过滤 + 3 个防检测工具 + 权限引导页防检测教程 + System Prompt 规则 P（防高风险应用检测）
 - [x] **阶段 21** 更多内置实用工具 + 增强意图检测：URL编解码/正则测试/字符串大小写转换/Hex二进制编解码 + 防检测工具始终可用 + 意图检测新增代码/开发类关键词和更多自动化关键词
 - [x] **阶段 22** 哈希+数据工具+长期记忆规则：hash_text(MD5)/text_stats_advanced/csv_json_convert/markdown_table/password_generator/date_calculator + System Prompt 规则 Q（长期记忆优先）和 R（启发式任务分解）+ chat_page 工具调用统计（耗时/成功失败）
+- [x] **阶段 23** 云端 LLM 接入（可选，作为本地模型的替代）：CloudLlmSession（OpenAI 兼容流式 SSE + Anthropic 适配 + Ollama 本地代理 + 7 个内置预设）+ ModelSource/CouldModelConfig + 设置页「云端 LLM」分区（开关/Provider/Base URL/API Key/Model ID/System Prompt/测试连接）+ chat_page 动态 session 切换
 - [ ] **真机验证** Android 手机冒烟测试：权限引导 → 开微信 → 点文字 → 输入中文 → 滑抖音 → UI dump → 端到端微信发消息
 - [ ] **iOS 适配**
 - [ ] **更多能力** AppOps 细粒度 / VPN / NFC / 蓝牙配对 / 自定义规则引擎
