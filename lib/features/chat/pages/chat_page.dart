@@ -58,6 +58,11 @@ class ChatPageState extends State<ChatPage> {
   String? _loadedModelId;
   String? _statusLine;
 
+  /// Stats for the current agent run (reset on AgentDoneEvent).
+  int _toolCallCount = 0;
+  int _toolCallErrorCount = 0;
+  final Map<String, DateTime> _toolCallStartTimes = {};
+
   final AndroidAutomationService _android = AndroidAutomationService.instance;
 
   /// Media file paths attached to the next outgoing message. Cleared on send.
@@ -478,6 +483,8 @@ class ChatPageState extends State<ChatPage> {
           setState(() {});
           _scrollToBottom();
         case AgentToolCallEvent(:final toolName, :final arguments):
+          _toolCallStartTimes[toolName] = DateTime.now();
+          _toolCallCount++;
           final prettyArgs = const JsonEncoder.withIndent('  ').convert(arguments);
           assistantMsg.content +=
               '\n\n---\n\n🔧 **调用工具**: `$toolName`\n\n'
@@ -485,18 +492,34 @@ class ChatPageState extends State<ChatPage> {
           setState(() {});
           _scrollToBottom();
         case ToolExecutionEvent(:final toolName, :final result):
+          if (result.isError) _toolCallErrorCount++;
+          final elapsed = _toolCallStartTimes.remove(toolName);
+          final elapsedStr = elapsed != null
+              ? '⏱ ${DateTime.now().difference(elapsed).inMilliseconds}ms'
+              : '';
           final icon = result.isError ? '❌' : '✅';
           assistantMsg.content +=
-              '$icon **$toolName 结果**:\n\n'
+              '$icon **$toolName 结果** $elapsedStr:\n\n'
               '```\n${result.output}\n```\n\n---\n\n';
           setState(() {});
           _scrollToBottom();
         case AgentDoneEvent():
+          // Finalize: append a small stats footer.
+          if (_toolCallCount > 0) {
+            final okCount = _toolCallCount - _toolCallErrorCount;
+            assistantMsg.content +=
+                '\n\n> 📊 **工具统计**: 共调用 $_toolCallCount 次，成功 $okCount，失败 $_toolCallErrorCount\n';
+            setState(() {});
+          }
           // Tokens already streamed; just finalize.
           if (assistantMsg.content.trim().isEmpty && event.answer.isNotEmpty) {
             assistantMsg.content = event.answer;
             setState(() {});
           }
+          // Reset for next round.
+          _toolCallCount = 0;
+          _toolCallErrorCount = 0;
+          _toolCallStartTimes.clear();
         case AgentErrorEvent(:final message):
           assistantMsg.content += '\n\n⚠️ $message';
           setState(() {});

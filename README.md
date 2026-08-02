@@ -25,7 +25,7 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - 🧩 **模型市场**：按需下载/切换/管理多个量化模型
 - ⚙️ **可调参**：temperature / top_k / top_p / max_tokens / System Prompt
 - 📊 **性能指标**：实时显示 tokens/sec、生成耗时、TTFT 等推理性能数据
-- 🤖 **Agent 模式**：ReAct 循环 + 24+ 内置工具（Web搜索/HTTP获取/HTML转文本/计算器/日期/文本统计/单位换算/知识库搜索RAG/JSON格式化/随机数/UUID/Base64编解码/颜色转换/天气/IP查询/文本模板/计时器/分析规划/URL编解码/正则测试/字符串大小写转换/Hex二进制编解码），支持多步推理 + 智能意图检测自动开启 Agent 模式
+- 🤖 **Agent 模式**：ReAct 循环 + 30+ 内置工具（Web搜索/HTTP获取/HTML转文本/计算器/日期/文本统计/单位换算/知识库搜索RAG/JSON格式化/随机数/UUID/Base64编解码/颜色转换/天气/IP查询/文本模板/计时器/分析规划/URL编解码/正则测试/字符串大小写转换/Hex二进制编解码/哈希/CSV↔JSON/Markdown表格/密码生成/日期计算），支持多步推理 + 智能意图检测自动开启 Agent 模式 + 工具调用统计（耗时/成功失败计数）
 - 🌐 **MCP 协议支持**：统一 Model Context Protocol 客户端抽象（HTTP + Stdio 双传输），可连接任意 MCP server 扩展外部工具链（GitHub、浏览器、数据库等），连接参数可持久化一键重连
 - 🧩 **Skill 模块化系统**：内置 android_rpa/builtin_math_time/knowledge_rag/longterm_memory/execute_plan/vision_analyze/mcp_gateway 8+ 独立模块，模型自主选择启用/禁用，拓扑依赖自动排序
 - ⚡ **运行时注册 JSON Skill**：无需改 Dart 代码，传一段 JSON 即可注册全新复合 Skill（callMcp/callTool/template/echo 四种 adapter 自由组合，支持参数模板重映射），立即 skill_enable 生效
@@ -63,7 +63,7 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 │   OpenCL(Android) · Metal(iOS) 加速          │
 ├─────────────────────────────────────────────┤
 │     Agent Runtime · 可扩展工具生态层         │
-│   ├─ System Prompt 规则 A~P (K/L/M: MCP+Skill+Bootstrap, N: 智能Skill建议, O: 自主决策优先, P: 防高风险应用检测)
+│   ├─ System Prompt 规则 A~R (K/L/M: MCP+Skill+Bootstrap, N: 智能Skill建议, O: 自主决策优先, P: 防高风险应用检测, Q: 长期记忆优先, R: 启发式任务分解)
 │   ├─ agent_runtime (ReAct 循环 + 工具注册表)
 │   ├─ agent_memory (KV 长期记忆)
 │   ├─ MCP 协议层 (lib/agent/mcp)
@@ -194,7 +194,7 @@ openagent/
 │   └── agent/
 │       ├── agent_runtime.dart          # ReAct 循环 + 工具调用解析 + System Prompt 规则 A~O
 │       ├── android_tools.dart          # 50+ Android RPA 工具定义
-│       ├── builtin_tools.dart          # 24+ 通用内置工具（搜索/HTTP/计算/日期/文本/随机数/UUID/Base64/颜色/天气/IP/模板/计时器/分析规划/URL编解码/正则/大小写转换/Hex编解码）
+│       ├── builtin_tools.dart          # 30+ 通用内置工具（搜索/HTTP/计算/日期/文本/随机数/UUID/Base64/颜色/天气/IP/模板/计时器/分析规划/URL编解码/正则/大小写转换/Hex编解码/哈希/CSV转换/表格/密码生成/日期计算）
 │       ├── agent_memory.dart           # KV 长期记忆（跨 session/plan 保留）
 │       ├── mcp/
 │       │   ├── mcp_client.dart         # McpClient + McpTransport(HTTP/Stdio) + McpRegistry
@@ -251,6 +251,7 @@ openagent/
 - [x] **阶段 19** 增强 Agent 能力：16 个新内置工具（Web搜索/HTTP获取/HTML转文本/随机数/UUID/Base64编解码/颜色转换/计时器/天气/IP查询/文本模板/分析规划）+ System Prompt 规则 N（智能 Skill 建议）和 O（自主决策优先）+ skill_create_from_trace 从轨迹创建 Skill + 智能意图检测自动模式切换
 - [x] **阶段 20** 防高风险应用检测：accessibility_service_config.xml 包名白名单过滤 + 3 个防检测工具 + 权限引导页防检测教程 + System Prompt 规则 P（防高风险应用检测）
 - [x] **阶段 21** 更多内置实用工具 + 增强意图检测：URL编解码/正则测试/字符串大小写转换/Hex二进制编解码 + 防检测工具始终可用 + 意图检测新增代码/开发类关键词和更多自动化关键词
+- [x] **阶段 22** 哈希+数据工具+长期记忆规则：hash_text(MD5)/text_stats_advanced/csv_json_convert/markdown_table/password_generator/date_calculator + System Prompt 规则 Q（长期记忆优先）和 R（启发式任务分解）+ chat_page 工具调用统计（耗时/成功失败）
 - [ ] **真机验证** Android 手机冒烟测试：权限引导 → 开微信 → 点文字 → 输入中文 → 滑抖音 → UI dump → 端到端微信发消息
 - [ ] **iOS 适配**
 - [ ] **更多能力** AppOps 细粒度 / VPN / NFC / 蓝牙配对 / 自定义规则引擎

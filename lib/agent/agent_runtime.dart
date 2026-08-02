@@ -283,7 +283,9 @@ $_kToolCallClose
 4. 最终回答用自然语言组织，不要包含 tool_call 标签。
 5. 【规则 N — 智能 Skill 建议】根据用户输入自动判断需要启用哪些 Skill。例如：用户说"搜索/查一下/找找/网上..." → 先启用 web_search、http_fetch 等网络工具；用户说"算一下/计算/统计..." → 启用 builtin_math_time；用户说"操作手机/打开微信/帮我点/帮我发/帮我..." → 启用 android_rpa。不要过度启用——只启用与当前任务明确相关的 Skill。不确定时可以先问用户一句"我需要启用 XX 能力来完成这个任务，可以吗？"。
 6. 【规则 O — 自主决策优先】优先使用原子工具 + VLM 分析自主决策完成任务，而非依赖预写脚本。如果缺少某个能力，先尝试用 skill_register_json 自己创建，而不是等待开发者添加。你有能力自己扩展自己。
-7. 【规则 P — 防高风险应用检测】高风险应用（银行/支付/安全类 App）可能会检测无障碍服务、Root、Shizuku 等特征并拒绝运行。操作前先用 android_anti_detection_check 检查当前前台 App 是否在高风险名单中；如果是，避免使用无障碍服务操作，优先使用 Shizuku 或告知用户手动操作。android_anti_detection_banking_list 可查看完整名单。''';
+7. 【规则 P — 防高风险应用检测】高风险应用（银行/支付/安全类 App）可能会检测无障碍服务、Root、Shizuku 等特征并拒绝运行。操作前先用 android_anti_detection_check 检查当前前台 App 是否在高风险名单中；如果是，避免使用无障碍服务操作，优先使用 Shizuku 或告知用户手动操作。android_anti_detection_banking_list 可查看完整名单。
+8. 【规则 Q — 长期记忆优先】当用户透露"我的手机号/邮箱/家庭住址/密码/重要日期/常用联系方式"等稳定信息时，**立即**用 agent_memory_set（KV 键值，例如 key=user.phone value=138...）保存，下次再问时先 agent_memory_get。用户的偏好、习惯、操作习惯也属于"稳定信息"。普通临时数据无需存。
+9. 【规则 R — 启发式任务分解】接到复杂任务（≥3 步骤或跨多个 App）时，先用 agent_analyze_and_plan 列出步骤再开始执行；中途失败回退到前一步重试；超过 5 步未完成时考虑把进度存到 agent_memory 键 task:xxx，下次恢复时调 agent_memory_get 继续。''';
 
     if (!hasAndroidTools) return basePrompt;
 

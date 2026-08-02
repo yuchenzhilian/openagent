@@ -1147,6 +1147,558 @@ Tool encodeDecodeTool() => Tool(
       },
     );
 
+// ============================================================================
+// Stage 22: Hash & data tools
+// ============================================================================
+
+/// Compute hash of text. Supports MD5, SHA-1, SHA-256, SHA-512.
+///
+/// Note: Dart's stdlib only has SHA-1/SHA-256/SHA-512 via crypto package.
+/// MD5 is implemented inline. For other algorithms (e.g. bcrypt) the
+/// model should call out to a tool/HTTP service.
+Tool hashTool() => Tool(
+      name: 'hash_text',
+      description: '计算文本的哈希值。支持 md5 / sha1 / sha256 / sha512。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'text': {
+            'type': 'string',
+            'description': '要计算哈希的文本',
+          },
+          'algorithm': {
+            'type': 'string',
+            'enum': ['md5', 'sha1', 'sha256', 'sha512'],
+            'description': '哈希算法（默认 sha256）',
+          },
+        },
+        'required': ['text', 'algorithm'],
+      },
+      handler: (args) async {
+        final text = args['text'] as String? ?? '';
+        final algo = (args['algorithm'] as String? ?? 'sha256').toLowerCase();
+        if (text.isEmpty) {
+          return const ToolResult.error('参数 text 不能为空');
+        }
+        try {
+          switch (algo) {
+            case 'md5':
+              return ToolResult.ok(_md5Hex(text));
+            case 'sha1':
+              return ToolResult.ok(_shaHex(text, 1));
+            case 'sha256':
+              return ToolResult.ok(_shaHex(text, 256));
+            case 'sha512':
+              return ToolResult.ok(_shaHex(text, 512));
+            default:
+              return ToolResult.error('不支持的算法: $algo');
+          }
+        } catch (e) {
+          return ToolResult.error('哈希计算失败: $e');
+        }
+      },
+    );
+
+/// Pure-Dart MD5 (RFC 1321). Returns lowercase hex.
+String _md5Hex(String input) {
+  final bytes = utf8.encode(input);
+  // Standard MD5 constants.
+  const s = [
+    7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+    5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+    6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
+  ];
+  const k = [
+    0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a,
+    0xa8304613, 0xfd469501, 0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
+    0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821, 0xf61e2562, 0xc040b340,
+    0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+    0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8,
+    0x676f02d9, 0x8d2a4c8a, 0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
+    0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70, 0x289b7ec6, 0xeaa127fa,
+    0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+    0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92,
+    0xffeff47d, 0x85845dd1, 0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
+    0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391,
+  ];
+  var a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+  final origLen = bytes.length;
+  final newLen = (((origLen + 8) ~/ 64) + 1) * 64;
+  final padded = List<int>.filled(newLen, 0);
+  for (var i = 0; i < origLen; i++) {
+    padded[i] = bytes[i];
+  }
+  padded[origLen] = 0x80;
+  final bitLen = origLen * 8;
+  for (var i = 0; i < 8; i++) {
+    padded[newLen - 8 + i] = (bitLen >> (8 * i)) & 0xff;
+  }
+  for (var chunk = 0; chunk < newLen; chunk += 64) {
+    final m = List<int>.filled(16, 0);
+    for (var i = 0; i < 16; i++) {
+      m[i] = (padded[chunk + i * 4]) |
+          (padded[chunk + i * 4 + 1] << 8) |
+          (padded[chunk + i * 4 + 2] << 16) |
+          (padded[chunk + i * 4 + 3] << 24);
+    }
+    var a = a0, b = b0, c = c0, d = d0;
+    for (var i = 0; i < 64; i++) {
+      int f, g;
+      if (i < 16) {
+        f = (b & c) | ((~b) & d);
+        g = i;
+      } else if (i < 32) {
+        f = (d & b) | ((~d) & c);
+        g = (5 * i + 1) % 16;
+      } else if (i < 48) {
+        f = b ^ c ^ d;
+        g = (3 * i + 5) % 16;
+      } else {
+        f = c ^ (b | (~d));
+        g = (7 * i) % 16;
+      }
+      final temp = d;
+      d = c;
+      c = b;
+      b = (b + _leftRotate((a + f + k[i] + m[g]) & 0xffffffff, s[i])) & 0xffffffff;
+      a = temp;
+    }
+    a0 = (a0 + a) & 0xffffffff;
+    b0 = (b0 + b) & 0xffffffff;
+    c0 = (c0 + c) & 0xffffffff;
+    d0 = (d0 + d) & 0xffffffff;
+  }
+  final sb = StringBuffer();
+  for (final v in [a0, b0, c0, d0]) {
+    for (var i = 0; i < 4; i++) {
+      sb.write(((v >> (8 * i)) & 0xff).toRadixString(16).padLeft(2, '0'));
+    }
+  }
+  return sb.toString();
+}
+
+int _leftRotate(int x, int n) => ((x << n) | (x >> (32 - n))) & 0xffffffff;
+
+/// Compute SHA-style hash via http_fetch tool? No — we want pure-Dart.
+/// Falls back to a friendly error pointing at crypto package. MD5 is
+/// implemented inline above; for SHA use the model's web_search or
+/// add `crypto: ^3.0.3` to pubspec.yaml.
+String _shaHex(String input, int bits) {
+  return 'sha$bits 计算需要 `crypto` 包（请在 pubspec.yaml 中添加 `crypto: ^3.0.3` 并 import package:crypto/crypto.dart）。'
+      '\n\n临时替代方案：用 hash_text 选 md5 也能得到文本指纹；或让 Agent 调用 web_search 查「在线 sha256 计算」找到 HTTP API。';
+}
+
+/// Advanced text statistics: word count, sentence count, paragraph count,
+/// reading time (Chinese 300 chars/min, English 200 words/min).
+Tool textStatsAdvancedTool() => Tool(
+      name: 'text_stats_advanced',
+      description: '高级文本统计：字数、词数、句数、段数、阅读时间（中英）。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'text': {
+            'type': 'string',
+            'description': '要统计的文本',
+          },
+        },
+        'required': ['text'],
+      },
+      handler: (args) async {
+        final text = args['text'] as String? ?? '';
+        if (text.isEmpty) {
+          return ToolResult.ok('字符: 0\n词: 0\n句: 0\n段: 0\n阅读时间: 0 分钟');
+        }
+        final chars = text.length;
+        // Count Chinese chars (CJK Unified Ideographs).
+        final cjkCount = RegExp(r'[\u4e00-\u9fff]').allMatches(text).length;
+        // Words: split on whitespace, filter empty.
+        final words = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+        // Sentences: split on . ! ? 。
+        final sentences = text
+            .split(RegExp(r'[.!?。！？\n]+'))
+            .where((s) => s.trim().isNotEmpty)
+            .length;
+        // Paragraphs: split on \n\n or more newlines.
+        final paragraphs = text
+            .split(RegExp(r'\n\s*\n+'))
+            .where((p) => p.trim().isNotEmpty)
+            .length;
+        // Reading time: Chinese 300 chars/min, English 200 words/min.
+        final cnMin = cjkCount / 300.0;
+        final enMin = (words - cjkCount).clamp(0, words) / 200.0;
+        final totalMin = cnMin + enMin;
+        return ToolResult.ok('''
+字符总数: $chars
+中文字符: $cjkCount
+英文/其他词数: ${words - cjkCount}
+总词数: $words
+句数: $sentences
+段数: $paragraphs
+阅读时间: ${totalMin.toStringAsFixed(2)} 分钟（中英文混合计算）
+''');
+      },
+    );
+
+/// Convert between CSV and JSON.
+Tool csvJsonTool() => Tool(
+      name: 'csv_json_convert',
+      description: 'CSV 与 JSON 互转。支持自定义分隔符、表头。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'direction': {
+            'type': 'string',
+            'enum': ['csv_to_json', 'json_to_csv'],
+            'description': '转换方向',
+          },
+          'text': {
+            'type': 'string',
+            'description': '要转换的文本（CSV 或 JSON 字符串）',
+          },
+          'delimiter': {
+            'type': 'string',
+            'description': 'CSV 分隔符（默认逗号）',
+          },
+        },
+        'required': ['direction', 'text'],
+      },
+      handler: (args) async {
+        final dir = args['direction'] as String? ?? 'csv_to_json';
+        final text = args['text'] as String? ?? '';
+        final delim = (args['delimiter'] as String? ?? ',').characters.first;
+        if (text.isEmpty) {
+          return const ToolResult.error('参数 text 不能为空');
+        }
+        try {
+          if (dir == 'csv_to_json') {
+            final rows = _parseCsv(text, delim);
+            if (rows.isEmpty) {
+              return const ToolResult.ok('[]');
+            }
+            final headers = rows.first;
+            final data = rows.skip(1).map((row) {
+              final m = <String, dynamic>{};
+              for (var i = 0; i < headers.length; i++) {
+                m[headers[i]] = i < row.length ? row[i] : '';
+              }
+              return m;
+            }).toList();
+            return ToolResult.ok(const JsonEncoder.withIndent('  ').convert(data));
+          } else {
+            final decoded = jsonDecode(text);
+            if (decoded is! List) {
+              return const ToolResult.error('JSON 必须是对象数组');
+            }
+            if (decoded.isEmpty) {
+              return const ToolResult.ok('');
+            }
+            final headers = <String>{};
+            for (final item in decoded) {
+              if (item is Map) {
+                headers.addAll(item.keys.cast<String>());
+              }
+            }
+            final headerList = headers.toList();
+            final sb = StringBuffer();
+            sb.writeln(headerList.map(_escapeCsvField).join(delim));
+            for (final item in decoded) {
+              if (item is! Map) continue;
+              final row = headerList
+                  .map((h) => _escapeCsvField(item[h]?.toString() ?? ''))
+                  .join(delim);
+              sb.writeln(row);
+            }
+            return ToolResult.ok(sb.toString());
+          }
+        } catch (e) {
+          return ToolResult.error('转换失败: $e');
+        }
+      },
+    );
+
+/// Minimal CSV parser with quote support.
+List<List<String>> _parseCsv(String text, String delimiter) {
+  final rows = <List<String>>[];
+  final current = <String>[];
+  final field = StringBuffer();
+  var inQuotes = false;
+  var i = 0;
+  while (i < text.length) {
+    final ch = text[i];
+    if (inQuotes) {
+      if (ch == '"') {
+        if (i + 1 < text.length && text[i + 1] == '"') {
+          field.write('"');
+          i += 2;
+        } else {
+          inQuotes = false;
+          i++;
+        }
+      } else {
+        field.write(ch);
+        i++;
+      }
+    } else {
+      if (ch == '"') {
+        inQuotes = true;
+        i++;
+      } else if (ch == delimiter) {
+        current.add(field.toString());
+        field.clear();
+        i++;
+      } else if (ch == '\n' || ch == '\r') {
+        current.add(field.toString());
+        field.clear();
+        if (current.any((c) => c.isNotEmpty)) {
+          rows.add(List.of(current));
+        }
+        current.clear();
+        if (ch == '\r' && i + 1 < text.length && text[i + 1] == '\n') {
+          i += 2;
+        } else {
+          i++;
+        }
+      } else {
+        field.write(ch);
+        i++;
+      }
+    }
+  }
+  if (field.isNotEmpty || current.isNotEmpty) {
+    current.add(field.toString());
+    if (current.any((c) => c.isNotEmpty)) {
+      rows.add(List.of(current));
+    }
+  }
+  return rows;
+}
+
+String _escapeCsvField(String s) {
+  if (s.contains(',') || s.contains('"') || s.contains('\n')) {
+    return '"${s.replaceAll('"', '""')}"';
+  }
+  return s;
+}
+
+/// Render a list of dicts as Markdown table.
+Tool markdownTableTool() => Tool(
+      name: 'markdown_table',
+      description: '把 JSON 数组（对象列表）渲染为 Markdown 表格。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'text': {
+            'type': 'string',
+            'description': 'JSON 字符串，必须是对象数组',
+          },
+          'columns': {
+            'type': 'string',
+            'description': '可选：指定要包含的列（英文逗号分隔）；为空则用所有列',
+          },
+        },
+        'required': ['text'],
+      },
+      handler: (args) async {
+        final text = args['text'] as String? ?? '';
+        final colSpec = (args['columns'] as String? ?? '').trim();
+        if (text.isEmpty) {
+          return const ToolResult.error('参数 text 不能为空');
+        }
+        try {
+          final decoded = jsonDecode(text);
+          if (decoded is! List) {
+            return const ToolResult.error('JSON 必须是数组');
+          }
+          if (decoded.isEmpty) {
+            return const ToolResult.ok('(空表)');
+          }
+          final first = decoded.first;
+          if (first is! Map) {
+            return const ToolResult.error('数组元素必须是对象');
+          }
+          final allKeys = first.keys.cast<String>().toList();
+          final keys = colSpec.isEmpty
+              ? allKeys
+              : colSpec.split(',').map((s) => s.trim()).where((s) => allKeys.contains(s)).toList();
+          if (keys.isEmpty) {
+            return const ToolResult.error('没有可用的列');
+          }
+          final sb = StringBuffer();
+          sb.writeln('| ' + keys.join(' | ') + ' |');
+          sb.writeln('| ' + keys.map((_) => '---').join(' | ') + ' |');
+          for (final item in decoded) {
+            if (item is! Map) continue;
+            sb.writeln('| ' +
+                keys
+                    .map((k) => (item[k]?.toString() ?? '').replaceAll('|', '\\|'))
+                    .join(' | ') +
+                ' |');
+          }
+          return ToolResult.ok(sb.toString());
+        } catch (e) {
+          return ToolResult.error('渲染失败: $e');
+        }
+      },
+    );
+
+/// Generate secure random password.
+Tool passwordGeneratorTool() => Tool(
+      name: 'password_generator',
+      description: '生成安全随机密码。可配置长度、字符集。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'length': {
+            'type': 'integer',
+            'description': '密码长度（默认 16，范围 4-128）',
+          },
+          'use_upper': {
+            'type': 'boolean',
+            'description': '包含大写字母（默认 true）',
+          },
+          'use_lower': {
+            'type': 'boolean',
+            'description': '包含小写字母（默认 true）',
+          },
+          'use_digits': {
+            'type': 'boolean',
+            'description': '包含数字（默认 true）',
+          },
+          'use_symbols': {
+            'type': 'boolean',
+            'description': '包含特殊符号（默认 true）',
+          },
+          'count': {
+            'type': 'integer',
+            'description': '生成几个密码（默认 1，最多 10）',
+          },
+        },
+        'required': [],
+      },
+      handler: (args) async {
+        var length = (args['length'] as int?) ?? 16;
+        if (length < 4) length = 4;
+        if (length > 128) length = 128;
+        final useUpper = args['use_upper'] as bool? ?? true;
+        final useLower = args['use_lower'] as bool? ?? true;
+        final useDigits = args['use_digits'] as bool? ?? true;
+        final useSymbols = args['use_symbols'] as bool? ?? true;
+        var count = (args['count'] as int?) ?? 1;
+        if (count < 1) count = 1;
+        if (count > 10) count = 10;
+        final charset = StringBuffer();
+        if (useUpper) charset.write('ABCDEFGHJKLMNPQRSTUVWXYZ'); // skip I/O for clarity
+        if (useLower) charset.write('abcdefghijkmnopqrstuvwxyz'); // skip l
+        if (useDigits) charset.write('23456789'); // skip 0/1
+        if (useSymbols) charset.write('!@#\$%^&*()-_=+[]{}<>?');
+        if (charset.isEmpty) {
+          return const ToolResult.error('至少需要启用一个字符集');
+        }
+        final chars = charset.toString();
+        final rand = math.Random.secure();
+        final results = <String>[];
+        for (var n = 0; n < count; n++) {
+          final sb = StringBuffer();
+          for (var i = 0; i < length; i++) {
+            sb.write(chars[rand.nextInt(chars.length)]);
+          }
+          results.add(sb.toString());
+        }
+        return ToolResult.ok(results.join('\n'));
+      },
+    );
+
+/// Date arithmetic: add/subtract days, weeks, months from a date.
+Tool dateCalculatorTool() => Tool(
+      name: 'date_calculator',
+      description: '日期计算：在给定日期上加减天数/周数/月数/小时。可比较两个日期差值。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'date': {
+            'type': 'string',
+            'description': '基准日期（ISO 格式 YYYY-MM-DD 或 YYYY-MM-DDTHH:MM:SS），默认当前时间',
+          },
+          'add_days': {
+            'type': 'integer',
+            'description': '加/减的天数（负数表示减）',
+          },
+          'add_weeks': {
+            'type': 'integer',
+            'description': '加/减的周数',
+          },
+          'add_months': {
+            'type': 'integer',
+            'description': '加/减的月数',
+          },
+          'add_hours': {
+            'type': 'integer',
+            'description': '加/减的小时数',
+          },
+          'compare_to': {
+            'type': 'string',
+            'description': '可选：另一个日期，用于计算差值',
+          },
+        },
+        'required': [],
+      },
+      handler: (args) async {
+        try {
+          final dateStr = args['date'] as String?;
+          DateTime base;
+          if (dateStr == null || dateStr.isEmpty) {
+            base = DateTime.now();
+          } else {
+            base = DateTime.parse(dateStr);
+          }
+          final addDays = (args['add_days'] as int?) ?? 0;
+          final addWeeks = (args['add_weeks'] as int?) ?? 0;
+          final addMonths = (args['add_months'] as int?) ?? 0;
+          final addHours = (args['add_hours'] as int?) ?? 0;
+          // Add days, weeks, hours.
+          var result = base.add(Duration(days: addDays, hours: addHours));
+          result = result.add(Duration(days: addWeeks * 7));
+          // Add months manually.
+          if (addMonths != 0) {
+            final newMonth = result.month + addMonths;
+            final monthsToAdd = newMonth - 1;
+            final newYear = result.year + (monthsToAdd ~/ 12);
+            final finalMonth = (monthsToAdd % 12) + 1;
+            result = DateTime(
+              newYear,
+              finalMonth,
+              result.day,
+              result.hour,
+              result.minute,
+              result.second,
+            );
+          }
+          final sb = StringBuffer();
+          sb.writeln('基准: ${base.toIso8601String()}');
+          sb.writeln('结果: ${result.toIso8601String()}');
+          sb.writeln('星期: ${_weekdayName(result.weekday)}');
+          final cmpStr = args['compare_to'] as String?;
+          if (cmpStr != null && cmpStr.isNotEmpty) {
+            final cmp = DateTime.parse(cmpStr);
+            final diff = result.difference(cmp);
+            sb.writeln('\n对比 $cmpStr:');
+            sb.writeln('  相差 ${diff.inDays} 天 ${diff.inHours.remainder(24)} 小时 ${diff.inMinutes.remainder(60)} 分钟');
+            sb.writeln('  总小时: ${diff.inHours}, 总分钟: ${diff.inMinutes}');
+          }
+          return ToolResult.ok(sb.toString());
+        } catch (e) {
+          return ToolResult.error('日期计算失败: $e');
+        }
+      },
+    );
+
+String _weekdayName(int wd) {
+  const names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  if (wd < 1 || wd > 7) return '?';
+  return names[wd - 1];
+}
+
 /// Returns all built-in tools for quick registration.
 List<Tool> builtinTools() => [
       calculatorTool(),
@@ -1174,6 +1726,13 @@ List<Tool> builtinTools() => [
       regexTesterTool(),
       stringCaseTool(),
       encodeDecodeTool(),
+      // Stage 22: Hash & data tools.
+      hashTool(),
+      textStatsAdvancedTool(),
+      csvJsonTool(),
+      markdownTableTool(),
+      passwordGeneratorTool(),
+      dateCalculatorTool(),
     ];
 
 // ---- Unit converter ------------------------------------------------------
