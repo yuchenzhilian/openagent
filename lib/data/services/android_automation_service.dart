@@ -368,6 +368,11 @@ class AndroidAutomationService {
     return shell.ok && shell.exitCode == 0;
   }
 
+  /// 长按坐标别名（供组合宏工具使用）。
+  Future<bool> longClickCoords(int x, int y, {int durationMs = 800}) async {
+    return longPress(x, y, durationMs: durationMs);
+  }
+
   /// 自定义路径手势：按 [points] 数组顺序画一条手势路径。
   /// points 每项是 {'x': int, 'y': int}，点数量 ≥ 2 才能形成路径。
   /// 总时长 [totalDurationMs] 会平均分配到每段线段。

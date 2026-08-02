@@ -169,6 +169,12 @@ List<Tool> createAndroidAutomationTools({
     _longClickByTextTool(s),
     _doubleClickByTextTool(s),
     _scrollToTextTool(s),
+
+    // ---- Stage 26: 社交 App 组合宏 ----
+    _composeXiaohongshuPostNote(s),
+    _composeXiaohongshuSendMessage(s),
+    _composeDouyinPostVideo(s),
+    _composeWechatPostImageMoments(s),
   ];
   return tools;
 }
@@ -4676,6 +4682,360 @@ Tool _scrollToTextTool(AndroidAutomationService s) => Tool(
           await Future.delayed(const Duration(milliseconds: 500));
         }
         return ToolResult.error('未找到 "$text"（已滑动 $maxSwipes 次）');
+      },
+    );
+
+// ============================================================================
+// Stage 26: 社交 App 组合宏 — 小红书/抖音/微信 起号流程
+// ============================================================================
+
+/// ——— 小红书：发帖（图文笔记） ———
+Tool _composeXiaohongshuPostNote(AndroidAutomationService s) => Tool(
+      name: 'android_xhs_post_note',
+      description:
+          '【高层·一步完成】在小红书发一篇图文笔记（图文/纯文字/图片）。'
+          '流程：打开小红书 → 点击底部➕ → 选相册图片 → 点下一步 → 编辑文字 → 发布。'
+          '⚠ 需要已授予相册权限；优先用本工具，不要自己拆 clicks。',
+      schema: _props({
+        'title': {
+          'type': 'string',
+          'description': '笔记标题（可选，默认用图片描述）',
+        },
+        'content': {
+          'type': 'string',
+          'description': '笔记正文文字内容',
+        },
+        'image_path': {
+          'type': 'string',
+          'description': '可选：相册中的图片路径，为空则只发文字笔记',
+        },
+      }, required: ['content']),
+      handler: (args) async {
+        final title = (args['title'] as String?) ?? '';
+        final content = args['content'] as String? ?? '';
+        final imagePath = (args['image_path'] as String?) ?? '';
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        // 1) 确认在小红书
+        var info = await s.getTopApp();
+        if (info.package != 'com.xingin.xhs') {
+          final ok = await s.openApp('com.xingin.xhs');
+          steps.add('打开小红书: ${ok ? 'OK' : '失败'}');
+          if (!ok) return ToolResult.error('步骤失败:\n${r()}\n小红书未安装');
+          await s.waitForText('发现', timeoutSec: 15, pollMs: 800, exact: false);
+        } else {
+          steps.add('已在小红书');
+        }
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        // 2) 点底部➕ 发帖按钮（屏幕底部中间）
+        var plus = await s.clickByText('+', exact: false) ||
+            await s.clickByText('发布', exact: false);
+        if (!plus) {
+          final res = await s.screenResolution();
+          if (res != null && res.length == 2) {
+            final px = (res[0] * 0.5).round();
+            final py = (res[1] * 0.95).round();
+            plus = await s.clickCoords(px, py);
+          }
+        }
+        steps.add('点➕ 发帖: ${plus ? 'OK' : '失败'}');
+        if (!plus) return ToolResult.error('步骤失败:\n${r()}\n找不到发帖按钮');
+
+        await Future.delayed(const Duration(milliseconds: 1200));
+
+        // 3) 如果有图片，选图
+        if (imagePath.isNotEmpty) {
+          final selected = await s.clickByText('相册', exact: false) ||
+              await s.clickByText('从相册选择', exact: false);
+          steps.add('选相册: ${selected ? 'OK' : '跳过'}');
+          await Future.delayed(const Duration(milliseconds: 1000));
+          // 点第一张图
+          final res = await s.screenResolution();
+          if (res != null && res.length == 2) {
+            final ix = (res[0] * 0.18).round();
+            final iy = (res[1] * 0.25).round();
+            await s.clickCoords(ix, iy);
+            steps.add('选第一张图片');
+          }
+          await Future.delayed(const Duration(milliseconds: 800));
+        }
+
+        // 4) 点下一步/进入编辑
+        var next = await s.clickByText('下一步', exact: false) ||
+            await s.clickByText('完成', exact: false);
+        steps.add('进入编辑: ${next ? 'OK' : '失败（可能已在编辑页）'}');
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        // 5) 输入标题和正文
+        if (title.isNotEmpty) {
+          await s.clickByText('标题', exact: false);
+          await Future.delayed(const Duration(milliseconds: 300));
+          await s.inputText(title);
+          steps.add('输入标题: ${title.length}字');
+        }
+        await Future.delayed(const Duration(milliseconds: 500));
+        // 点正文区域输入
+        await s.clickByText('填写正文', exact: false) ||
+            await s.clickByText('说点什么', exact: false);
+        await Future.delayed(const Duration(milliseconds: 300));
+        await s.inputText(content);
+        steps.add('输入正文: ${content.length}字');
+
+        // 6) 发布
+        await Future.delayed(const Duration(milliseconds: 500));
+        var posted = await s.clickByText('发布', exact: false) ||
+            await s.clickByText('发表', exact: false) ||
+            await s.clickByText('发送', exact: false);
+        steps.add('发布: ${posted ? 'OK' : '失败'}');
+
+        return ToolResult.ok(
+            '✅ 小红书发帖完成:\n${r()}${posted ? '' : '\n⚠ 可能未成功发布，请检查网络/权限'}');
+      },
+    );
+
+/// ——— 小红书：私信 ———
+Tool _composeXiaohongshuSendMessage(AndroidAutomationService s) => Tool(
+      name: 'android_xhs_send_message',
+      description:
+          '【高层·一步完成】在小红书给指定用户发送私信。'
+          '流程：打开小红书 → 点消息 → 搜索用户 → 点进对话 → 输入文字 → 发送。',
+      schema: _props({
+        'username': {
+          'type': 'string',
+          'description': '目标用户昵称',
+        },
+        'message': {
+          'type': 'string',
+          'description': '要发送的消息内容',
+        },
+      }, required: ['username', 'message']),
+      handler: (args) async {
+        final username = args['username'] as String? ?? '';
+        final message = args['message'] as String? ?? '';
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        // 打开小红书
+        var info = await s.getTopApp();
+        if (info.package != 'com.xingin.xhs') {
+          final ok = await s.openApp('com.xingin.xhs');
+          steps.add('打开小红书: ${ok ? 'OK' : '失败'}');
+          if (!ok) return ToolResult.error('步骤失败:\n${r()}\n小红书未安装');
+          await s.waitForText('发现', timeoutSec: 15, pollMs: 800, exact: false);
+        }
+        await Future.delayed(const Duration(milliseconds: 600));
+
+        // 点消息（底部右侧）
+        var msg = await s.clickByText('消息', exact: false) ||
+            await s.clickByText('私信', exact: false);
+        if (!msg) {
+          final res = await s.screenResolution();
+          if (res != null && res.length == 2) {
+            msg = await s.clickCoords((res[0] * 0.85).round(), (res[1] * 0.96).round());
+          }
+        }
+        steps.add('点消息: ${msg ? 'OK' : '失败'}');
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        // 点搜索
+        var search = await s.clickByText('搜索', exact: false);
+        if (search) {
+          await Future.delayed(const Duration(milliseconds: 400));
+          await s.inputText(username);
+          await Future.delayed(const Duration(milliseconds: 1500));
+          // 点搜索结果
+          await s.clickByText(username, exact: false);
+          steps.add('搜索用户 $username');
+        } else {
+          steps.add('搜索失败，尝试直接点最近对话');
+        }
+        await Future.delayed(const Duration(milliseconds: 1000));
+
+        // 输入消息
+        await s.inputText(message);
+        await Future.delayed(const Duration(milliseconds: 400));
+        var sent = await s.clickByText('发送', exact: false);
+        steps.add('发送消息: ${sent ? 'OK' : '失败'}');
+
+        return ToolResult.ok('✅ 小红书私信完成:\n${r()}');
+      },
+    );
+
+/// ——— 抖音：发作品（视频/图片） ———
+Tool _composeDouyinPostVideo(AndroidAutomationService s) => Tool(
+      name: 'android_douyin_post_video',
+      description:
+          '【高层·一步完成】在抖音发布作品（视频或图片）。'
+          '流程：打开抖音 → 点底部➕ → 选相册视频/图片 → 点下一步 → 编辑描述 → 发布。',
+      schema: _props({
+        'description': {
+          'type': 'string',
+          'description': '作品描述/文案',
+        },
+        'media_type': {
+          'type': 'string',
+          'enum': ['video', 'image'],
+          'description': '发布类型：video（视频）或 image（图片）',
+        },
+      }, required: ['description']),
+      handler: (args) async {
+        final desc = args['description'] as String? ?? '';
+        final mediaType = (args['media_type'] as String?) ?? 'image';
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        // 打开抖音
+        var info = await s.getTopApp();
+        if (info.package != 'com.ss.android.ugc.aweme') {
+          final ok = await s.openApp('com.ss.android.ugc.aweme');
+          steps.add('打开抖音: ${ok ? 'OK' : '失败'}');
+          if (!ok) return ToolResult.error('步骤失败:\n${r()}\n抖音未安装');
+          await s.waitForText('推荐', timeoutSec: 15, pollMs: 800, exact: false);
+        } else {
+          steps.add('已在抖音');
+        }
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        // 点底部➕
+        var plus = await s.clickByText('+', exact: false) ||
+            await s.clickByText('发布', exact: false);
+        if (!plus) {
+          final res = await s.screenResolution();
+          if (res != null && res.length == 2) {
+            plus = await s.clickCoords((res[0] * 0.5).round(), (res[1] * 0.92).round());
+          }
+        }
+        steps.add('点➕ 发作品: ${plus ? 'OK' : '失败'}');
+        if (!plus) return ToolResult.error('步骤失败:\n${r()}\n找不到发作品按钮');
+        await Future.delayed(const Duration(milliseconds: 1000));
+
+        // 选相册
+        if (mediaType == 'image') {
+          await s.clickByText('图片', exact: false);
+          steps.add('切换到图片');
+        } else {
+          await s.clickByText('视频', exact: false);
+          steps.add('切换到视频');
+        }
+        await Future.delayed(const Duration(milliseconds: 600));
+
+        // 选第一个媒体
+        final res = await s.screenResolution();
+        if (res != null && res.length == 2) {
+          await s.clickCoords((res[0] * 0.15).round(), (res[1] * 0.25).round());
+          steps.add('选第一个媒体');
+        }
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        // 点下一步
+        await s.clickByText('下一步', exact: false);
+        await Future.delayed(const Duration(milliseconds: 1200));
+
+        // 输入描述
+        await s.clickByText('添加描述', exact: false) ||
+            await s.clickByText('说点什么', exact: false);
+        await Future.delayed(const Duration(milliseconds: 300));
+        await s.inputText(desc);
+        steps.add('输入描述: ${desc.length}字');
+
+        // 发布
+        await Future.delayed(const Duration(milliseconds: 500));
+        var posted = await s.clickByText('发布', exact: false) ||
+            await s.clickByText('发表', exact: false);
+        steps.add('发布: ${posted ? 'OK' : '失败'}');
+
+        return ToolResult.ok(
+            '✅ 抖音发布作品完成:\n${r()}${posted ? '' : '\n⚠ 可能未成功发布'}');
+      },
+    );
+
+/// ——— 微信：发图片朋友圈 ———
+Tool _composeWechatPostImageMoments(AndroidAutomationService s) => Tool(
+      name: 'android_wechat_post_image_moments',
+      description:
+          '【高层·一步完成】在微信朋友圈发图片。'
+          '流程：打开微信 → 点发现 → 朋友圈 → 长按相机按钮 → 选图片 → 输入文字 → 发表。',
+      schema: _props({
+        'text': {
+          'type': 'string',
+          'description': '朋友圈文字内容',
+        },
+        'image_count': {
+          'type': 'integer',
+          'description': '选几张图片（默认1张，最多9张）',
+        },
+      }, required: ['text']),
+      handler: (args) async {
+        final text = args['text'] as String? ?? '';
+        final count = ((args['image_count'] as num?)?.toInt() ?? 1).clamp(1, 9);
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        // 打开微信
+        var info = await s.getTopApp();
+        if (info.package != 'com.tencent.mm') {
+          final ok = await s.openApp('com.tencent.mm');
+          steps.add('打开微信: ${ok ? 'OK' : '失败'}');
+          if (!ok) return ToolResult.error('步骤失败:\n${r()}\n微信未安装');
+          await s.waitForText('微信', timeoutSec: 15, pollMs: 800, exact: false);
+        }
+        await Future.delayed(const Duration(milliseconds: 600));
+
+        // 点发现
+        await s.clickByText('发现', exact: false);
+        await Future.delayed(const Duration(milliseconds: 600));
+
+        // 点朋友圈
+        await s.clickByText('朋友圈', exact: false);
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        // 长按相机按钮（右上角）
+        // 先找"相机"文字或图标坐标
+        var camFound = false;
+        final res = await s.screenResolution();
+        if (res != null && res.length == 2) {
+          camFound = await s.longClickByText('相机', exact: false);
+          if (!camFound) {
+            // 右上角坐标
+            camFound = await s.longClickCoords((res[0] * 0.93).round(), (res[1] * 0.02).round());
+          }
+        }
+        steps.add('长按相机按钮: ${camFound ? 'OK' : '失败'}');
+        if (!camFound) return ToolResult.error('步骤失败:\n${r()}\n找不到相机按钮');
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        // 选图片
+        if (res != null && res.length == 2) {
+          for (var i = 0; i < count; i++) {
+            final col = i % 3;
+            final row = i ~/ 3;
+            final ix = (res[0] * (0.12 + col * 0.35)).round();
+            final iy = (res[1] * (0.15 + row * 0.28)).round();
+            await s.clickCoords(ix, iy);
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
+          steps.add('选了 $count 张图片');
+        }
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // 点完成
+        await s.clickByText('完成', exact: false);
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        // 输入文字
+        if (text.isNotEmpty) {
+          await s.inputText(text);
+          steps.add('输入文字: ${text.length}字');
+        }
+
+        // 发表
+        await Future.delayed(const Duration(milliseconds: 400));
+        var posted = await s.clickByText('发表', exact: false);
+        steps.add('发表: ${posted ? 'OK' : '失败'}');
+
+        return ToolResult.ok('✅ 微信朋友圈发图完成:\n${r()}');
       },
     );
 
