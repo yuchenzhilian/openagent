@@ -2,12 +2,13 @@
 <!--
   Accessibility Service configuration for OpenAgent Android Automation (L1).
 
-  Required by the system for a service to receive AccessibilityEvents and to
-  query the on-screen content. The flags below give us the powers we need:
-  - canRetrieveWindowContent:  mandatory for reading UI tree (dumpUi).
-  - canRequestTouchExplorationMode: allows performAction on nodes.
-  - canPerformGestures:        needed for swipe/scroll via dispatchGesture.
-  - canRequestEnhancedWebAccessibility: helps inside WebViews (WeChat mini programs etc.).
+  Anti-detection strategy:
+  - packageNames is set to a comma-separated list of target apps we actually
+    need to automate, rather than "*" (all packages). This prevents banking
+    apps, payment apps, and other security-sensitive apps from detecting that
+    OpenAgent's accessibility service is running when they are in the foreground.
+  - To add more target packages, append them to the packageNames list below.
+  - The service is still manually enabled by the user via Settings → Accessibility.
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeAllMask"
@@ -23,5 +24,6 @@
     android:canRetrieveWindowContent="true"
     android:description="@string/openagent_accessibility_description"
     android:notificationTimeout="50"
-    android:packageNames="" />
-    <!-- packageNames empty = monitor ALL packages (WeChat/Douyin/Xiaohongshu/games/…). -->
+    android:packageNames="com.tencent.mm,com.ss.android.ugc.aweme,com.xingin.xhs,tv.danmaku.bili,com.tencent.mobileqq,com.sina.weibo,com.eg.android.AlipayGphone,com.taobao.taobao,com.jingdong.app.mall,com.android.settings,com.android.dialer,com.android.mms,com.android.contacts,com.android.camera2,com.android.vending,com.netease.mc.pe,com.hypergryph.arknights" />
+    <!-- packageNames is a curated list of target apps. This prevents sensitive
+         apps (banking, payment, etc.) from detecting the accessibility service. -->

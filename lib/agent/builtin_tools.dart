@@ -914,6 +914,239 @@ Tool agentAnalyzeAndPlanTool() => Tool(
       },
     );
 
+// ============================================================================
+// Stage 21: More built-in utility tools
+// ============================================================================
+
+/// URL encode/decode.
+Tool urlCodecTool() => Tool(
+      name: 'url_codec',
+      description: 'URL 编码/解码。对字符串进行百分比编码或解码。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'action': {
+            'type': 'string',
+            'enum': ['encode', 'decode'],
+            'description': 'encode=编码, decode=解码',
+          },
+          'text': {
+            'type': 'string',
+            'description': '要编码或解码的字符串',
+          },
+        },
+        'required': ['action', 'text'],
+      },
+      handler: (args) async {
+        final action = args['action'] as String? ?? 'encode';
+        final text = args['text'] as String? ?? '';
+        try {
+          if (action == 'encode') {
+            return ToolResult.ok(Uri.encodeComponent(text));
+          } else {
+            return ToolResult.ok(Uri.decodeComponent(text));
+          }
+        } catch (e) {
+          return ToolResult.error('URL $action 失败: $e');
+        }
+      },
+    );
+
+/// Regex match / test.
+Tool regexTesterTool() => Tool(
+      name: 'regex_tester',
+      description: '正则表达式匹配/测试。返回匹配结果列表或替换结果。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'pattern': {
+            'type': 'string',
+            'description': '正则表达式模式，如 \\d+ 或 [a-z]+',
+          },
+          'text': {
+            'type': 'string',
+            'description': '要匹配的文本',
+          },
+          'replacement': {
+            'type': 'string',
+            'description': '可选：替换文本（如果提供，则执行替换操作）',
+          },
+          'case_sensitive': {
+            'type': 'boolean',
+            'description': '是否区分大小写（默认 true）',
+          },
+        },
+        'required': ['pattern', 'text'],
+      },
+      handler: (args) async {
+        final pattern = args['pattern'] as String? ?? '';
+        final text = args['text'] as String? ?? '';
+        final replacement = args['replacement'] as String?;
+        final caseSensitive = args['case_sensitive'] as bool? ?? true;
+        if (pattern.isEmpty) {
+          return const ToolResult.error('参数 pattern 不能为空');
+        }
+        try {
+          final re = RegExp(pattern, caseSensitive: caseSensitive);
+          if (replacement != null) {
+            final result = text.replaceAll(re, replacement);
+            return ToolResult.ok('替换结果:\n$result');
+          }
+          final matches = re.allMatches(text).toList();
+          if (matches.isEmpty) {
+            return ToolResult.ok('未找到匹配项');
+          }
+          final sb = StringBuffer();
+          sb.writeln('找到 ${matches.length} 个匹配:');
+          for (var i = 0; i < matches.length; i++) {
+            final m = matches[i];
+            sb.writeln('  [$i] "${m.group(0)}" @位置 ${m.start}-${m.end}');
+            if (m.groupCount > 0) {
+              for (var g = 1; g <= m.groupCount; g++) {
+                sb.writeln('      组$g: "${m.group(g)}"');
+              }
+            }
+          }
+          return ToolResult.ok(sb.toString());
+        } catch (e) {
+          return ToolResult.error('正则表达式错误: $e');
+        }
+      },
+    );
+
+/// String case conversion.
+Tool stringCaseTool() => Tool(
+      name: 'string_case',
+      description: '字符串大小写格式转换。支持: camelCase, PascalCase, snake_case, kebab-case, UPPER_CASE, lower_case, 首字母大写。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'text': {
+            'type': 'string',
+            'description': '要转换的字符串',
+          },
+          'target_case': {
+            'type': 'string',
+            'enum': ['camel', 'pascal', 'snake', 'kebab', 'upper', 'lower', 'capitalize'],
+            'description': '目标格式: camel=驼峰, pascal=大驼峰, snake=下划线, kebab=连字符, upper=全大写, lower=全小写, capitalize=首字母大写',
+          },
+        },
+        'required': ['text', 'target_case'],
+      },
+      handler: (args) async {
+        final text = args['text'] as String? ?? '';
+        final targetCase = args['target_case'] as String? ?? 'camel';
+        if (text.isEmpty) {
+          return const ToolResult.error('参数 text 不能为空');
+        }
+        final words = text.split(RegExp(r'[_\-\s]+'));
+        final result = <String>[];
+        for (final w in words) {
+          var start = 0;
+          for (var i = 1; i < w.length; i++) {
+            if (w[i].toUpperCase() == w[i] && w[i - 1].toLowerCase() == w[i - 1]) {
+              result.add(w.substring(start, i));
+              start = i;
+            }
+          }
+          result.add(w.substring(start));
+        }
+        final cleanWords = result.where((w) => w.isNotEmpty).toList();
+        if (cleanWords.isEmpty) {
+          return const ToolResult.error('无法解析单词');
+        }
+        String output;
+        switch (targetCase) {
+          case 'camel':
+            output = cleanWords[0].toLowerCase();
+            for (var i = 1; i < cleanWords.length; i++) {
+              output += cleanWords[i][0].toUpperCase() + cleanWords[i].substring(1).toLowerCase();
+            }
+          case 'pascal':
+            output = cleanWords.map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase()).join();
+          case 'snake':
+            output = cleanWords.map((w) => w.toLowerCase()).join('_');
+          case 'kebab':
+            output = cleanWords.map((w) => w.toLowerCase()).join('-');
+          case 'upper':
+            output = cleanWords.map((w) => w.toUpperCase()).join('_');
+          case 'lower':
+            output = cleanWords.map((w) => w.toLowerCase()).join('_');
+          case 'capitalize':
+            output = cleanWords.map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase()).join(' ');
+          default:
+            return ToolResult.error('不支持的目标格式: $targetCase');
+        }
+        return ToolResult.ok('$text → $output');
+      },
+    );
+
+/// Hex / binary / ASCII conversions.
+Tool encodeDecodeTool() => Tool(
+      name: 'encode_decode',
+      description: '编解码工具。支持: hex_encode, hex_decode, binary_encode, binary_decode, ascii_to_hex, hex_to_ascii。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'mode': {
+            'type': 'string',
+            'enum': ['hex_encode', 'hex_decode', 'binary_encode', 'binary_decode', 'ascii_to_hex', 'hex_to_ascii'],
+            'description': '编解码模式',
+          },
+          'text': {
+            'type': 'string',
+            'description': '要编解码的文本',
+          },
+        },
+        'required': ['mode', 'text'],
+      },
+      handler: (args) async {
+        final mode = args['mode'] as String? ?? 'hex_encode';
+        final text = args['text'] as String? ?? '';
+        if (text.isEmpty) {
+          return const ToolResult.error('参数 text 不能为空');
+        }
+        try {
+          switch (mode) {
+            case 'hex_encode':
+              return ToolResult.ok(text.codeUnits.map((c) => c.toRadixString(16).padLeft(2, '0')).join(' '));
+            case 'hex_decode':
+              final cleaned = text.replaceAll(RegExp(r'\s+'), '');
+              if (cleaned.length % 2 != 0) return const ToolResult.error('hex 字符串长度必须为偶数');
+              final bytes = <int>[];
+              for (var i = 0; i < cleaned.length; i += 2) {
+                bytes.add(int.parse(cleaned.substring(i, i + 2), radix: 16));
+              }
+              return ToolResult.ok(String.fromCharCodes(bytes));
+            case 'binary_encode':
+              return ToolResult.ok(text.codeUnits.map((c) => c.toRadixString(2).padLeft(8, '0')).join(' '));
+            case 'binary_decode':
+              final cleaned = text.replaceAll(RegExp(r'\s+'), '');
+              if (cleaned.length % 8 != 0) return const ToolResult.error('二进制字符串长度必须是 8 的倍数');
+              final bytes = <int>[];
+              for (var i = 0; i < cleaned.length; i += 8) {
+                bytes.add(int.parse(cleaned.substring(i, i + 8), radix: 2));
+              }
+              return ToolResult.ok(String.fromCharCodes(bytes));
+            case 'ascii_to_hex':
+              return ToolResult.ok(text.codeUnits.map((c) => c.toRadixString(16).padLeft(2, '0')).join(''));
+            case 'hex_to_ascii':
+              final cleaned = text.replaceAll(RegExp(r'\s+'), '');
+              if (cleaned.length % 2 != 0) return const ToolResult.error('hex 字符串长度必须为偶数');
+              final chars = <int>[];
+              for (var i = 0; i < cleaned.length; i += 2) {
+                chars.add(int.parse(cleaned.substring(i, i + 2), radix: 16));
+              }
+              return ToolResult.ok(String.fromCharCodes(chars));
+            default:
+              return ToolResult.error('不支持的模式: $mode');
+          }
+        } catch (e) {
+          return ToolResult.error('编解码失败: $e');
+        }
+      },
+    );
+
 /// Returns all built-in tools for quick registration.
 List<Tool> builtinTools() => [
       calculatorTool(),
@@ -936,6 +1169,11 @@ List<Tool> builtinTools() => [
       textTemplateTool(),
       // Stage 19: Agent analysis tool.
       agentAnalyzeAndPlanTool(),
+      // Stage 21: More utility tools.
+      urlCodecTool(),
+      regexTesterTool(),
+      stringCaseTool(),
+      encodeDecodeTool(),
     ];
 
 // ---- Unit converter ------------------------------------------------------

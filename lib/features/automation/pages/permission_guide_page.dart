@@ -182,6 +182,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                 ),
                 const SizedBox(height: 24),
                 _summaryCard(),
+                const SizedBox(height: 24),
+                _antiDetectionCard(),
                 const SizedBox(height: 20),
                 FilledButton.icon(
                   onPressed: () => context.go('/'),
@@ -379,6 +381,110 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
       ),
     );
   }
+
+  /// Anti-detection tips card for high-risk apps detection.
+  Widget _antiDetectionCard() => Card(
+    color: Colors.orange.shade50,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.security_outlined, color: Colors.orange.shade800),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('防高风险应用检测',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange.shade900)),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          Text(
+            '部分银行、支付类 App（如工行、建行、招商银行、支付宝等）会检测无障碍服务、'
+            'Root、Shizuku、USB 调试等"高风险"特征，可能拒绝运行或限制功能。',
+            style: TextStyle(height: 1.5, color: Colors.orange.shade900, fontSize: 13),
+          ),
+          const SizedBox(height: 10),
+          _antiDetectionTip(
+            icon: Icons.visibility_off,
+            title: '包名限制（已启用）',
+            desc: 'OpenAgent 已配置为仅监控社交/工具类 App（微信、抖音、小红书等），'
+                '银行/支付类 App 在前台时不会触发无障碍服务，降低被检测风险。',
+          ),
+          const SizedBox(height: 8),
+          _antiDetectionTip(
+            icon: Icons.bolt,
+            title: '优先使用 Shizuku',
+            desc: 'Shizuku 授权比无障碍服务更隐蔽，应用难以检测。'
+                '建议在银行/支付类 App 上操作时优先使用 L2 Shizuku 而非 L1 无障碍。',
+          ),
+          const SizedBox(height: 8),
+          _antiDetectionTip(
+            icon: Icons.toggle_off_outlined,
+            title: '临时关闭建议',
+            desc: '使用银行/支付 App 前，可在设置中临时关闭无障碍服务。'
+                '操作完成后重新开启即可。转账等敏感操作建议手动进行。',
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 18, color: Colors.amber.shade800),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Agent 内置了防检测规则：当系统检测到前台为银行/支付类 App 时，'
+                    '会自动切换为 Shizuku 操作模式或暂停自动化，确保安全。',
+                    style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _antiDetectionTip({
+    required IconData icon,
+    required String title,
+    required String desc,
+  }) =>
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Colors.orange.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Colors.orange.shade900)),
+                const SizedBox(height: 2),
+                Text(desc,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange.shade800,
+                        height: 1.4)),
+              ],
+            ),
+          ),
+        ],
+      );
 
   Widget _warn(String m) => Container(
         padding: const EdgeInsets.all(12),

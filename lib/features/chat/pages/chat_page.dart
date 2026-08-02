@@ -183,7 +183,8 @@ class ChatPageState extends State<ChatPage> {
       '点开', '帮我点', '帮我发', '帮我刷', '帮我写', '帮我输',
       '点击', '滑动', '截屏', '截图', '自动化',
       'open wechat', 'open douyin', 'open app', 'click ', 'tap ',
-      'android', '自动化',
+      'android', '自动化', '帮我操作', '帮我弄', '弄一下',
+      '打开设置', '打开相机', '打开相册', '打电话', '发短信',
     ];
 
     // ---- Keywords that suggest web search / HTTP ----
@@ -191,12 +192,19 @@ class ChatPageState extends State<ChatPage> {
       '搜索', '查一下', '查一查', '找找', '网上', '搜一下', '搜一搜',
       '搜索一下', '百度', '谷歌', 'google', 'search', 'web',
       '查资料', '查信息', '查新闻', '今天的', '天气', '实时',
+      '查', '找', '搜', '最新', '热点', '新闻',
     ];
 
     // ---- Keywords that suggest calculation / math ----
     final mathKeywords = [
       '计算', '算一下', '算一算', '统计', '数学', '加减乘除',
-      'calculate', 'compute', 'math', 'count',
+      'calculate', 'compute', 'math', 'count', '求和', '平均',
+    ];
+
+    // ---- Keywords that suggest code / developer tasks ----
+    final codeKeywords = [
+      '写代码', '编程', '代码', '函数', '写一个', 'bug', 'debug',
+      'code', 'function', 'implement', '写个脚本',
     ];
 
     bool needsAgent = false;
@@ -224,6 +232,16 @@ class ChatPageState extends State<ChatPage> {
     // Check math keywords.
     if (!needsAgent) {
       for (final kw in mathKeywords) {
+        if (lower.contains(kw)) {
+          needsAgent = true;
+          break;
+        }
+      }
+    }
+
+    // Check code/developer keywords.
+    if (!needsAgent) {
+      for (final kw in codeKeywords) {
         if (lower.contains(kw)) {
           needsAgent = true;
           break;
@@ -421,6 +439,14 @@ class ChatPageState extends State<ChatPage> {
     }
     // Register skill_create_from_trace meta-tool.
     agent.registerTool(createSkillFromTraceTool(skillManager));
+
+    // Register anti-detection tools — ALWAYS available so the agent can
+    // check whether the current foreground app is high-risk (banking/
+    // payment) before attempting any automation.
+    for (final t in createAntiDetectionTools(service: _android)) {
+      agent.registerTool(t);
+    }
+
     // NOTE: McpRegistry + SkillManager are owned by this function scope;
     // when the agent run is done, they become eligible for GC. MCP servers
     // left connected after run end are leaked on purpose: the model is

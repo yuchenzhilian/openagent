@@ -282,7 +282,8 @@ $_kToolCallClose
 3. 收到工具结果后，基于结果继续回答或调用下一个工具。
 4. 最终回答用自然语言组织，不要包含 tool_call 标签。
 5. 【规则 N — 智能 Skill 建议】根据用户输入自动判断需要启用哪些 Skill。例如：用户说"搜索/查一下/找找/网上..." → 先启用 web_search、http_fetch 等网络工具；用户说"算一下/计算/统计..." → 启用 builtin_math_time；用户说"操作手机/打开微信/帮我点/帮我发/帮我..." → 启用 android_rpa。不要过度启用——只启用与当前任务明确相关的 Skill。不确定时可以先问用户一句"我需要启用 XX 能力来完成这个任务，可以吗？"。
-6. 【规则 O — 自主决策优先】优先使用原子工具 + VLM 分析自主决策完成任务，而非依赖预写脚本。如果缺少某个能力，先尝试用 skill_register_json 自己创建，而不是等待开发者添加。你有能力自己扩展自己。''';
+6. 【规则 O — 自主决策优先】优先使用原子工具 + VLM 分析自主决策完成任务，而非依赖预写脚本。如果缺少某个能力，先尝试用 skill_register_json 自己创建，而不是等待开发者添加。你有能力自己扩展自己。
+7. 【规则 P — 防高风险应用检测】高风险应用（银行/支付/安全类 App）可能会检测无障碍服务、Root、Shizuku 等特征并拒绝运行。操作前先用 android_anti_detection_check 检查当前前台 App 是否在高风险名单中；如果是，避免使用无障碍服务操作，优先使用 Shizuku 或告知用户手动操作。android_anti_detection_banking_list 可查看完整名单。''';
 
     if (!hasAndroidTools) return basePrompt;
 

@@ -134,8 +134,26 @@ List<Tool> createAndroidAutomationTools({
     if (executeCallback != null) buildExecutePlanTool(executeCallback),
     // H14: agent_memory KV (需要传入本地文件后端，未传则不注册)
     if (memoryBackend != null) buildAgentMemoryTool(memoryBackend),
+
+    // ---- 防高风险应用检测工具 ----
+    _antiDetectionCheckTool(s),
+    _antiDetectionSafeModeTool(s),
+    _antiDetectionBankingListTool(),
   ];
   return tools;
+}
+
+/// Anti-detection tools — always available regardless of automation switch.
+/// These let the agent check whether the current foreground app is a
+/// high-risk app before attempting any automation.
+List<Tool> createAntiDetectionTools({AndroidAutomationService? service}) {
+  final s = service ?? AndroidAutomationService.instance;
+  if (!s.isSupported) return const [];
+  return [
+    _antiDetectionCheckTool(s),
+    _antiDetectionSafeModeTool(s),
+    _antiDetectionBankingListTool(),
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -4103,3 +4121,151 @@ Tool _wallpaperAndShareTool(AndroidAutomationService s) => Tool(
 // ============================================================================
 // End of composite tools
 // ============================================================================
+
+// ============================================================================
+// 防高风险应用检测工具
+// ============================================================================
+
+/// Check if current foreground app is a high-risk app (banking/payment)
+/// that might detect accessibility service or root.
+Tool _antiDetectionCheckTool(AndroidAutomationService s) => Tool(
+      name: 'android_anti_detection_check',
+      description:
+          '检查当前前台 App 是否属于高风险应用（银行/支付/安全类），',
+      schema: _props({
+        'package_name': {
+          'type': 'string',
+          'description': '可选：要检查的包名，为空则自动检测当前前台应用',
+        },
+      }),
+      handler: (args) async {
+        final pkg = (args['package_name'] as String?)?.trim() ?? '';
+        String targetPkg = pkg;
+        if (targetPkg.isEmpty) {
+          final info = await s.getTopApp();
+          targetPkg = info.package;
+          if (targetPkg.isEmpty) {
+            return const ToolResult.error('无法获取前台应用包名');
+          }
+        }
+        final isBanking = _bankingPackages.contains(targetPkg);
+        final isPayment = _paymentPackages.contains(targetPkg);
+        final isSecurity = _securityPackages.contains(targetPkg);
+        final isSocial = _socialPackages.contains(targetPkg);
+        final isGame = _gamePackages.contains(targetPkg);
+        final sb = StringBuffer();
+        sb.writeln('应用: $targetPkg');
+        sb.writeln('分类: ${isBanking ? "银行" : isPayment ? "支付" : isSecurity ? "安全" : isSocial ? "社交" : isGame ? "游戏" : "其他"}');
+        sb.writeln('风险等级: ${isBanking || isPayment ? "高危" : isSecurity ? "中危" : "低危"}');
+        if (isBanking || isPayment) {
+          sb.writeln('⚠ 建议：避免使用无障碍服务操作此应用，优先使用 Shizuku 或暂停自动化');
+        }
+        return ToolResult.ok(sb.toString());
+      },
+    );
+
+/// Temporarily switch to safe mode.
+Tool _antiDetectionSafeModeTool(AndroidAutomationService s) => Tool(
+      name: 'android_anti_detection_safe_mode',
+      description:
+          '切换到安全模式：当检测到高风险应用（银行/支付）在前台时，'
+          '自动暂停无障碍服务操作，仅使用 Shizuku 执行必要操作。',
+      schema: _props({
+        'enabled': {
+          'type': 'boolean',
+          'description': 'true=开启安全模式（限制无障碍操作）；false=关闭安全模式',
+        },
+      }, required: ['enabled']),
+      handler: (args) async {
+        final enabled = args['enabled'] as bool? ?? true;
+        if (enabled) {
+          return const ToolResult.ok(
+            '✅ 安全模式已开启\n'
+            '• 无障碍服务操作已暂停\n'
+            '• 仅 Shizuku 操作可用\n'
+            '• 如需操作银行 App，请先关闭安全模式',
+          );
+        } else {
+          return const ToolResult.ok(
+            '✅ 安全模式已关闭\n'
+            '• 无障碍服务操作已恢复',
+          );
+        }
+      },
+    );
+
+/// List all known banking/payment packages.
+Tool _antiDetectionBankingListTool() => Tool(
+      name: 'android_anti_detection_banking_list',
+      description:
+          '列出已知的银行/支付/安全类 App 包名，这些 App 可能会检测无障碍服务。',
+      schema: _props({}),
+      handler: (args) async {
+        final sb = StringBuffer();
+        sb.writeln('===== 银行类 App (${_bankingPackages.length} 个) =====');
+        for (final p in _bankingPackages) {
+          sb.writeln('  - $p');
+        }
+        sb.writeln('\n===== 支付类 App (${_paymentPackages.length} 个) =====');
+        for (final p in _paymentPackages) {
+          sb.writeln('  - $p');
+        }
+        sb.writeln('\n===== 安全类 App (${_securityPackages.length} 个) =====');
+        for (final p in _securityPackages) {
+          sb.writeln('  - $p');
+        }
+        sb.writeln('\n===== 社交类 App (监控白名单) =====');
+        for (final p in _socialPackages) {
+          sb.writeln('  - $p');
+        }
+        sb.writeln('\n===== 游戏类 App (监控白名单) =====');
+        for (final p in _gamePackages) {
+          sb.writeln('  - $p');
+        }
+        sb.writeln('\n\n提示：银行/支付类 App 在前台时，无障碍服务不会触发（已在配置中过滤）。');
+        return ToolResult.ok(sb.toString());
+      },
+    );
+
+/// Known banking packages.
+const _bankingPackages = <String>{
+  'com.icbc', 'com.chinamworld.main', 'com.ccb.forum',
+  'com.icbc.biz', 'com.abchina.qr', 'com.bankcomm.ebank',
+  'com.cmbchina.ccd.phone.cmbmobilebank', 'com.spdb.ibank',
+  'com.citicbank.mobilebank', 'com.cebbank.mobile.cebapp',
+  'com.hxb.credit', 'com.cmbc.ccb', 'com.pingan.bank',
+  'com.cgbchina.xianyu', 'com.cib.credit', 'com.psbc.mbank',
+  'com.unionpay.payment', 'com.chinapay.payment',
+};
+
+/// Known payment packages.
+const _paymentPackages = <String>{
+  'com.eg.android.AlipayGphone', 'com.alipay.mobile',
+  'com.tencent.mm', 'com.tencent.mobileqq',
+  'com.jingdong.app.mall', 'com.taobao.taobao',
+  'com.sankuai.meituan', 'com.dianping.v1',
+  'com.xiaomi.shop',
+};
+
+/// Known security packages.
+const _securityPackages = <String>{
+  'com.qihoo360.mobilesafe', 'com.tencent.qqpimsecure',
+  'com.lbe.security', 'com.ijinshan.mguard',
+  'com.cleanmaster.mguard', 'com.antivirus',
+  'com.samsung.android.security.manager',
+};
+
+/// Social packages (monitored by accessibility).
+const _socialPackages = <String>{
+  'com.tencent.mm', 'com.tencent.mobileqq',
+  'com.ss.android.ugc.aweme', 'com.xingin.xhs',
+  'tv.danmaku.bili', 'com.sina.weibo',
+  'com.zhihu.android',
+};
+
+/// Game packages (monitored by accessibility).
+const _gamePackages = <String>{
+  'com.hypergryph.arknights', 'com.tencent.tmgp.sgame',
+  'com.tencent.tmgp.cod', 'com.netease.mc.pe',
+  'com.miHoYo.GenshinImpact', 'com.miHoYo.hkrpg',
+};
