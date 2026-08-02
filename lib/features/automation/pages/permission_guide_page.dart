@@ -140,7 +140,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                   status: _status.shizukuGranted,
                   onTap: () async {
                     final ok = await _svc.openShizukuApp();
-                    if (!ok && mounted) {
+                    if (!ok) {
+                      if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                             content: Text(
@@ -205,7 +206,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                                 'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentAccessibilityService 2>/dev/null');
                             if (r.ok) {
                               await _svc.gshell('settings put secure accessibility_enabled 1');
-                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('✅ 无障碍服务已自动启用')));
                               await _refresh();
                             }
@@ -223,7 +225,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                             await _svc.gshell(
                                 'settings put secure enabled_notification_assistant '
                                 'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
-                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('✅ 通知监听已自动启用')));
                             await _refresh();
                           },
@@ -236,7 +239,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                           () async {
                             final r = await _svc.gshell(
                                 'pm grant com.openagent.openagent android.permission.WRITE_SECURE_SETTINGS 2>/dev/null');
-                            if (r.ok && mounted) {
+                            if (r.ok) {
+                              if (!mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('✅ WRITE_SECURE_SETTINGS 已授予')));
                             }
@@ -252,7 +256,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                                 'pm grant com.openagent.openagent android.permission.DUMP 2>/dev/null');
                             await _svc.gshell(
                                 'pm grant com.openagent.openagent android.permission.PACKAGE_USAGE_STATS 2>/dev/null');
-                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('✅ DUMP + PACKAGE_USAGE_STATS 已授予')));
                           },
                         ),

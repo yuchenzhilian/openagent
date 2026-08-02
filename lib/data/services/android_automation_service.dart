@@ -1286,10 +1286,8 @@ class AndroidAutomationService {
       return ShellResult(ok: false, exitCode: -2, stdout: '', stderr: '图片路径不存在: $p');
     }
     // 原生 WallpaperManager 优先 (通过 channel)
-    final ch = _channel;
-    if (ch != null) {
-      try {
-        final r = await ch.invokeMethod<String>('android_set_wallpaper', <String, dynamic>{
+    try {
+      final r = await _channel.invokeMethod<String>('android_set_wallpaper', <String, dynamic>{
           'path': p,
           'which': which,
         });
@@ -1297,7 +1295,6 @@ class AndroidAutomationService {
           return ShellResult(ok: true, exitCode: 0, stdout: '✅ 壁纸已设置 ($which)\n$r', stderr: '');
         }
       } catch (_) {}
-    }
     // Fallback: 调系统 ACTION_ATTACH_DATA 壁纸裁剪面板
     final intentR = await sendIntent(
       action: 'android.intent.action.ATTACH_DATA',

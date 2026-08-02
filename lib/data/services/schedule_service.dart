@@ -1,3 +1,5 @@
+// ignore_for_file: dangling_library_doc_comments
+
 /// 定时任务调度服务。
 ///
 /// 持久化任务到 JSON 文件，定期检查并触发执行。
@@ -137,7 +139,9 @@ class ScheduleService {
 
   /// 删除任务。
   Future<bool> removeTask(String id) async {
-    final removed = _tasks.removeWhere((t) => t.id == id);
+    final before = _tasks.length;
+    _tasks.removeWhere((t) => t.id == id);
+    final removed = before - _tasks.length;
     if (removed > 0) {
       await _save();
       onTasksChanged?.call();
