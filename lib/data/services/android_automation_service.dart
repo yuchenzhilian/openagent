@@ -168,6 +168,37 @@ class AndroidAutomationService {
     return shell.ok && shell.exitCode == 0;
   }
 
+  /// 长按指定文字的控件（通过 AccessibilityService 查找节点）。
+  Future<bool> longClickByText(String text, {bool exact = true}) async {
+    if (!isSupported) return false;
+    // dump UI first to find the node
+    final dump = await dumpUi();
+    if (dump.isEmpty) return false;
+    // Try to find coordinates through dump
+    // Simple approach: clickByText to get coords, then long press
+    // Since we can't get coords directly, fall back to shell approach
+    // Use accessibility service to perform long click on the node
+    final ok = await _channel.invokeMethod<bool>('android_long_click_by_text', {
+      'text': text,
+      'exact': exact,
+    }) ?? false;
+    if (ok) return true;
+    // Fallback: find the text via grep in dump, extract coordinates
+    final lines = dump.split('\n');
+    for (final line in lines) {
+      if (exact ? line.contains('text="$text"') : line.contains(text)) {
+        final xMatch = RegExp(r'x=(\d+)').firstMatch(line);
+        final yMatch = RegExp(r'y=(\d+)').firstMatch(line);
+        if (xMatch != null && yMatch != null) {
+          final x = int.parse(xMatch.group(1)!);
+          final y = int.parse(yMatch.group(1)!);
+          return longPress(x, y);
+        }
+      }
+    }
+    return false;
+  }
+
   Future<bool> swipe(
     int x1,
     int y1,

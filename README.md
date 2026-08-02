@@ -255,6 +255,7 @@ openagent/
 - [x] **阶段 22** 哈希+数据工具+长期记忆规则：hash_text(MD5)/text_stats_advanced/csv_json_convert/markdown_table/password_generator/date_calculator + System Prompt 规则 Q（长期记忆优先）和 R（启发式任务分解）+ chat_page 工具调用统计（耗时/成功失败）
 - [x] **阶段 23** 云端 LLM 接入（可选，作为本地模型的替代）：CloudLlmSession（OpenAI 兼容流式 SSE + Anthropic 适配 + Ollama 本地代理 + 7 个内置预设）+ ModelSource/CouldModelConfig + 设置页「云端 LLM」分区（开关/Provider/Base URL/API Key/Model ID/System Prompt/测试连接）+ chat_page 动态 session 切换
 - [x] **阶段 24** 手机权限深度增强：通知深度控制（dismiss/snooze/reply by key）+ 录制回放框架（record/stop/list macros）+ AppOps 细粒度权限（get/set GET_USAGE_STATS/SYSTEM_ALERT_WINDOW/READ_CLIPBOARD/POST_NOTIFICATIONS 等）+ 浮窗/悬浮球自动化面板
+- [x] **阶段 25** 自动授权 + OCR + 节点操作增强：WRITE_SECURE_SETTINGS 自动授予 / 无障碍服务自动启用 / 通知监听自动启用（Shizuku 免确认）+ 屏幕 OCR 文字识别（Android TextClassifier）+ 长按/双击/滚动到文字节点操作
 - [ ] **真机验证** Android 手机冒烟测试：权限引导 → 开微信 → 点文字 → 输入中文 → 滑抖音 → UI dump → 端到端微信发消息
 - [ ] **iOS 适配**
 - [ ] **更多能力** AppOps 细粒度 / VPN / NFC / 蓝牙配对 / 自定义规则引擎
