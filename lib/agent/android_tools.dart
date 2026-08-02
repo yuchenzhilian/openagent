@@ -2358,12 +2358,10 @@ Tool _composeGameAutoVlmLoop(
                     switch (keyName) {
                       case 'BACK': kk = AndroidKey.back; break;
                       case 'HOME': kk = AndroidKey.home; break;
-                      case 'MENU': kk = AndroidKey.menu; break;
                       case 'VOLUME_UP': kk = AndroidKey.volumeUp; break;
                       case 'VOLUME_DOWN': kk = AndroidKey.volumeDown; break;
-                      case 'ENTER': kk = AndroidKey.enter; break;
-                      case 'DEL': case 'DELETE': kk = AndroidKey.del; break;
-                      case 'SPACE': kk = AndroidKey.space; break;
+                      case 'ENTER': case 'DELETE': case 'DEL': kk = AndroidKey.enter; break;
+                      case 'POWER': kk = AndroidKey.power; break;
                     }
                     if (kk != null) { await s.pressKey(kk); steps.add('  pressKey $keyName: sent'); }
                     else steps.add('  pressKey $keyName: 不支持');
@@ -4590,7 +4588,7 @@ Tool _ocrScreenTool(AndroidAutomationService s) => Tool(
       handler: (args) async {
         final lang = (args['language_hint'] as String?) ?? '';
         // Take screenshot first.
-        final imgPath = await s.screenshot();
+        final imgPath = await s.takeScreenshot();
         if (imgPath == null || imgPath.isEmpty) {
           return const ToolResult.error('截图失败');
         }
@@ -4707,7 +4705,7 @@ Tool _scrollToTextTool(AndroidAutomationService s) => Tool(
           if (direction == 'forward') {
             await s.scrollForward();
           } else {
-            await s.swipe(0, 500, 0, -500, duration: 200);
+            await s.swipe(0, 500, 0, -500, durationMs: 200);
           }
           await Future.delayed(const Duration(milliseconds: 500));
         }
@@ -5407,8 +5405,7 @@ Tool _permissionSelfHealTool(AndroidAutomationService s) => Tool(
 
         // 检查阶段
         final issues = <String>[];
-        final checks = <String, Future<bool> Function(){}>
-        {
+        final checks = <String, Future<bool> Function()>{
           '无障碍服务': () async {
             final r = await s.gshell('settings get secure enabled_accessibility_services 2>/dev/null');
             return r.stdout.contains('openagent');
@@ -5684,8 +5681,8 @@ Tool _keepAliveTool(AndroidAutomationService s) => Tool(
         }
 
         // 添加到省电白名单
-        final r = await s.gshell('dumpsys deviceidle whitelist +$pkg 2>/dev/null');
-        steps.add('省电白名单: ${r.ok ? "OK" : "失败"}');
+        final sr = await s.gshell('dumpsys deviceidle whitelist +$pkg 2>/dev/null');
+        steps.add('省电白名单: ${sr.ok ? "OK" : "失败"}');
 
         // 禁止系统优化
         await s.gshell('cmd deviceidle whitelist +$pkg 2>/dev/null');
@@ -5823,10 +5820,10 @@ Tool _mockLocationTool(AndroidAutomationService s) => Tool(
 
         if (action == 'set') {
           // 通过 Shizuku 注入 mock location (需要 system 权限)
-          final r = await s.gshell(
+          final sr = await s.gshell(
               'am broadcast -a android.intent.action.MOCK_LOCATION '
               '--ef lat $lat --ef lng $lng 2>/dev/null');
-          steps.add('广播 Mock Location: ${r.ok ? "OK" : "失败"}');
+          steps.add('广播 Mock Location: ${sr.ok ? "OK" : "失败"}');
           // 备用方案：通过 content 写入
           await s.gshell(
               'content insert --uri content://com.google.android.gms.location.mock '
@@ -5893,31 +5890,31 @@ Tool _phoneFileManagerTool(AndroidAutomationService s) => Tool(
         }
 
         if (action == 'large_files') {
-          final r = await s.gshell(
+          final sr = await s.gshell(
               'find $path -type f -size +${minMb}M 2>/dev/null | sort -rh | head -30');
-          if (r.stdout.trim().isEmpty) {
+          if (sr.stdout.trim().isEmpty) {
             return ToolResult.ok('✅ 未找到大于 ${minMb}MB 的文件');
           }
-          return ToolResult.ok('===== 大文件 (>${minMb}MB) =====\n${r.stdout}');
+          return ToolResult.ok('===== 大文件 (>${minMb}MB) =====\n${sr.stdout}');
         }
 
         if (action == 'clean_temp') {
-          final r = await s.gshell(
+          final sr = await s.gshell(
               'find $path -type f \\( -name "*.tmp" -o -name "*.log" -o -name "*.cache" \\) '
               '-delete 2>/dev/null; '
               'find $path -type d -name "cache" -exec rm -rf {}/* \\; 2>/dev/null; '
               'echo "done"');
-          steps.add('临时文件清理: ${r.ok ? "OK" : "失败"}');
+          steps.add('临时文件清理: ${sr.ok ? "OK" : "失败"}');
           return ToolResult.ok('✅ 临时文件已清理:\n${r()}');
         }
 
         if (action == 'clean_downloads') {
           // 删除下载目录中 30 天前的文件
-          final r = await s.gshell(
+          final sr = await s.gshell(
               'find $path/Download -type f -mtime +30 -delete 2>/dev/null; '
               'find $path/Download -type d -empty -delete 2>/dev/null; '
               'echo "done"');
-          steps.add('下载目录清理: ${r.ok ? "OK" : "失败"}');
+          steps.add('下载目录清理: ${sr.ok ? "OK" : "失败"}');
           return ToolResult.ok('✅ 下载目录旧文件已清理:\n${r()}');
         }
 
@@ -5985,17 +5982,17 @@ Tool _phoneAppManagerTool(AndroidAutomationService s) => Tool(
 
         if (action == 'list_large') {
           final exclude = keepSystem ? '| grep -v system' : '';
-          final r = await s.gshell(
+          final sr = await s.gshell(
               'pm list packages ${keepSystem ? "-3" : ""} 2>/dev/null | '
               'head -50 | while read line; do '
-              'pkg=${line#package:}; '
-              'size=$(du -sh /data/data/$pkg 2>/dev/null | cut -f1); '
-              '[ -n "$size" ] && echo "$size $pkg"; '
+              'pkg=\${line#package:}; '
+              'size=\$(du -sh /data/data/\$pkg 2>/dev/null | cut -f1); '
+              '[ -n "\$size" ] && echo "\$size \$pkg"; '
               'done | sort -rh | head -20');
           final sb = StringBuffer();
           sb.writeln('===== 占用空间最大的应用 =====');
-          sb.writeln(r.stdout.trim().isNotEmpty
-              ? r.stdout.trim()
+          sb.writeln(sr.stdout.trim().isNotEmpty
+              ? sr.stdout.trim()
               : '(无可显示数据，需要 Shizuku 已授权)');
           sb.writeln('\n提示：用 android_phone_cleaner action=deep_clean 可一键清理所有缓存');
           return ToolResult.ok(sb.toString());
@@ -6003,29 +6000,29 @@ Tool _phoneAppManagerTool(AndroidAutomationService s) => Tool(
 
         if (action == 'uninstall') {
           if (pkg.isEmpty) return ToolResult.error('需要 package_name 参数');
-          final r = await s.gshell('pm uninstall -k --user 0 $pkg 2>/dev/null');
-          steps.add('卸载 $pkg: ${r.ok ? "OK" : "失败"}');
-          return ToolResult.ok('${r.ok ? "✅" : "❌"} 卸载应用:\n${r()}');
+          final sr = await s.gshell('pm uninstall -k --user 0 $pkg 2>/dev/null');
+          steps.add('卸载 $pkg: ${sr.ok ? "OK" : "失败"}');
+          return ToolResult.ok('${sr.ok ? "✅" : "❌"} 卸载应用:\n${r()}');
         }
 
         if (action == 'clear_cache') {
           if (pkg.isEmpty) return ToolResult.error('需要 package_name 参数');
-          final r = await s.gshell('pm clear $pkg 2>/dev/null');
-          steps.add('清除缓存 $pkg: ${r.ok ? "OK" : "失败"}');
-          return ToolResult.ok('${r.ok ? "✅" : "❌"} 清除缓存:\n${r()}');
+          final sr = await s.gshell('pm clear $pkg 2>/dev/null');
+          steps.add('清除缓存 $pkg: ${sr.ok ? "OK" : "失败"}');
+          return ToolResult.ok('${sr.ok ? "✅" : "❌"} 清除缓存:\n${r()}');
         }
 
         if (action == 'disable') {
           if (pkg.isEmpty) return ToolResult.error('需要 package_name 参数');
-          final r = await s.gshell('pm disable $pkg 2>/dev/null || pm hide $pkg 2>/dev/null');
-          steps.add('禁用 $pkg: ${r.ok ? "OK" : "失败"}');
-          return ToolResult.ok('${r.ok ? "✅" : "❌"} 禁用应用:\n${r()}');
+          final sr = await s.gshell('pm disable $pkg 2>/dev/null || pm hide $pkg 2>/dev/null');
+          steps.add('禁用 $pkg: ${sr.ok ? "OK" : "失败"}');
+          return ToolResult.ok('${sr.ok ? "✅" : "❌"} 禁用应用:\n${r()}');
         }
 
         if (action == 'permissions') {
           if (pkg.isEmpty) return ToolResult.error('需要 package_name 参数');
-          final r = await s.gshell('dumpsys package $pkg 2>/dev/null | grep -A 100 "requested permissions:" | head -50');
-          return ToolResult.ok('===== $pkg 权限列表 =====\n${r.stdout.trim().isNotEmpty ? r.stdout.trim() : "无法获取（需要 Shizuku）"}');
+          final sr = await s.gshell('dumpsys package $pkg 2>/dev/null | grep -A 100 "requested permissions:" | head -50');
+          return ToolResult.ok('===== $pkg 权限列表 =====\n${sr.stdout.trim().isNotEmpty ? sr.stdout.trim() : "无法获取（需要 Shizuku）"}');
         }
 
         return ToolResult.error('未知操作: $action');
@@ -6062,9 +6059,9 @@ Tool _phoneDeepCleanTool(AndroidAutomationService s) => Tool(
           final dirs = ['/sdcard/DCIM', '/sdcard/Download', '/sdcard/Android', '/sdcard/Music',
               '/sdcard/Movies', '/sdcard/Pictures', '/sdcard/Documents'];
           for (final d in dirs) {
-            final r = await s.gshell('du -sh $d 2>/dev/null');
-            if (r.ok && r.stdout.trim().isNotEmpty) {
-              sb.writeln(r.stdout.trim());
+            final sr = await s.gshell('du -sh $d 2>/dev/null');
+            if (sr.ok && sr.stdout.trim().isNotEmpty) {
+              sb.writeln(sr.stdout.trim());
             }
           }
           sb.writeln('\n提示：用 clean_temp 清理临时文件，用 deep_clean 深度清理');
@@ -6113,15 +6110,15 @@ Tool _phoneDeepCleanTool(AndroidAutomationService s) => Tool(
 
         if (action == 'clean_residue') {
           // 查找卸载残留（包名目录但无对应 package）
-          final r = await s.gshell(
+          final sr = await s.gshell(
               'for d in /data/data/* /data/app/*; do '
               'pkg=\$(basename \$d); '
               'pm list packages | grep -q \$pkg || echo "残留: \$d"; '
               'done 2>/dev/null | head -30');
-          if (r.stdout.trim().isEmpty) {
+          if (sr.stdout.trim().isEmpty) {
             return ToolResult.ok('✅ 未发现卸载残留');
           }
-          return ToolResult.ok('===== 卸载残留 =====\n${r.stdout}\n提示：用 pm uninstall 或手动删除');
+          return ToolResult.ok('===== 卸载残留 =====\n${sr.stdout}\n提示：用 pm uninstall 或手动删除');
         }
 
         return ToolResult.error('未知操作: $action');
