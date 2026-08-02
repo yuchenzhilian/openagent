@@ -645,7 +645,7 @@ List<Tool> createMcpTools(McpRegistry registry) {
         'server_id': {'type': 'string', 'description': '连接 id（后续引用用）'},
         'executable': {'type': 'string', 'description': '可执行文件路径，如 "python3"、"/data/local/tmp/mcp-server"、"node"。'},
         'args': {'type': 'array', 'items': {'type': 'string'}, 'description': '命令行参数数组，如 ["-m","mcp_server.filesystem","/sdcard"]。留空=无参数。'},
-        'env': {'type': 'object', 'description': '可选。附加环境变量，如 {PATH: /data/local/bin:$PATH}。'},
+        'env': {'type': 'object', 'description': '可选。附加环境变量，如 {PATH: /data/local/bin/\$PATH}。'},
         'cwd': {'type': 'string', 'description': '可选。工作目录。'},
       },
       'required': ['server_id', 'executable'],

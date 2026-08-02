@@ -544,7 +544,7 @@ Tool randomNumberTool() => Tool(
         final rng = math.Random();
         final nums = List.generate(count, (_) => min + rng.nextInt(max - min + 1));
         final result = nums.join(', ');
-        return ToolResult.ok(count == 1 ? '随机数: $result' : '随机数 (${count}个): $result');
+        return ToolResult.ok(count == 1 ? '随机数: $result' : '随机数 ($count个): $result');
       },
     );
 
@@ -1368,7 +1368,7 @@ Tool csvJsonTool() => Tool(
       handler: (args) async {
         final dir = args['direction'] as String? ?? 'csv_to_json';
         final text = args['text'] as String? ?? '';
-        final delim = (args['delimiter'] as String? ?? ',').characters.first;
+        final delim = (args['delimiter'] as String?) ?? ',';
         if (text.isEmpty) {
           return const ToolResult.error('参数 text 不能为空');
         }
@@ -1735,16 +1735,92 @@ List<Tool> builtinTools() => [
       markdownTableTool(),
       passwordGeneratorTool(),
       dateCalculatorTool(),
-      // Stage 28: Scheduled task tools.
-      scheduleTaskTool(),
-      scheduleListTool(),
-      scheduleRemoveTool(),
-      // Stage 30: AI Assistant tools.
-      smartNotesTool(),
-      smartReminderTool(),
-      dailyBriefingTool(),
-      quickAssistTool(),
     ];
+
+// ---- Expression evaluator (recursive descent) ----------------------------
+
+double _evaluate(String input) {
+  final parser = _ExprParser(input.replaceAll(' ', ''));
+  return parser.parseExpression();
+}
+
+class _ExprParser {
+  _ExprParser(this._input);
+
+  final String _input;
+  int _pos = 0;
+
+  void _skipWs() {
+    while (_pos < _input.length && _input[_pos] == ' ') {
+      _pos++;
+    }
+  }
+
+  double parseExpression() {
+    double left = parseTerm();
+    while (_pos < _input.length) {
+      _skipWs();
+      if (_pos >= _input.length) break;
+      final op = _input[_pos];
+      if (op == '+' || op == '-') {
+        _pos++;
+        final right = parseTerm();
+        left = op == '+' ? left + right : left - right;
+      } else {
+        break;
+      }
+    }
+    return left;
+  }
+
+  double parseTerm() {
+    double left = parseFactor();
+    while (_pos < _input.length) {
+      _skipWs();
+      if (_pos >= _input.length) break;
+      final op = _input[_pos];
+      if (op == '*' || op == '/') {
+        _pos++;
+        final right = parseFactor();
+        left = op == '*' ? left * right : left / right;
+      } else {
+        break;
+      }
+    }
+    return left;
+  }
+
+  double parseFactor() {
+    _skipWs();
+    if (_pos >= _input.length) {
+      throw const FormatException('unexpected end');
+    }
+    // Unary +/-
+    if (_input[_pos] == '+' || _input[_pos] == '-') {
+      final sign = _input[_pos] == '-' ? -1.0 : 1.0;
+      _pos++;
+      return sign * parseFactor();
+    }
+    // Parenthesised expression
+    if (_input[_pos] == '(') {
+      _pos++;
+      final v = parseExpression();
+      _skipWs();
+      if (_pos < _input.length && _input[_pos] == ')') _pos++;
+      return v;
+    }
+    // Number
+    final start = _pos;
+    while (_pos < _input.length &&
+        (_input[_pos].contains(RegExp(r'[0-9.]')))) {
+      _pos++;
+    }
+    if (_pos == start) {
+      throw FormatException('expected number at $_pos');
+    }
+    return double.parse(_input.substring(start, _pos));
+  }
+}
 
 // ---- Unit converter ------------------------------------------------------
 
