@@ -1974,7 +1974,7 @@ Tool _composeSystemSendSms(AndroidAutomationService s) => Tool(
         await s.inputText(to);
         steps.add('填收件人 $to: 完成');
         await Future<void>.delayed(const Duration(milliseconds: 200));
-        await s.pressKey(AndroidKey.tab);
+        await s.gshell('input keyevent 61 2>/dev/null'); // TAB
         await Future<void>.delayed(const Duration(milliseconds: 100));
         await s.inputText(msg);
         steps.add('填正文: 完成');

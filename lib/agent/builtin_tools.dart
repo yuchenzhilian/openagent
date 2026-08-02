@@ -555,7 +555,7 @@ Tool uuidGeneratorTool() => Tool(
       schema: {'type': 'object', 'properties': {}},
       handler: (args) async {
         final rng = math.Random();
-        String hex(int n) => n.toString(16).padLeft(2, '0');
+        String hex(int n) => n.toRadixString(16).padLeft(2, '0');
         final bytes = List.generate(16, (_) => rng.nextInt(256));
         bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
         bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 1
