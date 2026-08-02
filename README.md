@@ -18,30 +18,95 @@
 
 OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里巴巴 [MNN-LLM](https://github.com/alibaba/MNN) 推理引擎与 [Flutter](https://flutter.dev) 构建。所有推理在设备端完成，无需联网，对话数据不离开手机。
 
-- 🚀 **纯端侧推理**：Qwen3 / DeepSeek 等模型本地运行，骁龙 8 Gen 3 上 15+ tokens/s
-- 🔒 **隐私优先**：无网络请求，对话内容永不上传
-- 📱 **跨平台**：一套 Flutter 代码同时支持 Android 与 iOS
-- 🎨 **多模态**：文本对话 + 图像理解 + 语音输入（基于 Qwen2.5-Omni）
-- 🧩 **模型市场**：按需下载/切换/管理多个量化模型
-- ⚙️ **可调参**：temperature / top_k / top_p / max_tokens / System Prompt
-- 📊 **性能指标**：实时显示 tokens/sec、生成耗时、TTFT 等推理性能数据
-- 🤖 **Agent 模式**：ReAct 循环 + 30+ 内置工具（Web搜索/HTTP获取/HTML转文本/计算器/日期/文本统计/单位换算/知识库搜索RAG/JSON格式化/随机数/UUID/Base64编解码/颜色转换/天气/IP查询/文本模板/计时器/分析规划/URL编解码/正则测试/字符串大小写转换/Hex二进制编解码/哈希/CSV↔JSON/Markdown表格/密码生成/日期计算），支持多步推理 + 智能意图检测自动开启 Agent 模式 + 工具调用统计（耗时/成功失败计数）
-- ☁️ **云端 LLM 接入（可选）**：通过 URL + API Key + Model ID 接入任意 OpenAI 兼容端点（OpenAI / DeepSeek / 通义千问 DashScope / 豆包 / Groq / Ollama 本地代理 / Anthropic Claude / 自定义），纯 Dart HTTP 流式，不引入第三方 SDK。设置页带「测试连接」按钮一键验证
-- 🌐 **MCP 协议支持**：统一 Model Context Protocol 客户端抽象（HTTP + Stdio 双传输），可连接任意 MCP server 扩展外部工具链（GitHub、浏览器、数据库等），连接参数可持久化一键重连
-- 🧩 **Skill 模块化系统**：内置 android_rpa/builtin_math_time/knowledge_rag/longterm_memory/execute_plan/vision_analyze/mcp_gateway 8+ 独立模块，模型自主选择启用/禁用，拓扑依赖自动排序
-- ⚡ **运行时注册 JSON Skill**：无需改 Dart 代码，传一段 JSON 即可注册全新复合 Skill（callMcp/callTool/template/echo 四种 adapter 自由组合，支持参数模板重映射），立即 skill_enable 生效
-- 🔄 **从轨迹创建 Skill**：Agent 完成多步任务后，可将工具调用序列一键保存为可复用 Skill（skill_create_from_trace），下次 skill_enable 即可重放
-- 💾 **会话生命周期管理**：skill_state_save/load、remember_enabled 记住启用打标、skills_manifest/skill_tools_manifest 诊断清单、session_bootstrap 一键恢复（MCP 连接 + Skill + 记忆前缀），跨会话复现工作环境
-- 📱 **Android RPA 自动化**：Agent 可操控手机上的任意 App（微信/抖音/小红书/QQ/B站/支付宝/游戏等），三层权限架构（Accessibility + Shizuku Shell + Root 预留）
-- 🔧 **50+ 自动化工具**：原子工具（点击/滑动/输入/截图/UI Dump）+ 20+ 组合宏脚本（发微信/刷抖音/点赞小红书/发B站弹幕/游戏VLM自动操作）+ 多步执行编排 + KV 长期记忆
-- 🧠 **VLM 视觉决策**：遇到纯图像界面（游戏/Feed流/Canvas），截图→Omni 多模态模型分析→自主决定操作坐标
-- 🔐 **不干扰模型判断**：代码层只提供原始数据和原子抓手，MCP 连哪个 server、Skill 启哪个、工具怎么编排全部由 (LLM + VLM) 自主完成。规则 N 指导模型根据输入自动启用相关 Skill，规则 O 指导优先使用原子工具 + VLM 自主决策，规则 P 指导防高风险应用检测
-- 🧠 **智能意图检测**：输入框自动识别用户意图——检测到"搜索/查一下"自动开启 Agent 模式，检测到"打开微信/点击"提示开启自动化，减少手动开关操作
-- 🛡️ **防高风险应用检测**：accesibility_service_config.xml 包名白名单限制（仅监控社交/工具类 App，银行/支付不触发无障碍服务）+ 3 个防检测工具（android_anti_detection_check/safe_mode/banking_list）+ 权限引导页防检测教程 + System Prompt 规则 P
-- 📚 **知识库管理**：内置文档管理页面，添加/查看/删除 .txt 文档，Agent 可自动检索
-- 💾 **会话导出**：一键导出对话记录为文本文件，便于备份和分享
+- **纯端侧推理**：Qwen3 / DeepSeek 等模型本地运行
+- **隐私优先**：无网络请求，对话内容永不上传
+- **跨平台**：一套 Flutter 代码同时支持 Android 与 iOS
+- **多模态**：文本对话 + 图像理解 + 语音输入（Qwen2.5-Omni）
+- **Agent 模式**：ReAct 循环 + 130+ 工具，可自主操控手机
+- **Android RPA 自动化**：三层权限体系，替代人工操作手机
+- **云端 LLM 接入（可选）**：支持 OpenAI / Anthropic / 通义千问 / 豆包 / Groq / Ollama 等
+- **MCP 协议支持**：HTTP + Stdio 双传输，可连接任意 MCP server
+- **Skill 模块化系统**：内置 8+ 模块 + JSON 运行时注册
 
-> Android Release APK 已成功构建，57 项单元测试通过，GitHub Actions CI/CD 已配置。真机验证进行中。
+---
+
+## 核心功能
+
+### 1. 本地大模型推理
+
+- 支持 Qwen3 系列（0.6B / 1.7B / 4B）和 Qwen2.5-Omni（7B 多模态）
+- 内置模型市场，App 内直接下载量化模型
+- 可调采样参数：temperature / top_k / top_p / max_tokens / System Prompt
+- 实时显示 tokens/sec、生成耗时、TTFT 等性能指标
+
+### 2. Agent 模式
+
+- **ReAct 循环**：思考→工具调用→观察结果→下一步决策
+- **40+ 内置工具**：计算器、日期、文本统计、单位换算、JSON 格式化、Web 搜索、HTTP 获取、HTML 转文本、随机数、UUID、Base64 编解码、颜色转换、计时器、天气、IP 查询、文本模板、分析规划、URL 编解码、正则测试、字符串大小写转换、Hex 编解码、哈希、CSV↔JSON 转换、Markdown 表格、密码生成、日期计算
+- **智能意图检测**：自动识别用户意图，自动切换 Agent 模式
+- **工具调用统计**：实时显示每次工具调用的耗时和成功/失败计数
+- **KV 长期记忆**：跨会话持久化，agent_memory_set/get 接口
+- **定时任务调度**：支持 daily:HH:MM / interval:秒 / cron 三种格式，持久化到本地文件
+- **智能笔记/提醒**：笔记创建/搜索/分类，待办管理（优先级/标记完成/清除）
+- **每日简报**：汇总待办事项、今日笔记、定时任务状态
+- **快捷助手**：计算、单位换算、时间差、倒计时、随机数
+
+### 3. Android RPA 自动化
+
+三层权限架构，Agent 可像人一样操控手机：
+
+| 层级 | 能力 | 实现 |
+|---|---|---|
+| **L1** | 屏幕文字识别、点击、滑动、输入 | AccessibilityService |
+| **L2** | 精准坐标操作、系统级命令、截图 | Shizuku Shell（无 SDK 依赖） |
+| **L3** | 预留（Root 设备） | — |
+
+**~90 个自动化工具**，覆盖全场景：
+
+- **原子操作**：点击文字/坐标/ID、滑动、输入、按键、截图、UI Dump、长按、手势、剪贴板
+- **社交 App 宏**：微信发消息/群发/扫码/朋友圈点赞/发图/文字朋友圈，抖音点赞/评论/关注/搜索/发作品/批量滑屏，小红书搜索/点赞/关注/发帖/私信，B站搜索/发弹幕
+- **游戏自动化**：VLM 自动驾驶循环（截图→分析→操作→验证→恢复），支持失败恢复（3 轮卡住→自动回退）
+- **系统设置**：WiFi、蓝牙、音量、闹钟、短信、拨号、拍照
+- **App 管理**：打开/安装/卸载/禁用/清除缓存，查看权限列表/占用排行
+- **文件管理**：存储分析、大文件扫描、按类型归类、清理临时文件/下载目录
+- **深度清理**：快速清理、深度清理（全部缓存+临时文件+缩略图+空目录+卸载残留）
+- **通知管理**：获取通知列表、按 key 取消、snooze、快捷回复
+- **通知监听**：实时监听通知，200 条环形缓存
+- **录制回放**：录制操作序列（screenrecord + 触摸事件），保存/重放
+- **权限管理**：AppOps 细粒度权限 get/set，运行时权限申请引导，全景权限自检
+- **防检测**：检查当前前台 App 是否高风险、安全模式、银行/支付列表
+- **设备安全**：应用保活（省电白名单 + 前台服务）、Shizuku 隐藏、虚拟定位
+- **VLM 增强**：屏幕变化检测、截图指纹哈希、区域裁剪分析
+
+### 4. 云端 LLM 接入
+
+- 支持任意 OpenAI 兼容端点（OpenAI / DeepSeek / 通义千问 / 豆包 / Groq / Ollama / Anthropic / 自定义）
+- 纯 Dart HTTP 流式实现，不引入第三方 SDK
+- 设置页「测试连接」按钮一键验证
+
+### 5. MCP 协议支持
+
+- 统一 Model Context Protocol 客户端抽象
+- HTTP + Stdio 双传输
+- 连接参数持久化，一键重连
+- 支持 GitHub、浏览器、数据库等任意 MCP server
+
+### 6. Skill 模块化系统
+
+- 8+ 内置模块：android_rpa / builtin_math_time / knowledge_rag / longterm_memory / execute_plan / vision_analyze / mcp_gateway 等
+- 模型自主选择启用/禁用，拓扑依赖自动排序
+- 运行时 JSON 注册 Skill：callMcp / callTool / template / echo 四种 adapter，无需改代码
+- 从轨迹创建 Skill：任务完成后可将工具调用序列保存为可复用 Skill
+- 会话生命周期管理：状态保存/加载、bootstrap 一键恢复
+
+### 7. 知识库管理
+
+- 内置文档管理页面，添加/查看/删除 .txt 文档
+- Agent 可自动检索知识库内容
+
+### 8. 会话导出
+
+- 一键导出对话记录为文本文件，便于备份和分享
 
 ---
 
@@ -51,7 +116,6 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 ┌─────────────────────────────────────────────┐
 │            Flutter UI (Dart)                │
 │   对话页 · 模型市场 · 设置 · Agent(ReAct)     │
-│   chat_page (MCP + Skill 运行时绑定)         │
 ├─────────────────────────────────────────────┤
 │         mnn_llm 插件 (dart:ffi)             │
 │   MnnLlmSession → 流式 Stream<String>       │
@@ -64,19 +128,19 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 │   OpenCL(Android) · Metal(iOS) 加速          │
 ├─────────────────────────────────────────────┤
 │     Agent Runtime · 可扩展工具生态层         │
-│   ├─ System Prompt 规则 A~R (K/L/M: MCP+Skill+Bootstrap, N: 智能Skill建议, O: 自主决策优先, P: 防高风险应用检测, Q: 长期记忆优先, R: 启发式任务分解)
-│   ├─ agent_runtime (ReAct 循环 + 工具注册表)
-│   ├─ agent_memory (KV 长期记忆)
-│   ├─ MCP 协议层 (lib/agent/mcp)
+│   ├─ System Prompt 规则 A~S (决策指导)        │
+│   ├─ agent_runtime (ReAct 循环 + 工具注册表)  │
+│   ├─ agent_memory (KV 长期记忆)              │
+│   ├─ MCP 协议层 (lib/agent/mcp)             │
 │   │   ├─ McpClient (initialize/listTools/callTool)
-│   │   ├─ HttpMcpTransport  /  StdioMcpTransport
+│   │   ├─ HttpMcpTransport / StdioMcpTransport
 │   │   ├─ McpRegistry (注册·查找·连接快照)
 │   │   └─ MCP 持久化 (mcp_state_save/load)
 │   └─ Skill 系统 (lib/agent/skills)
-│       ├─ SkillManager (拓扑排序·remember_enabled·快照/恢复)
-│       ├─ 8+ 内置 Skill (RPA/数学时间/KnowledgeRAG/记忆/计划/Vision/MCP网关…)
-│       ├─ JsonSpecSkill (运行时 JSON 动态注册: callMcp/callTool/template/echo)
-│       └─ 会话生命周期 (save/load·diagnostic manifest·session_bootstrap 一键恢复)
+│       ├─ SkillManager (拓扑排序·remember·快照)
+│       ├─ 8+ 内置 Skill
+│       ├─ JsonSpecSkill (运行时 JSON 动态注册)
+│       └─ 会话生命周期 (save/load·bootstrap)
 ├─────────────────────────────────────────────┤
 │      Android RPA 自动化层 (Kotlin)           │
 │   L1: AccessibilityService (UI 操控)        │
@@ -86,15 +150,9 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 └─────────────────────────────────────────────┘
 ```
 
-**为何用 FFI 而非 Platform Channel？** 流式生成每秒触发数十次 token 回调，dart:ffi 的同步开销远低于 Platform Channel 的异步消息，且能直接用 `NativeCallable` 把 native 回调转成 Dart `Stream`。
-
-**MCP + Skill 架构设计原则（代码不干扰模型判断）**：代码层只暴露原子抓手（MCP 连接元工具、Skill enable/disable、JSON 注册、持久化保存/加载），**不做任何业务决策**——连哪个 MCP server、启哪个 Skill、注册什么复合工具、记不记住下次启，全都留给 LLM+VLM 自主判断。
-
 ---
 
 ## 性能基线
-
-实测数据（Q4 量化，参考 MNN 官方与社区基准）：
 
 | 模型 | 内存占用 | 骁龙 8 Gen 3 | A17 Pro | 适用场景 |
 |---|---|---|---|---|
@@ -110,15 +168,9 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 ### 环境要求
 
 - Flutter ≥ 3.22（含 Dart ≥ 3.3）
-- Android Studio + CMake 3.22+（Android 开发，NDK 可选）
+- Android Studio + CMake 3.22+
 - Xcode 15+（iOS 开发，需 macOS）
-- 一台 arm64 Android 真机（模拟器不支持 OpenCL/Metal 加速）
-
-> **Windows 中文用户名路径问题**：如果 Windows 用户名包含中文字符（如 `C:\Users\张三\`），NDK 的 C++ 编译会失败。解决方案：创建一个 junction 指向 Android SDK，然后在 `android/local.properties` 中使用 junction 路径：
-> ```powershell
-> New-Item -ItemType Junction -Path "D:\AndroidSDK" -Target "C:\Users\你的用户名\AppData\Local\Android\Sdk"
-> ```
-> 然后设置 `sdk.dir=D:\\AndroidSDK`。项目提供了 `tools/flutter.ps1` 辅助脚本自动配置这些环境变量。
+- arm64 Android 真机（模拟器不支持 OpenCL/Metal 加速）
 
 ### 1. 克隆并初始化
 
@@ -128,47 +180,27 @@ cd openagent
 flutter pub get
 ```
 
-### 2. 下载 MNN 预编译库（首次）
-
-脚本自动从 GitHub Releases 下载 MNN 3.6.1 预编译 .so 和头文件，无需 NDK：
+### 2. 下载 MNN 预编译库
 
 ```bash
 cd packages/mnn_llm
-bash scripts/download_mnn_prebuilt.sh   # 下载到 third_party/mnn/
+bash scripts/download_mnn_prebuilt.sh
 ```
 
-### 3. 运行验证 App
-
-> **提示**：如果 `flutter` 命令挂起，可使用项目提供的 `tools/flutter.ps1` 辅助脚本（自动设置 JAVA_HOME 和 Android SDK 路径）：
-> ```powershell
-> powershell -ExecutionPolicy Bypass -File tools\flutter.ps1 analyze   # 代码分析
-> powershell -ExecutionPolicy Bypass -File tools\flutter.ps1 test      # 运行测试
-> powershell -ExecutionPolicy Bypass -File tools\flutter.ps1 build apk --release  # 构建 APK
-> ```
+### 3. 运行
 
 **方式一：App 内模型市场下载（推荐）**
 
-App 内置模型市场，支持从 ModelScope 直接下载量化模型：
-
 ```bash
 flutter run --release
-# 打开 App → 底部导航「模型」→ 选择 Qwen3-0.6B-MNN → 下载
-# 下载完成后回到「对话」页即可开始聊天
+# 打开 App → 底部导航「模型」→ 选择模型 → 下载 → 开始对话
 ```
 
 **方式二：adb push 预下载模型**
 
 ```bash
-# 下载模型（约 430MB）
-# 从 https://modelscope.cn/models/MNN/Qwen3-0.6B-MNN 下载
-
-# 推送到 App 外部存储（无需 root）
-adb push Qwen3-0.6B-MNN /sdcard/Android/data/com.openagent.openagent/files/models/Qwen3-0.6B-MNN
-
-# 运行
+adb push Qwen3-0.6B-MNN /sdcard/Android/data/com.openagent.openagent/files/models/
 flutter run --release
-# 打开 App → 底部导航「模型」→ 点击已下载的模型激活
-# 回到「对话」页即可开始聊天
 ```
 
 ---
@@ -178,120 +210,58 @@ flutter run --release
 ```
 openagent/
 ├── lib/                        # Flutter App 主工程
-│   ├── main.dart               # 入口 (ProviderScope)
-│   ├── app.dart                # MaterialApp + GoRouter ShellRoute
+│   ├── main.dart               # 入口
+│   ├── app.dart                # MaterialApp + GoRouter
 │   ├── data/
-│   │   ├── models/models.dart          # ChatMessage/Session/ModelInfo/Config
+│   │   ├── models/models.dart            # 数据模型
 │   │   ├── services/
-│   │   │   ├── file_storage_service.dart    # 文件存储
-│   │   │   ├── model_download_service.dart  # 模型下载（字节级进度+原子下载）
-│   │   │   └── android_automation_service.dart  # Android 自动化服务封装
-│   │   └── repositories/               # Chat + Model 仓储
+│   │   │   ├── file_storage_service.dart
+│   │   │   ├── model_download_service.dart
+│   │   │   ├── schedule_service.dart     # 定时任务调度
+│   │   │   └── android_automation_service.dart
+│   │   └── repositories/
 │   ├── features/
-│   │   ├── chat/                       # 对话页 (流式+Markdown+多会话+Agent模式+VLM视觉分析)
-│   │   ├── model_market/               # 模型市场 (下载/切换/删除+进度+取消)
-│   │   ├── knowledge_base/             # 知识库管理 (添加/查看/删除文档)
-│   │   └── settings/                   # 设置 (采样参数+System Prompt+权限引导)
+│   │   ├── chat/                       # 对话页
+│   │   ├── model_market/               # 模型市场
+│   │   ├── knowledge_base/             # 知识库
+│   │   ├── automation/                 # 权限引导页
+│   │   └── settings/                   # 设置页
 │   └── agent/
-│       ├── agent_runtime.dart          # ReAct 循环 + 工具调用解析 + System Prompt 规则 A~O
-│       ├── android_tools.dart          # 50+ Android RPA 工具定义
-│       ├── builtin_tools.dart          # 30+ 通用内置工具（搜索/HTTP/计算/日期/文本/随机数/UUID/Base64/颜色/天气/IP/模板/计时器/分析规划/URL编解码/正则/大小写转换/Hex编解码/哈希/CSV转换/表格/密码生成/日期计算）
-│       ├── agent_memory.dart           # KV 长期记忆（跨 session/plan 保留）
-│       ├── mcp/
-│       │   ├── mcp_client.dart         # McpClient + McpTransport(HTTP/Stdio) + McpRegistry
-│       │   └── mcp_persistence.dart    # mcp_state_save/load 连接持久化
-│       └── skills/
-│           ├── skills.dart             # Skill 接口 + SkillManager (拓扑/remember/snapshot/restore) + JsonSpecSkill
-│           ├── skills_extra.dart       # KnowledgeRag/LongTermMemory/ExecutePlan/Vision + skill_register_json 工厂
-│           └── session_lifecycle.dart  # skill_state_save/load + remember + manifest + session_bootstrap
-├── android/app/src/main/kotlin/.../automation/  # Android 原生自动化层
-│   ├── AutomationChannel.kt            # MethodChannel 桥接（30+ 方法）
-│   ├── OpenAgentAccessibilityService.kt  # L1 Accessibility（点击/滑动/输入/手势/dump）
-│   ├── OpenAgentNotificationListener.kt  # L1.5 通知监听（200条环形缓存）
-│   └── ShizukuShell.kt                 # L2 Shizuku 反射 Shell（无 SDK 依赖）
-├── android/app/src/main/res/xml/accessibility_service_config.xml
-├── packages/mnn_llm/           # FFI 插件（可独立复用）
-│   ├── lib/                    # mnn_llm.dart + 手写绑定 + Session
-│   │   └── src/
-│   │       ├── mnn_llm_session.dart    # 文本对话 Session (流式)
-│   │       ├── mnn_omni_session.dart   # 多模态 Session (图像/语音)
-│   │       └── mnn_llm_bindings.dart   # 手写 FFI 绑定
-│   ├── src/                    # C/C++ C API wrapper (extern "C")
-│   │   ├── mnn_llm_capi.h              # 文本 + Omni 多模态 C API
-│   │   └── mnn_llm_capi.cpp            # stb_image 解码 + MultimodalPrompt
-│   ├── android/                # build.gradle + CMake + jniLibs
-│   ├── ios/mnn_llm.podspec     # CocoaPods 配置
-│   └── scripts/                # MNN 编译脚本 (Android + iOS)
-├── test/                       # 57 项单元测试（下载服务+Agent+Widget）
-├── tools/                      # flutter.ps1 + model_list.json + 开发方案
-├── .github/workflows/          # GitHub Actions CI/CD（analyze+test+build APK）
-└── .trae/documents/            # 开发方案文档
+│       ├── agent_runtime.dart          # ReAct 循环
+│       ├── android_tools.dart          # ~90 个 Android 工具
+│       ├── builtin_tools.dart          # ~40 个内置工具
+│       ├── agent_memory.dart           # KV 长期记忆
+│       ├── mcp/                        # MCP 协议层
+│       └── skills/                     # Skill 系统
+├── android/.../automation/             # Android 原生自动化层
+├── packages/mnn_llm/                   # FFI 插件
+│   ├── lib/src/                        # Dart Session + FFI 绑定
+│   ├── src/                            # C API wrapper
+│   ├── android/                        # Android 构建配置
+│   └── ios/                            # iOS 构建配置
+├── test/                               # 单元测试
+├── tools/                              # 辅助脚本
+└── .github/workflows/                  # CI/CD
 ```
-
----
-
-## 路线图
-
-- [x] **阶段 0-2** 工程脚手架 + C API wrapper + FFI 绑定 + Android/iOS 构建配置
-- [x] **阶段 3** Android Release APK 构建成功（完整构建链验证通过）
-- [x] **阶段 4** 完整 UI 骨架：对话页 + 模型市场 + 设置 + 数据层
-- [x] **阶段 5 (代码)** 多模态 C API + MnnOmniSession + stb_image 解码
-- [x] **阶段 6** 开源打磨：CI + LICENSE + 模型转换文档
-- [x] **阶段 7** Agent ReAct 循环 + 工具调用解析 + 内置工具(计算器/日期/文本统计/单位换算/知识库搜索RAG/JSON格式化)
-- [x] **阶段 8** 模型下载服务：字节级进度 + 原子下载(.part) + 取消 + 中文错误 + 57 项单元测试
-- [x] **阶段 9** Android RPA 三层权限架构：L1 Accessibility + L2 Shizuku Shell(反射无 SDK) + L3 Root 预留
-- [x] **阶段 10** 50+ 自动化工具：原子 ×19 + 开放通用 ×5 + 开放底层 ×10 + 补充原子 ×5 + 多步编排 + KV 记忆 + 系统原子 ×6 + 权限工具 ×2 + 硬件/通话/相册/系统设置 ×5
-- [x] **阶段 11** 20+ 组合宏脚本：微信 ×4 + 抖音 ×5 + 小红书 ×3 + QQ ×1 + B站 ×3 + 系统 ×4 + 支付宝 ×2 + 游戏 VLM AutoPilot ×1
-- [x] **阶段 12** VLM 视觉决策：截图 → Omni 多模态模型 → 自主坐标判断 → 操作执行循环
-- [x] **阶段 13** System Prompt 规则 A~J：代码层不干扰模型判断，所有决策由 LLM+VLM 自主
-- [x] **阶段 14** GitHub Actions CI/CD + AndroidManifest 22+ 权限声明 + 20+ queries 包名可见
-- [x] **阶段 15** MCP 协议支持：McpClient 抽象 + HttpMcpTransport/StdioMcpTransport + McpRegistry + mcp_state_save/load 连接持久化
-- [x] **阶段 16** Skill 模块化系统：8+ 内置 Skill + SkillManager（拓扑排序 / remember_enabled / snapshotState / restoreJsonSkills）+ 运行时 JSON 动态注册 JsonSpecSkill（callMcp/callTool/template/echo 4 adapter）
-- [x] **阶段 17** 会话生命周期管理：skill_state_save/load + skill_remember_enabled + skills_manifest/skill_tools_manifest 诊断 + session_bootstrap 一键恢复（MCP 连接 + JSON Skill + remember_enabled 自动按拓扑启用）
-- [x] **阶段 18** System Prompt 规则 K/L/M：规范 MCP 连接流程、Skill 启用策略、会话启动 bootstrap 流程
-- [x] **阶段 19** 增强 Agent 能力：16 个新内置工具（Web搜索/HTTP获取/HTML转文本/随机数/UUID/Base64编解码/颜色转换/计时器/天气/IP查询/文本模板/分析规划）+ System Prompt 规则 N（智能 Skill 建议）和 O（自主决策优先）+ skill_create_from_trace 从轨迹创建 Skill + 智能意图检测自动模式切换
-- [x] **阶段 20** 防高风险应用检测：accessibility_service_config.xml 包名白名单过滤 + 3 个防检测工具 + 权限引导页防检测教程 + System Prompt 规则 P（防高风险应用检测）
-- [x] **阶段 21** 更多内置实用工具 + 增强意图检测：URL编解码/正则测试/字符串大小写转换/Hex二进制编解码 + 防检测工具始终可用 + 意图检测新增代码/开发类关键词和更多自动化关键词
-- [x] **阶段 22** 哈希+数据工具+长期记忆规则：hash_text(MD5)/text_stats_advanced/csv_json_convert/markdown_table/password_generator/date_calculator + System Prompt 规则 Q（长期记忆优先）和 R（启发式任务分解）+ chat_page 工具调用统计（耗时/成功失败）
-- [x] **阶段 23** 云端 LLM 接入（可选，作为本地模型的替代）：CloudLlmSession（OpenAI 兼容流式 SSE + Anthropic 适配 + Ollama 本地代理 + 7 个内置预设）+ ModelSource/CouldModelConfig + 设置页「云端 LLM」分区（开关/Provider/Base URL/API Key/Model ID/System Prompt/测试连接）+ chat_page 动态 session 切换
-- [x] **阶段 24** 手机权限深度增强：通知深度控制（dismiss/snooze/reply by key）+ 录制回放框架（record/stop/list macros）+ AppOps 细粒度权限（get/set GET_USAGE_STATS/SYSTEM_ALERT_WINDOW/READ_CLIPBOARD/POST_NOTIFICATIONS 等）+ 浮窗/悬浮球自动化面板
-- [x] **阶段 25** 系统权限深度强化：VLM 游戏自动循环失败恢复（3 轮卡住→back/scroll/home 恢复策略）+ 进度持久化每 5 轮保存到文件 + 规则 S（账号运营/游戏自动化自主决策：多天计划→进度保存→权限弹窗自动处理→卡住恢复）+ 权限引导页一键自动授权（Shizuku 自动启用无障碍/通知监听/WRITE_SECURE_SETTINGS/DUMP）+ notificationListenerGranted 状态检测
-- [x] **阶段 26** 社交 App 组合宏（辅助 VLM 多模态模型主导）：小红书发帖/私信 + 抖音发作品 + 微信发图片朋友圈
-- [x] **阶段 27** 设备安全加固：应用保活白名单（deviceidle whitelist + 前台服务）+ 防检测隐藏（Shizuku 隐藏/无障碍临时禁用/Root 特征检查）+ 虚拟定位（Mock GPS 设置/清除/状态检查）
-- [x] **阶段 28** 定时任务调度：ScheduleService 持久化调度器 + 3 个 Agent 工具（schedule_task 创建/schedule_list 列表/schedule_remove 删除）+ 支持 daily:HH:MM / interval:秒 / cron:分钟 小时 三种调度格式
-- [x] **阶段 29** 手机管家：文件整理（按类型归类/大文件扫描/清理临时文件）+ 应用管理（卸载/清除缓存/禁用/权限列表/占用排行）+ 深度清理（快速清理/深度清理/存储分析/卸载残留清理）
-- [x] **阶段 30** 秘书/AI 助手：智能笔记（create/list/search/delete/stats）+ 智能提醒（add/list/done/clear 优先级管理）+ 每日简报（汇总待办/笔记/定时任务）+ 快捷助手（calc/convert/time_diff/countdown/random）+ 笔记/提醒持久化到本地 JSON 文件
-- [x] **阶段 31** VLM 多模态增强：屏幕变化检测（snapshot/compare/watch_region 哈希+VLM 双重验证）+ 截图指纹哈希（快速变化检测）+ 区域 VLM 分析（坐标裁剪后分析指定区域）
-- [x] **阶段 32** 深化已有功能：Shizuku 授权简化（check/setup_wireless_adb/guide/status_all 完整向导）+ 权限自愈（check_and_fix/check_only/fix_all 自动检测修复）+ Agent 执行日志（show/clear/save/stats）
-- [ ] **真机验证** Android 手机冒烟测试：权限引导 → 开微信 → 点文字 → 输入中文 → 滑抖音 → UI dump → 端到端微信发消息
-- [ ] **iOS 适配**
-- [ ] **更多能力** AppOps 细粒度 / VPN / NFC / 蓝牙配对 / 自定义规则引擎
 
 ---
 
 ## 与同类项目对比
 
-| 项目 | 引擎 | 平台 | UI 技术 | 多模态 | RPA/自动化 | MCP 协议 | 动态 Skill / 复合工具注册 | 会话持久化一键恢复 | 开源 |
-|---|---|---|---|---|---|---|---|---|---|
-| **OpenAgent** | MNN-LLM | Android + iOS | Flutter | ✅ Qwen2.5-Omni | ✅ 50+ 工具 | ✅ HTTP + Stdio 双传输（带持久化） | ✅ JSON 运行时注册 Skill（4 种 adapter），拓扑依赖排序 | ✅ session_bootstrap（MCP+Skill+记忆） | ✅ Apache 2.0 |
-| MNN Chat（官方） | MNN-LLM | Android + iOS | 原生 Kotlin/Swift | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| llama.cpp | ggml | 全平台 | 无（需自建 UI） | 部分 | ❌ | 部分（示例） | ❌ | ❌ | ✅ |
-| mnn.rn | MNN-LLM | 仅 Android | React Native | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Tasker | - | Android | 原生 | ❌ | ✅ 插件生态 | ❌ | ✅ TaskerNet 脚本（非代码化） | ✅ 配置文件（用户手动） | ❌ 闭源 |
-| Auto.js | - | Android | JavaScript | ❌ | ✅ Accessibility | ❌ | ✅ JS 脚本（需写代码） | ❌ | ❌ 闭源 |
+| 项目 | 引擎 | 平台 | 多模态 | RPA 自动化 | MCP 协议 | 动态 Skill | 开源 |
+|---|---|---|---|---|---|---|---|
+| **OpenAgent** | MNN-LLM | Android + iOS | ✅ | ✅ 90+ 工具 | ✅ HTTP+Stdio | ✅ JSON 运行时注册 | ✅ |
+| MNN Chat（官方） | MNN-LLM | Android + iOS | ✅ | ❌ | ❌ | ❌ | ✅ |
+| llama.cpp | ggml | 全平台 | 部分 | ❌ | 部分 | ❌ | ✅ |
+| Tasker | - | Android | ❌ | ✅ 插件生态 | ❌ | ✅ 脚本 | ❌ |
+| Auto.js | - | Android | ❌ | ✅ Accessibility | ❌ | ✅ JS 脚本 | ❌ |
 
-OpenAgent 的差异点：
-- **首个端侧大模型 + RPA 自动化 + MCP 协议 融合方案**——本地 LLM/VLM 自主决策操控手机，零网络请求保护隐私，同时通过 MCP 协议无限扩展外部工具（GitHub/浏览器/数据库）。
-- **Skill + JSON 动态注册双轨制**：内置 Skill 覆盖常用能力；想组合新能力时 LLM 自己写一段 JSON 就注册一个全新复合 Skill（callMcp/callTool 参数模板重映射），无需改代码。
-- **会话生命周期闭环**：记标 remember_enabled → 保存 JSON Skill + MCP 连接 → session_bootstrap 一键恢复（拓扑依赖自动按序启用），跨会话复现工作环境，真正做到"关了也记住"。
-- **代码不干扰判断原则**：代码层只给抓手，MCP 连哪个、Skill 启哪个、注册什么复合工具、记不记住，全由 LLM+VLM 自己判断。
-- 一套 Flutter 代码双端运行，FFI 插件可独立复用。
+**差异点**：
+- 首个端侧大模型 + RPA 自动化 + MCP 协议融合方案
+- 本地 LLM/VLM 自主决策操控手机，零网络请求
+- 代码不干预判断原则：代码层只给抓手，所有决策由模型自主完成
 
 ---
-
-## 贡献
-
-欢迎 Issue 和 PR。
 
 ## 许可证
 
