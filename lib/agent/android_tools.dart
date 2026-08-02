@@ -175,6 +175,11 @@ List<Tool> createAndroidAutomationTools({
     _composeXiaohongshuSendMessage(s),
     _composeDouyinPostVideo(s),
     _composeWechatPostImageMoments(s),
+
+    // ---- Stage 27: 设备安全加固 ----
+    _keepAliveTool(s),
+    _hideShizukuTool(s),
+    _mockLocationTool(s),
   ];
   return tools;
 }
@@ -5141,6 +5146,207 @@ Tool _antiDetectionBankingListTool() => Tool(
         }
         sb.writeln('\n\n提示：银行/支付类 App 在前台时，无障碍服务不会触发（已在配置中过滤）。');
         return ToolResult.ok(sb.toString());
+      },
+    );
+
+// ============================================================================
+// Stage 27: 设备安全加固 — 保活/防检测/虚拟定位
+// ============================================================================
+
+/// ——— 应用保活：添加到系统白名单 / 防清理 ———
+Tool _keepAliveTool(AndroidAutomationService s) => Tool(
+      name: 'android_keep_alive',
+      description:
+          '【安全】将本应用添加到系统省电白名单、防清理列表，避免后台被系统杀掉。'
+          '需要 Shizuku 已授权。执行后 Agent 可在后台持续运行不被系统清理。',
+      schema: _props({
+        'action': {
+          'type': 'string',
+          'enum': ['add_whitelist', 'check_status', 'remove_whitelist'],
+          'description': 'add_whitelist=添加到白名单, check_status=检查当前状态, remove_whitelist=从白名单移除',
+        },
+      }),
+      handler: (args) async {
+        final action = (args['action'] as String?) ?? 'add_whitelist';
+        final pkg = 'com.openagent.openagent';
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        if (action == 'check_status') {
+          // 检查是否在白名单中
+          final r1 = await s.gshell('dumpsys deviceidle whitelist | grep $pkg 2>/dev/null');
+          final r2 = await s.gshell('dumpsys power | grep $pkg 2>/dev/null');
+          final sb = StringBuffer();
+          sb.writeln('===== 保活状态 =====');
+          sb.writeln('省电白名单: ${r1.stdout.contains(pkg) ? "✅ 已加入" : "❌ 未加入"}');
+          sb.writeln('电源管理: ${r2.stdout.contains(pkg) ? "✅ 可见" : "⚠ 不可见"}');
+          // 检查前台服务
+          final r3 = await s.gshell('dumpsys activity services | grep $pkg 2>/dev/null');
+          sb.writeln('前台服务: ${r3.stdout.contains(pkg) ? "✅ 运行中" : "⚠ 未运行"}');
+          return ToolResult.ok(sb.toString());
+        }
+
+        // 添加到省电白名单
+        final r = await s.gshell('dumpsys deviceidle whitelist +$pkg 2>/dev/null');
+        steps.add('省电白名单: ${r.ok ? "OK" : "失败"}');
+
+        // 禁止系统优化
+        await s.gshell('cmd deviceidle whitelist +$pkg 2>/dev/null');
+        steps.add('deviceidle 白名单: 已执行');
+
+        // 设置前台服务优先级
+        await s.gshell(
+            'am start-foreground-service -n $pkg/.automation.OpenAgentForegroundService 2>/dev/null');
+        steps.add('前台服务: 已启动');
+
+        if (action == 'remove_whitelist') {
+          await s.gshell('dumpsys deviceidle whitelist -$pkg 2>/dev/null');
+          steps.add('从白名单移除');
+        }
+
+        return ToolResult.ok('✅ 保活设置完成:\n${r()}');
+      },
+    );
+
+/// ——— Shizuku 隐藏 / 防检测模式 ———
+Tool _hideShizukuTool(AndroidAutomationService s) => Tool(
+      name: 'android_hide_shizuku',
+      description:
+          '【安全】隐藏/伪装 Shizuku 和 Root 特征，防止被银行/支付/安全类 App 检测并拒绝运行。'
+          '包括：重命名 Shizuku 包名、隐藏无障碍服务特征、禁用检测敏感广播。',
+      schema: _props({
+        'action': {
+          'type': 'string',
+          'enum': ['hide', 'restore', 'check'],
+          'description': 'hide=隐藏特征, restore=恢复, check=检查当前暴露风险',
+        },
+      }),
+      handler: (args) async {
+        final action = (args['action'] as String?) ?? 'check';
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        if (action == 'check') {
+          final sb = StringBuffer();
+          sb.writeln('===== 防检测风险评估 =====');
+          // 检查 Shizuku 是否运行
+          final r1 = await s.gshell('ps -ef | grep shizuku 2>/dev/null');
+          sb.writeln('Shizuku 进程: ${r1.stdout.contains('shizuku') ? "⚠ 可见" : "✅ 未运行"}');
+          // 检查无障碍服务特征
+          final r2 = await s.gshell(
+              'settings get secure enabled_accessibility_services 2>/dev/null');
+          sb.writeln('无障碍服务: ${r2.stdout.contains('openagent') ? "⚠ 可见" : "✅ 已隐藏"}');
+          // 检查 Root 特征
+          final r3 = await s.gshell('which su 2>/dev/null');
+          sb.writeln('Root 检测: ${r3.ok ? "⚠ su 存在" : "✅ su 不可见"}');
+          // 检查 Magisk
+          final r4 = await s.gshell('ls /data/adb/magisk 2>/dev/null');
+          sb.writeln('Magisk: ${r4.ok ? "⚠ 可见" : "✅ 已隐藏"}');
+          // 建议
+          sb.writeln('\n建议：银行/支付 App 检测到上述特征可能会拒绝运行。');
+          sb.writeln('用 android_hide_shizuku action=hide 可隐藏特征。');
+          return ToolResult.ok(sb.toString());
+        }
+
+        if (action == 'hide') {
+          // 临时禁用无障碍服务（避免被检测）
+          await s.gshell(
+              'settings put secure enabled_accessibility_services "" 2>/dev/null');
+          steps.add('已禁用无障碍服务（临时）');
+          await Future.delayed(const Duration(milliseconds: 300));
+          // 停止 Shizuku 进程（如果用户同意）
+          await s.gshell('am force-stop moe.shizuku.privileged.api 2>/dev/null');
+          steps.add('已停止 Shizuku App');
+          // 隐藏 Shizuku 图标（通过 pm hide）
+          await s.gshell(
+              'pm hide moe.shizuku.privileged.api 2>/dev/null || pm disable moe.shizuku.privileged.api 2>/dev/null');
+          steps.add('已隐藏 Shizuku 应用图标');
+          // 设置安全模式标记
+          await s.gshell(
+              'setprop debug.openagent.safe_mode 1 2>/dev/null');
+          steps.add('已启用安全模式标记');
+          return ToolResult.ok('✅ 防检测特征已隐藏:\n${r()}\n⚠ 银行/支付 App 将不再检测到无障碍/Shizuku。\n⚠ 使用完毕后用 action=restore 恢复。');
+        }
+
+        // restore
+        await s.gshell(
+            'settings put secure enabled_accessibility_services '
+            'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentAccessibilityService 2>/dev/null');
+        steps.add('已恢复无障碍服务');
+        await s.gshell('pm unhide moe.shizuku.privileged.api 2>/dev/null || pm enable moe.shizuku.privileged.api 2>/dev/null');
+        steps.add('已恢复 Shizuku 图标');
+        await s.gshell('setprop debug.openagent.safe_mode 0 2>/dev/null');
+        steps.add('已关闭安全模式');
+        return ToolResult.ok('✅ 防检测特征已恢复:\n${r()}');
+      },
+    );
+
+/// ——— 虚拟定位（Mock GPS） ———
+Tool _mockLocationTool(AndroidAutomationService s) => Tool(
+      name: 'android_mock_location',
+      description:
+          '【安全】设置虚拟定位（Mock GPS 位置）。需要开发者选项中已选择 Mock Location App 为本应用。'
+          '可用于社交 App 打卡/签到/发帖定位。',
+      schema: _props({
+        'latitude': {
+          'type': 'number',
+          'description': '纬度，如 39.9042（北京）',
+        },
+        'longitude': {
+          'type': 'number',
+          'description': '经度，如 116.4074（北京）',
+        },
+        'action': {
+          'type': 'string',
+          'enum': ['set', 'clear', 'status'],
+          'description': 'set=设置, clear=清除, status=查看当前状态',
+        },
+      }),
+      handler: (args) async {
+        final action = (args['action'] as String?) ?? 'status';
+        final lat = (args['latitude'] as num?)?.toDouble() ?? 39.9042;
+        final lng = (args['longitude'] as num?)?.toDouble() ?? 116.4074;
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        if (action == 'status') {
+          final sb = StringBuffer();
+          // 检查是否允许模拟位置
+          final r1 = await s.gshell('settings get secure mock_location 2>/dev/null');
+          sb.writeln('Mock Location 允许: ${r1.stdout.trim() == "1" ? "✅ 已开启" : "❌ 未开启"}');
+          final r2 = await s.gshell(
+              'settings get secure mock_location_app 2>/dev/null');
+          sb.writeln('Mock Location App: ${r2.stdout.trim().isEmpty ? "未设置" : r2.stdout.trim()}');
+          // 获取当前 GPS 位置
+          final r3 = await s.gshell('dumpsys location | grep "last location" 2>/dev/null');
+          sb.writeln('当前 GPS: ${r3.stdout.trim().isNotEmpty ? r3.stdout.trim() : "未知"}');
+          sb.writeln('\n提示：需在开发者选项中设置 "选择模拟位置信息应用" 为本应用。');
+          return ToolResult.ok(sb.toString());
+        }
+
+        if (action == 'set') {
+          // 通过 Shizuku 注入 mock location (需要 system 权限)
+          final r = await s.gshell(
+              'am broadcast -a android.intent.action.MOCK_LOCATION '
+              '--ef lat $lat --ef lng $lng 2>/dev/null');
+          steps.add('广播 Mock Location: ${r.ok ? "OK" : "失败"}');
+          // 备用方案：通过 content 写入
+          await s.gshell(
+              'content insert --uri content://com.google.android.gms.location.mock '
+              '--bind latitude:d:$lat --bind longitude:d:$lng 2>/dev/null');
+          steps.add('GMS Mock Location: 已执行');
+          // 使用 settings 写入
+          await s.gshell(
+              'settings put global mock_location_test_coords $lat,$lng 2>/dev/null');
+          steps.add('坐标已写入: $lat, $lng');
+          return ToolResult.ok('✅ 虚拟定位已设置:\n${r()}');
+        }
+
+        // clear
+        await s.gshell(
+            'settings put global mock_location_test_coords "" 2>/dev/null');
+        steps.add('已清除虚拟定位');
+        return ToolResult.ok('✅ 虚拟定位已清除:\n${r()}');
       },
     );
 

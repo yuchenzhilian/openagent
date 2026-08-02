@@ -257,6 +257,7 @@ openagent/
 - [x] **阶段 24** 手机权限深度增强：通知深度控制（dismiss/snooze/reply by key）+ 录制回放框架（record/stop/list macros）+ AppOps 细粒度权限（get/set GET_USAGE_STATS/SYSTEM_ALERT_WINDOW/READ_CLIPBOARD/POST_NOTIFICATIONS 等）+ 浮窗/悬浮球自动化面板
 - [x] **阶段 25** 系统权限深度强化：VLM 游戏自动循环失败恢复（3 轮卡住→back/scroll/home 恢复策略）+ 进度持久化每 5 轮保存到文件 + 规则 S（账号运营/游戏自动化自主决策：多天计划→进度保存→权限弹窗自动处理→卡住恢复）+ 权限引导页一键自动授权（Shizuku 自动启用无障碍/通知监听/WRITE_SECURE_SETTINGS/DUMP）+ notificationListenerGranted 状态检测
 - [x] **阶段 26** 社交 App 组合宏（辅助 VLM 多模态模型主导）：小红书发帖/私信 + 抖音发作品 + 微信发图片朋友圈
+- [x] **阶段 27** 设备安全加固：应用保活白名单（deviceidle whitelist + 前台服务）+ 防检测隐藏（Shizuku 隐藏/无障碍临时禁用/Root 特征检查）+ 虚拟定位（Mock GPS 设置/清除/状态检查）
 - [ ] **真机验证** Android 手机冒烟测试：权限引导 → 开微信 → 点文字 → 输入中文 → 滑抖音 → UI dump → 端到端微信发消息
 - [ ] **iOS 适配**
 - [ ] **更多能力** AppOps 细粒度 / VPN / NFC / 蓝牙配对 / 自定义规则引擎
