@@ -6,9 +6,11 @@
 // ChatPage.reload() via a GlobalKey so it re-reads AppConfig from disk.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'data/models/models.dart';
 import 'data/services/file_storage_service.dart';
+import 'data/services/schedule_service.dart';
 import 'features/automation/pages/permission_guide_page.dart';
 import 'features/chat/pages/chat_page.dart';
 import 'features/knowledge_base/pages/knowledge_base_page.dart';
@@ -31,6 +33,7 @@ class _OpenAgentAppState extends State<OpenAgentApp> {
   void initState() {
     super.initState();
     _storage = FileStorageService();
+    _initScheduleService();
     _router = GoRouter(
       initialLocation: '/',
       routes: [
@@ -87,9 +90,20 @@ class _OpenAgentAppState extends State<OpenAgentApp> {
     _chatKey.currentState?.reload();
   }
 
+  Future<void> _initScheduleService() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      await ScheduleService.instance.init(storagePath: dir.path);
+    } catch (_) {
+      // Schedule init failure is non-fatal; the service will work when
+      // storage becomes available.
+    }
+  }
+
   @override
   void dispose() {
     _router.dispose();
+    ScheduleService.instance.dispose();
     super.dispose();
   }
 

@@ -8,6 +8,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'agent_runtime.dart';
+import '../data/services/schedule_service.dart';
 
 /// A calculator that safely evaluates arithmetic expressions.
 ///
@@ -1733,6 +1734,10 @@ List<Tool> builtinTools() => [
       markdownTableTool(),
       passwordGeneratorTool(),
       dateCalculatorTool(),
+      // Stage 28: Scheduled task tools.
+      scheduleTaskTool(),
+      scheduleListTool(),
+      scheduleRemoveTool(),
     ];
 
 // ---- Unit converter ------------------------------------------------------
@@ -1919,3 +1924,142 @@ class _ExprParser {
   bool _isAlpha(String c) =>
       c.isNotEmpty && (c.toLowerCase() != c.toUpperCase() || c == '_');
 }
+
+// ============================================================================
+// Stage 28: 定时任务调度工具
+// ============================================================================
+
+/// 创建定时任务。
+Tool scheduleTaskTool() => Tool(
+      name: 'schedule_task',
+      description:
+          '创建定时任务，在指定时间自动执行任务指令。'
+          '支持三种调度格式：\n'
+          '  daily:HH:MM — 每天指定时间（如 daily:08:00 每天早上8点）\n'
+          '  interval:秒 — 固定间隔（如 interval:3600 每小时一次）\n'
+          '  cron:分钟 小时 — 简化 cron（如 cron:0 8 每天早上8点整）\n'
+          '示例：每天早上8点做梦幻西游日常 → schedule_task name="梦幻西游日常" instruction="打开梦幻西游，完成师门任务" schedule="daily:08:00"',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'name': {
+            'type': 'string',
+            'description': '任务名称，如 "梦幻西游日常"',
+          },
+          'instruction': {
+            'type': 'string',
+            'description': '任务指令/描述，任务触发时 Agent 执行这个指令',
+          },
+          'schedule': {
+            'type': 'string',
+            'description': '调度表达式：daily:08:00 / interval:3600 / cron:0 8',
+          },
+          'description': {
+            'type': 'string',
+            'description': '可选：任务描述',
+          },
+        },
+        'required': ['name', 'instruction', 'schedule'],
+      },
+      handler: (args) async {
+        final name = args['name'] as String? ?? '';
+        final instruction = args['instruction'] as String? ?? '';
+        final schedule = args['schedule'] as String? ?? '';
+        final desc = (args['description'] as String?) ?? '';
+        if (name.isEmpty) return ToolResult.error('参数 name 不能为空');
+        if (instruction.isEmpty) return ToolResult.error('参数 instruction 不能为空');
+        if (schedule.isEmpty) return ToolResult.error('参数 schedule 不能为空');
+        // 验证调度格式
+        final parts = schedule.split(':');
+        final validTypes = ['daily', 'interval', 'cron'];
+        if (!validTypes.contains(parts[0])) {
+          return ToolResult.error('调度格式无效，支持: daily:HH:MM, interval:秒, cron:分钟 小时');
+        }
+        if (parts[0] == 'daily' && parts.length < 2) {
+          return ToolResult.error('daily 格式需要指定时间，如 daily:08:00');
+        }
+        final task = await ScheduleService.instance.addTask(
+          name: name,
+          description: desc,
+          instruction: instruction,
+          schedule: schedule,
+        );
+        return ToolResult.ok(
+            '✅ 定时任务已创建:\n'
+            '  名称: ${task.name}\n'
+            '  调度: ${task.schedule}\n'
+            '  指令: ${task.instruction}\n'
+            '  下次触发: 按调度规则自动执行\n'
+            '  用 schedule_list 查看所有任务');
+      },
+    );
+
+/// 列出所有定时任务。
+Tool scheduleListTool() => Tool(
+      name: 'schedule_list',
+      description: '列出所有已创建的定时任务及其状态（上次运行时间/结果/运行次数）。',
+      schema: {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final tasks = ScheduleService.instance.tasks;
+        if (tasks.isEmpty) {
+          return ToolResult.ok('暂无定时任务。用 schedule_task 创建任务。');
+        }
+        final sb = StringBuffer();
+        sb.writeln('===== 定时任务列表 (共 ${tasks.length} 个) =====');
+        for (var i = 0; i < tasks.length; i++) {
+          final t = tasks[i];
+          sb.writeln('${i + 1}. [${t.enabled ? "🟢" : "⭕"}] ${t.name}');
+          sb.writeln('   调度: ${t.schedule}');
+          sb.writeln('   指令: ${t.instruction.length > 40 ? "${t.instruction.substring(0, 40)}..." : t.instruction}');
+          sb.writeln('   运行: ${t.runCount} 次 | 上次: ${t.lastRunAt?.toIso8601String() ?? "从未"}');
+          sb.writeln('   结果: ${t.lastResult ?? "无"}');
+          sb.writeln('   删除: 用 schedule_remove id="${t.id}"');
+        }
+        return ToolResult.ok(sb.toString());
+      },
+    );
+
+/// 删除定时任务。
+Tool scheduleRemoveTool() => Tool(
+      name: 'schedule_remove',
+      description: '删除指定 ID 的定时任务。用 schedule_list 获取任务 ID。',
+      schema: {
+        'type': 'object',
+        'properties': {
+          'id': {
+            'type': 'string',
+            'description': '任务 ID，从 schedule_list 获取',
+          },
+          'name': {
+            'type': 'string',
+            'description': '可选：按名称删除（如果记不住 ID）',
+          },
+        },
+      },
+      handler: (args) async {
+        final id = (args['id'] as String?) ?? '';
+        final name = (args['name'] as String?) ?? '';
+        if (id.isEmpty && name.isEmpty) {
+          return ToolResult.error('需要提供 id 或 name 参数');
+        }
+        bool ok;
+        if (id.isNotEmpty) {
+          ok = await ScheduleService.instance.removeTask(id);
+        } else {
+          // 按名称删除第一个匹配的
+          final tasks = ScheduleService.instance.tasks
+              .where((t) => t.name.contains(name))
+              .toList();
+          if (tasks.isEmpty) {
+            return ToolResult.error('未找到名称包含 "$name" 的任务');
+          }
+          ok = await ScheduleService.instance.removeTask(tasks.first.id);
+        }
+        return ok
+            ? ToolResult.ok('✅ 定时任务已删除')
+            : ToolResult.error('删除失败，未找到该任务');
+      },
+    );
