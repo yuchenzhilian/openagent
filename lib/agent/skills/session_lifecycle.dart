@@ -126,8 +126,8 @@ List<Tool> createSkillRememberTools(SkillManager skillManager) => [
       },
       'required': ['skill_id'],
     },
-    handler: (args) {
-      final ids = (args['skill_id'] as String?).toString().trim();
+    handler: (args) async {
+      final ids = (args['skill_id'] as String?)?.toString().trim() ?? '';
       final remember = args['remember'] != false;
       return ToolResult.ok(skillManager.setRemembered(ids, remember: remember));
     },

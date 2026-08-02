@@ -213,7 +213,7 @@ class AndroidAutomationService {
     }) ?? false;
     if (ok) return true;
     // Fallback: find the text via grep in dump, extract coordinates
-    final lines = dump.split('\n');
+    final lines = dump.map((n) => n.toString()).toList();
     for (final line in lines) {
       if (exact ? line.contains('text="$text"') : line.contains(text)) {
         final xMatch = RegExp(r'x=(\d+)').firstMatch(line);
