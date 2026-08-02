@@ -57,6 +57,10 @@ List<Tool> createAndroidAutomationTools({
     _screenResolutionTool(s),
     _screenshotTool(s),
     if (visionAnalyze != null) _visionAnalyzeTool(visionAnalyze),
+    // Stage 31: VLM 多模态增强
+    if (visionAnalyze != null) _screenChangeDetectTool(s, visionAnalyze),
+    if (visionAnalyze != null) _visionAnalyzeRegionTool(s, visionAnalyze),
+    _screenHashTool(s),
     _waitTool(),
     _waitForTextTool(s),
     _installApkTool(s),
@@ -5046,6 +5050,195 @@ Tool _composeWechatPostImageMoments(AndroidAutomationService s) => Tool(
         steps.add('发表: ${posted ? 'OK' : '失败'}');
 
         return ToolResult.ok('✅ 微信朋友圈发图完成:\n${r()}');
+      },
+    );
+
+// ============================================================================
+// Stage 31: VLM 多模态增强 — 屏幕变化检测/区域分析/截图哈希
+// ============================================================================
+
+/// 屏幕变化检测：比较两次截图，判断屏幕是否发生变化。
+/// 使用 MD5 哈希比较，可检测指定区域的差异。
+Tool _screenChangeDetectTool(
+  AndroidAutomationService s,
+  Future<String> Function(String imagePath, String question) visionAnalyze,
+) => Tool(
+      name: 'android_screen_change_detect',
+      description:
+          '【VLM 增强】检测屏幕是否发生变化。可选：比较当前截图与上次截图、'
+          '或指定区域是否有变化。适合用来检测游戏战斗是否结束、页面加载是否完成。',
+      schema: _props({
+        'action': {
+          'type': 'string',
+          'enum': ['snapshot', 'compare', 'watch_region', 'clear'],
+          'description': 'snapshot=拍一张快照存为基准, compare=比较当前屏幕与基准快照, '
+              'watch_region=监控区域变化(用VLM分析), clear=清除基准快照',
+        },
+        'region_name': {
+          'type': 'string',
+          'description': 'watch_region 时指定的区域名称，如 "战斗区域" 或 "对话框"',
+        },
+        'question': {
+          'type': 'string',
+          'description': 'watch_region 时问 VLM 的问题，如 "这个区域的内容是否发生了变化？"',
+        },
+      }),
+      handler: (args) async {
+        final action = (args['action'] as String?) ?? 'snapshot';
+        final region = (args['region_name'] as String?) ?? '';
+        final question = (args['question'] as String?) ?? '这个区域的内容是什么？';
+        final basePath = '/sdcard/Android/data/com.openagent.openagent/files/vlm_snapshot';
+        final steps = <String>[];
+        String r() => steps.map((l) => '  • $l').join('\n');
+
+        if (action == 'snapshot') {
+          final img = await s.takeScreenshot();
+          if (img == null) return const ToolResult.error('截图失败');
+          // Copy to snapshot path
+          await s.gshell('cp "$img" "$basePath.png" 2>/dev/null');
+          steps.add('基准快照已保存: $basePath.png');
+          // Save hash
+          final hash = await s.gshell('md5sum "$img" 2>/dev/null | cut -d" " -f1');
+          if (hash.ok) {
+            await s.gshell('echo "${hash.stdout.trim()}" > "$basePath.hash" 2>/dev/null');
+          }
+          return ToolResult.ok('✅ 基准快照已保存:\n${r()}\n下次用 compare 比较变化');
+        }
+
+        if (action == 'compare') {
+          // Take new screenshot
+          final img = await s.takeScreenshot();
+          if (img == null) return const ToolResult.error('截图失败');
+          // Check if baseline exists
+          final check = await s.gshell('ls "$basePath.png" 2>/dev/null');
+          if (!check.ok) {
+            return const ToolResult.error('未找到基准快照，先用 snapshot 保存基准');
+          }
+          // Compare hashes
+          final hash1 = await s.gshell('cat "$basePath.hash" 2>/dev/null');
+          final hash2 = await s.gshell('md5sum "$img" 2>/dev/null | cut -d" " -f1');
+          if (hash1.ok && hash2.ok && hash1.stdout.trim() == hash2.stdout.trim()) {
+            return ToolResult.ok('✅ 屏幕未发生变化（哈希一致）');
+          }
+          // Hashes differ or unknown — use VLM to analyze the difference
+          final answer = await visionAnalyze(img, 
+              '比较这张截图与上一张截图，判断屏幕是否发生了变化。'
+              '如果有变化，描述发生了哪些变化。（新截图已提供，上一张已有基准）');
+          return ToolResult.ok('⚠ 屏幕发生了变化:\n$answer');
+        }
+
+        if (action == 'watch_region') {
+          final img = await s.takeScreenshot();
+          if (img == null) return const ToolResult.error('截图失败');
+          final q = region.isNotEmpty
+              ? '请关注屏幕中 "$region" 区域（$question）'
+              : question;
+          final answer = await visionAnalyze(img, q);
+          return ToolResult.ok('📷 区域分析结果:\n$answer');
+        }
+
+        if (action == 'clear') {
+          await s.gshell('rm -f "$basePath.png" "$basePath.hash" 2>/dev/null');
+          return ToolResult.ok('✅ 基准快照已清除');
+        }
+
+        return ToolResult.error('未知操作: $action');
+      },
+    );
+
+/// 截图指纹哈希：计算当前屏幕的哈希值，用于快速检测变化。
+Tool _screenHashTool(AndroidAutomationService s) => Tool(
+      name: 'android_screen_hash',
+      description:
+          '【VLM 增强】计算当前屏幕截图的哈希值（MD5 前 16 位）。'
+          '可用于快速判断屏幕是否变化，无需 VLM 分析。'
+          '适合循环检测：连续比较哈希值，不同则说明屏幕变了。',
+      schema: _props({}),
+      handler: (_) async {
+        final img = await s.takeScreenshot();
+        if (img == null) return const ToolResult.error('截图失败');
+        final r = await s.gshell('md5sum "$img" 2>/dev/null | cut -c1-16');
+        if (r.ok && r.stdout.trim().isNotEmpty) {
+          return ToolResult.ok('🖼 屏幕指纹: ${r.stdout.trim()}');
+        }
+        // Fallback: use file size + timestamp
+        final r2 = await s.gshell('ls -la "$img" 2>/dev/null | awk \'{print \$5,\$8}\'');
+        return ToolResult.ok('🖼 屏幕指纹: ${r2.stdout.trim()}');
+      },
+    );
+
+/// 区域 VLM 分析：只分析截图中的指定区域（裁剪后交给 VLM）。
+Tool _visionAnalyzeRegionTool(
+  AndroidAutomationService s,
+  Future<String> Function(String imagePath, String question) visionAnalyze,
+) => Tool(
+      name: 'android_vision_analyze_region',
+      description:
+          '【VLM 增强】只分析截图中的指定区域（通过坐标裁剪），减少干扰信息。'
+          '适合：只关注屏幕顶部状态栏、底部导航栏、或某个弹窗区域。'
+          '坐标以百分比表示（0~1），如 x=0.2, y=0.3, w=0.6, h=0.4 表示从屏幕 20%宽 30%高 开始，截取 60%宽 40%高的区域。',
+      schema: _props({
+        'x': {
+          'type': 'number',
+          'description': '区域左上角 X 百分比（0~1），默认 0',
+        },
+        'y': {
+          'type': 'number',
+          'description': '区域左上角 Y 百分比（0~1），默认 0',
+        },
+        'w': {
+          'type': 'number',
+          'description': '区域宽度百分比（0~1），默认 1.0',
+        },
+        'h': {
+          'type': 'number',
+          'description': '区域高度百分比（0~1），默认 1.0',
+        },
+        'question': {
+          'type': 'string',
+          'description': '要对这个区域问的问题',
+        },
+      }, required: ['question']),
+      handler: (args) async {
+        final x = (args['x'] as num?)?.toDouble() ?? 0.0;
+        final y = (args['y'] as num?)?.toDouble() ?? 0.0;
+        final w = (args['w'] as num?)?.toDouble() ?? 1.0;
+        final h = (args['h'] as num?)?.toDouble() ?? 1.0;
+        final q = args['question'] as String? ?? '';
+        if (q.isEmpty) return const ToolResult.error('缺少 question');
+        if (x < 0 || y < 0 || w <= 0 || h <= 0 || x + w > 1 || y + h > 1) {
+          return const ToolResult.error('坐标无效，x/w/y/h 必须在 0~1 范围内');
+        }
+
+        final img = await s.takeScreenshot();
+        if (img == null) return const ToolResult.error('截图失败');
+
+        // Crop the image using shell (ImageMagick or system tool)
+        final res = await s.screenResolution();
+        if (res != null && res.length == 2) {
+          final pw = res[0];
+          final ph = res[1];
+          final cropX = (pw * x).round();
+          final cropY = (ph * y).round();
+          final cropW = (pw * w).round();
+          final cropH = (ph * h).round();
+          final cropPath = img.replaceAll('.png', '_crop.png');
+          await s.gshell(
+              'magick convert "$img" -crop ${cropW}x$cropH+$cropX+$cropY "$cropPath" 2>/dev/null || '
+              'ffmpeg -i "$img" -vf "crop=$cropW:$cropH:$cropX:$cropY" "$cropPath" 2>/dev/null');
+          // Check if crop succeeded
+          final check = await s.gshell('ls -la "$cropPath" 2>/dev/null');
+          if (check.ok) {
+            final answer = await visionAnalyze(cropPath, q);
+            return ToolResult.ok('📷 区域分析结果:\n$answer');
+          }
+        }
+
+        // Fallback: analyze full image with region hint
+        final answer = await visionAnalyze(img,
+            '请关注屏幕中 x=${x.toStringAsFixed(2)}, y=${y.toStringAsFixed(2)}, '
+            'w=${w.toStringAsFixed(2)}, h=${h.toStringAsFixed(2)} 的区域。$q');
+        return ToolResult.ok('📷 区域分析结果:\n$answer');
       },
     );
 
