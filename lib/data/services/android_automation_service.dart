@@ -36,6 +36,58 @@ class AndroidAutomationService {
     return null;
   }
 
+  /// 权限类型枚举，用于统一权限检查入口。
+  enum PermissionKind {
+    accessibility,   // 无障碍服务
+    shizuku,         // Shizuku 授权
+    notification,    // 通知监听
+    usageStats,      // 使用统计权限
+    writeSecure,     // WRITE_SECURE_SETTINGS
+    dump,            // DUMP 权限
+  }
+
+  /// 统一权限检查入口：检查指定权限是否已授予，未授予时自动尝试授权。
+  /// 返回 (isGranted, message)。
+  Future<({bool granted, String message})> ensurePermission(PermissionKind kind) async {
+    if (!isSupported) return (granted: false, message: '非 Android 平台');
+    final status = await refreshStatus();
+    switch (kind) {
+      case PermissionKind.accessibility:
+        if (status.accessibilityEnabled) return (granted: true, message: '无障碍服务已启用');
+        // 尝试自动启用
+        final r = await gshell(
+            'settings put secure enabled_accessibility_services '
+            'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentAccessibilityService 2>/dev/null');
+        if (r.ok) await gshell('settings put secure accessibility_enabled 1');
+        invalidatePermissionCache();
+        final refreshed = await refreshStatus();
+        return (granted: refreshed.accessibilityEnabled, message: refreshed.accessibilityEnabled ? '无障碍服务已启用' : '无法自动启用无障碍服务，请手动在设置中开启');
+      case PermissionKind.shizuku:
+        final r = await gshell('ps -ef | grep shizuku 2>/dev/null');
+        final ok = r.stdout.contains('shizuku');
+        return (granted: ok, message: ok ? 'Shizuku 运行中' : 'Shizuku 未运行，请先启动 Shizuku');
+      case PermissionKind.notification:
+        if (status.notificationListenerEnabled) return (granted: true, message: '通知监听已启用');
+        await gshell(
+            'settings put secure enabled_notification_listeners '
+            'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
+        await gshell(
+            'settings put secure enabled_notification_assistant '
+            'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
+        invalidatePermissionCache();
+        final refreshed = await refreshStatus();
+        return (granted: refreshed.notificationListenerEnabled, message: refreshed.notificationListenerEnabled ? '通知监听已启用' : '无法自动启用通知监听');
+      case PermissionKind.usageStats:
+        return (granted: status.usageStatsGranted, message: status.usageStatsGranted ? '使用统计权限已授予' : '未授予使用统计权限');
+      case PermissionKind.writeSecure:
+        final r = await gshell('pm grant com.openagent.openagent android.permission.WRITE_SECURE_SETTINGS 2>/dev/null');
+        return (granted: r.ok, message: r.ok ? 'WRITE_SECURE_SETTINGS 已授予' : '未授予 WRITE_SECURE_SETTINGS（需要 Shizuku/Root）');
+      case PermissionKind.dump:
+        final r = await gshell('pm grant com.openagent.openagent android.permission.DUMP 2>/dev/null');
+        return (granted: r.ok, message: r.ok ? 'DUMP 权限已授予' : '未授予 DUMP 权限（需要 Shizuku/Root）');
+    }
+  }
+
   /// Throws on non-Android platforms (which is expected — callers should gate
   /// on [isSupported] before invoking anything else).
   bool get isSupported =>
@@ -151,6 +203,20 @@ class AndroidAutomationService {
   Future<void> openUsageAccessSettings() async {
     if (!isSupported) return;
     await _channel.invokeMethod<void>('open_usage_access_settings');
+  }
+
+  // ---- Safe mode (anti-detection) ------------------------------------------
+
+  /// 设置安全模式。开启时无障碍服务跳过所有手势执行。
+  Future<bool> setSafeMode(bool enabled) async {
+    if (!isSupported) return false;
+    return await _channel.invokeMethod<bool>('android_set_safe_mode', {'enabled': enabled}) ?? false;
+  }
+
+  /// 查询当前是否处于安全模式。
+  Future<bool> isSafeMode() async {
+    if (!isSupported) return false;
+    return await _channel.invokeMethod<bool>('android_is_safe_mode') ?? false;
   }
 
   // ---- Automation actions --------------------------------------------------

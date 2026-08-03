@@ -159,6 +159,12 @@
             </intent-filter>
         </service>
 
+        <!-- L1.5: Foreground Service (保活) – 保持后台进程不被系统杀死. -->
+        <service
+            android:name=".automation.OpenAgentForegroundService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

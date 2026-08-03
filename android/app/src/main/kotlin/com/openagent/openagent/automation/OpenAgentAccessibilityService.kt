@@ -40,10 +40,23 @@ class OpenAgentAccessibilityService : AccessibilityService() {
         @Volatile
         private var INSTANCE: OpenAgentAccessibilityService? = null
 
+        /** 安全模式标记 — 开启时跳过所有手势执行（银行/支付类 App 在前台时使用）。 */
+        @Volatile
+        private var safeModeEnabled = false
+
         fun isServiceConnected(): Boolean = INSTANCE?.serviceConnected == true
 
         fun requireInstance(): OpenAgentAccessibilityService? =
             if (INSTANCE?.serviceConnected == true) INSTANCE else null
+
+        /** 设置安全模式。由 AutomationChannel 调用。 */
+        fun setSafeMode(enabled: Boolean) {
+            safeModeEnabled = enabled
+            Log.i(TAG, "Safe mode ${if (enabled) "ENABLED" else "DISABLED"}")
+        }
+
+        /** 查询安全模式是否开启。点击/手势方法在执行前检查此值。 */
+        fun isSafeMode(): Boolean = safeModeEnabled
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -78,6 +91,10 @@ class OpenAgentAccessibilityService : AccessibilityService() {
 
     fun clickByText(text: String, exactMatch: Boolean = true): Boolean {
         require(serviceConnected) { "service not connected" }
+        if (safeModeEnabled) {
+            Log.w(TAG, "clickByText blocked: safe mode enabled")
+            return false
+        }
         val node = findFirst(rootInActiveWindow) { n ->
             val t = n.text?.toString().orEmpty()
             val cd = n.contentDescription?.toString().orEmpty()
@@ -110,6 +127,10 @@ class OpenAgentAccessibilityService : AccessibilityService() {
 
     fun clickById(viewId: String): Boolean {
         require(serviceConnected) { "service not connected" }
+        if (safeModeEnabled) {
+            Log.w(TAG, "clickById blocked: safe mode enabled")
+            return false
+        }
         val matches = rootInActiveWindow
             ?.findAccessibilityNodeInfosByViewId(viewId)
             .orEmpty()
@@ -141,6 +162,10 @@ class OpenAgentAccessibilityService : AccessibilityService() {
      *  Coordinates are in screen pixels. */
     fun clickAtCoords(x: Int, y: Int): Boolean {
         require(serviceConnected) { "service not connected" }
+        if (safeModeEnabled) {
+            Log.w(TAG, "clickAtCoords blocked: safe mode enabled")
+            return false
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
         val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
         val gesture = GestureDescription.Builder()
@@ -168,6 +193,10 @@ class OpenAgentAccessibilityService : AccessibilityService() {
 
     fun swipe(x1: Int, y1: Int, x2: Int, y2: Int, durationMs: Long): Boolean {
         require(serviceConnected) { "service not connected" }
+        if (safeModeEnabled) {
+            Log.w(TAG, "swipe blocked: safe mode enabled")
+            return false
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
         val path = Path().apply { moveTo(x1.toFloat(), y1.toFloat()); lineTo(x2.toFloat(), y2.toFloat()) }
         val gesture = GestureDescription.Builder()
@@ -189,6 +218,10 @@ class OpenAgentAccessibilityService : AccessibilityService() {
     /** Long-press a single coordinate by holding still for [durationMs]. */
     fun longPressAt(x: Int, y: Int, durationMs: Long): Boolean {
         require(serviceConnected) { "service not connected" }
+        if (safeModeEnabled) {
+            Log.w(TAG, "longPressAt blocked: safe mode enabled")
+            return false
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
         val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
         val gesture = GestureDescription.Builder()
@@ -210,6 +243,10 @@ class OpenAgentAccessibilityService : AccessibilityService() {
     /** Custom multi-segment gesture path. */
     fun customGesturePath(points: List<Pair<Int, Int>>, totalDurationMs: Long): Boolean {
         require(serviceConnected) { "service not connected" }
+        if (safeModeEnabled) {
+            Log.w(TAG, "customGesturePath blocked: safe mode enabled")
+            return false
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N || points.size < 2) return false
         val path = Path()
         points.forEachIndexed { i, p ->
@@ -233,6 +270,10 @@ class OpenAgentAccessibilityService : AccessibilityService() {
     }
 
     fun scrollForward(): Boolean {
+        if (safeModeEnabled) {
+            Log.w(TAG, "scrollForward blocked: safe mode enabled")
+            return false
+        }
         val node = findFirst(rootInActiveWindow) { it.isScrollable } ?: return false
         val ok = node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
         node.recycle()
@@ -241,6 +282,10 @@ class OpenAgentAccessibilityService : AccessibilityService() {
 
     fun setText(text: String): Boolean {
         require(serviceConnected) { "service not connected" }
+        if (safeModeEnabled) {
+            Log.w(TAG, "setText blocked: safe mode enabled")
+            return false
+        }
         // Try 1: standard ACTION_SET_TEXT on the focused/editable node.
         // Works for all normal Android EditTexts including WeChat/Douyin/Xhs
         // chat inputs and supports Unicode (Chinese/emoji/etc.).
@@ -274,16 +319,28 @@ class OpenAgentAccessibilityService : AccessibilityService() {
 
     fun pressBack(): Boolean {
         if (!serviceConnected) return false
+        if (safeModeEnabled) {
+            Log.w(TAG, "pressBack blocked: safe mode enabled")
+            return false
+        }
         performGlobalAction(GLOBAL_ACTION_BACK)
         return true
     }
     fun pressHome(): Boolean {
         if (!serviceConnected) return false
+        if (safeModeEnabled) {
+            Log.w(TAG, "pressHome blocked: safe mode enabled")
+            return false
+        }
         performGlobalAction(GLOBAL_ACTION_HOME)
         return true
     }
     fun pressRecent(): Boolean {
         if (!serviceConnected) return false
+        if (safeModeEnabled) {
+            Log.w(TAG, "pressRecent blocked: safe mode enabled")
+            return false
+        }
         performGlobalAction(GLOBAL_ACTION_RECENTS)
         return true
     }

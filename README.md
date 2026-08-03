@@ -22,8 +22,9 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - **隐私优先**：无网络请求，对话内容永不上传
 - **跨平台**：一套 Flutter 代码同时支持 Android 与 iOS
 - **多模态**：文本对话 + 图像理解 + 语音输入（Qwen2.5-Omni）
-- **Agent 模式**：ReAct 循环 + 130+ 工具，可自主操控手机
+- **Agent 模式**：ReAct 循环 + 170+ 工具，可自主操控手机
 - **Android RPA 自动化**：三层权限体系，替代人工操作手机
+- **保活与隐藏**：前台服务保活 + 安全模式 + Shizuku 隐藏特征 + 防检测弹窗策略
 - **云端 LLM 接入（可选）**：支持 OpenAI / Anthropic / 通义千问 / 豆包 / Groq / Ollama 等
 - **MCP 协议支持**：HTTP + Stdio 双传输，可连接任意 MCP server
 - **Skill 模块化系统**：内置 8+ 模块 + JSON 运行时注册
@@ -61,7 +62,7 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 | **L2** | 精准坐标操作、系统级命令、截图 | Shizuku Shell（无 SDK 依赖） |
 | **L3** | 预留（Root 设备） | — |
 
-**~90 个自动化工具**，覆盖全场景：
+**170+ 个自动化工具**，覆盖全场景：
 
 - **原子操作**：点击文字/坐标/ID、滑动、输入、按键、截图、UI Dump、长按、手势、剪贴板
 - **社交 App 宏**：微信发消息/群发/扫码/朋友圈点赞/发图/文字朋友圈，抖音点赞/评论/关注/搜索/发作品/批量滑屏，小红书搜索/点赞/关注/发帖/私信，B站搜索/发弹幕
@@ -74,8 +75,10 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - **通知监听**：实时监听通知，200 条环形缓存
 - **录制回放**：录制操作序列（screenrecord + 触摸事件），保存/重放
 - **权限管理**：AppOps 细粒度权限 get/set，运行时权限申请引导，全景权限自检
-- **防检测**：检查当前前台 App 是否高风险、安全模式、银行/支付列表
-- **设备安全**：应用保活（省电白名单 + 前台服务）、Shizuku 隐藏、虚拟定位
+- **防检测**：检查当前前台 App 是否高风险、安全模式（Kotlin 端实际手势拦截）、32+ 银行/支付/安全 App 名单
+- **保活**：系统省电白名单 + 前台服务（OpenAgentForegroundService，START_STICKY 自动重启）
+- **隐藏**：Shizuku 隐藏图标/进程 + 禁用无障碍服务 + 安全模式联动
+- **虚拟定位**：Mock GPS 设置/清除/状态检查
 - **VLM 增强**：屏幕变化检测、截图指纹哈希、区域裁剪分析
 
 ### 4. 云端 LLM 接入
@@ -227,13 +230,30 @@ openagent/
 │   │   ├── automation/                 # 权限引导页
 │   │   └── settings/                   # 设置页
 │   └── agent/
-│       ├── agent_runtime.dart          # ReAct 循环
-│       ├── android_tools.dart          # ~90 个 Android 工具
-│       ├── builtin_tools.dart          # ~40 个内置工具
+│       ├── agent_runtime.dart          # ReAct 循环 + ToolResult/ToolErrorCode
+│       ├── agent_prompt.dart           # System Prompt 模板（外置）
 │       ├── agent_memory.dart           # KV 长期记忆
+│       ├── android_tools.dart          # 入口（工厂函数）
+│       ├── android_tools/              # 6 个子模块，按场景拆分
+│       │   ├── android_tools_base.dart
+│       │   ├── android_tools_compose.dart
+│       │   ├── android_tools_system.dart
+│       │   ├── android_tools_permission.dart
+│       │   ├── android_tools_advanced.dart
+│       │   └── android_tools_phone_manager.dart
+│       ├── builtin_tools.dart          # 入口（工厂函数）
+│       ├── builtin_tools/              # 3 个子模块，按类别拆分
+│       │   ├── builtin_math_time.dart
+│       │   ├── builtin_data_utils.dart
+│       │   └── builtin_assistant.dart
 │       ├── mcp/                        # MCP 协议层
 │       └── skills/                     # Skill 系统
 ├── android/.../automation/             # Android 原生自动化层
+│   ├── OpenAgentAccessibilityService    # 无障碍服务（含安全模式手势拦截）
+│   ├── OpenAgentNotificationListener    # 通知监听服务
+│   ├── OpenAgentForegroundService       # 前台服务（保活，START_STICKY）
+│   ├── AutomationChannel               # MethodChannel 桥接
+│   └── ShizukuShell                     # Shizuku 反射 shell
 ├── packages/mnn_llm/                   # FFI 插件
 │   ├── lib/src/                        # Dart Session + FFI 绑定
 │   ├── src/                            # C API wrapper

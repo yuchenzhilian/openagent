@@ -398,6 +398,21 @@ class AutomationChannel(private val context: Context) {
                     sb.toString()
                 }
 
+                // ---- Safe mode (anti-detection) ----
+                "android_set_safe_mode" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: true
+                    val prefs = context.getSharedPreferences("openagent_safe_mode", Context.MODE_PRIVATE)
+                    prefs.edit().putBoolean("safe_mode_enabled", enabled).apply()
+                    // 同步通知给无障碍服务
+                    OpenAgentAccessibilityService.setSafeMode(enabled)
+                    enabled
+                }
+
+                "android_is_safe_mode" -> {
+                    val prefs = context.getSharedPreferences("openagent_safe_mode", Context.MODE_PRIVATE)
+                    prefs.getBoolean("safe_mode_enabled", false)
+                }
+
                 // ---- H16: Runtime permission checking + requesting ----
                 "android_check_permissions" -> {
                     val raw = call.argument<List<String>>("permissions").orEmpty()

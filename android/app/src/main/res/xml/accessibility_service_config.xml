@@ -7,6 +7,8 @@
     need to automate, rather than "*" (all packages). This prevents banking
     apps, payment apps, and other security-sensitive apps from detecting that
     OpenAgent's accessibility service is running when they are in the foreground.
+  - 支付类 App（支付宝/淘宝/京东）和银行类 App 不在 packageNames 列表中，
+    因此当这些高风险 App 在前台时，无障碍服务不会触发事件，降低被检测风险。
   - To add more target packages, append them to the packageNames list below.
   - The service is still manually enabled by the user via Settings → Accessibility.
 -->
@@ -24,6 +26,7 @@
     android:canRetrieveWindowContent="true"
     android:description="@string/openagent_accessibility_description"
     android:notificationTimeout="50"
-    android:packageNames="com.tencent.mm,com.ss.android.ugc.aweme,com.xingin.xhs,tv.danmaku.bili,com.tencent.mobileqq,com.sina.weibo,com.eg.android.AlipayGphone,com.taobao.taobao,com.jingdong.app.mall,com.android.settings,com.android.dialer,com.android.mms,com.android.contacts,com.android.camera2,com.android.vending,com.netease.mc.pe,com.hypergryph.arknights" />
-    <!-- packageNames is a curated list of target apps. This prevents sensitive
-         apps (banking, payment, etc.) from detecting the accessibility service. -->
+    android:packageNames="com.tencent.mm,com.ss.android.ugc.aweme,com.xingin.xhs,tv.danmaku.bili,com.tencent.mobileqq,com.sina.weibo,com.android.settings,com.android.dialer,com.android.mms,com.android.contacts,com.android.camera2,com.android.vending,com.netease.mc.pe,com.hypergryph.arknights" />
+    <!-- packageNames 仅包含社交/工具/游戏类 App，不包含支付/银行类 App
+         （支付宝/淘宝/京东/银行 App 不在名单中，避免被检测到无障碍服务）
+         防检测策略：安全模式（android_anti_detection_safe_mode）负责高风险场景。 -->
