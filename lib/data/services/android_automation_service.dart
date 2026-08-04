@@ -35,22 +35,10 @@ class AndroidAutomationService {
     }
     return null;
   }
-}
-
-/// 权限类型枚举，用于统一权限检查入口。
-enum PermissionKind {
-  accessibility,   // 无障碍服务
-  shizuku,         // Shizuku 授权
-  notification,    // 通知监听
-  usageStats,      // 使用统计权限
-  writeSecure,     // WRITE_SECURE_SETTINGS
-  dump,            // DUMP 权限
-}
 
   /// 统一权限检查入口：检查指定权限是否已授予，未授予时自动尝试授权。
   /// 返回 (isGranted, message)。
   Future<({bool granted, String message})> ensurePermission(PermissionKind kind) async {
-    if (!isSupported) return (granted: false, message: '非 Android 平台');
     final status = await refreshStatus();
     switch (kind) {
       case PermissionKind.accessibility:
@@ -1406,6 +1394,16 @@ enum PermissionKind {
         AndroidKey.enter => 66,
         AndroidKey.delete => 67,
       };
+}
+
+/// 权限类型枚举，用于统一权限检查入口。
+enum PermissionKind {
+  accessibility,   // 无障碍服务
+  shizuku,         // Shizuku 授权
+  notification,    // 通知监听
+  usageStats,      // 使用统计权限
+  writeSecure,     // WRITE_SECURE_SETTINGS
+  dump,            // DUMP 权限
 }
 
 enum AndroidKey {
