@@ -204,9 +204,9 @@ class CloudModelConfig {
 
   factory CloudModelConfig.fromJson(Map<String, dynamic> j) => CloudModelConfig(
         provider: j['provider'] as String? ?? 'openai',
-        baseUrl: j['base_url'] as String? ?? '',
+        baseUrl: j['base_url'] as String? ?? 'https://api.openai.com/v1',
         apiKey: j['api_key'] as String? ?? '',
-        model: j['model'] as String? ?? '',
+        model: j['model'] as String? ?? 'gpt-4o',
         systemPrompt: j['system_prompt'] as String? ?? '',
         temperature: (j['temperature'] as num?)?.toDouble() ?? 0.7,
         maxTokens: (j['max_tokens'] as num?)?.toInt() ?? 2048,

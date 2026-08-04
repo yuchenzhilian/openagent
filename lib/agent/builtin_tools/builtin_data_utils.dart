@@ -376,7 +376,7 @@ Tool encodeDecodeTool() => Tool(
 /// MD5 is implemented inline. For other algorithms (e.g. bcrypt) the
 /// model should call out to a tool/HTTP service.
 Tool hashTool() => Tool(
-      name: 'hash_text',
+      name: 'hash',
       description: '计算文本的哈希值。支持 md5 / sha1 / sha256 / sha512。',
       schema: {
         'type': 'object',
@@ -619,7 +619,7 @@ int _leftRotate(int x, int n) => ((x << n) | (x >> (32 - n))) & 0xffffffff;
 /// add `crypto: ^3.0.3` to pubspec.yaml.
 String _shaHex(String input, int bits) {
   return 'sha$bits 计算需要 `crypto` 包（请在 pubspec.yaml 中添加 `crypto: ^3.0.3` 并 import package:crypto/crypto.dart）。'
-      '\n\n临时替代方案：用 hash_text 选 md5 也能得到文本指纹；或让 Agent 调用 web_search 查「在线 sha256 计算」找到 HTTP API。';
+      '\n\n临时替代方案：用 hash 选 md5 也能得到文本指纹；或让 Agent 调用 web_search 查「在线 sha256 计算」找到 HTTP API。';
 }
 
 /// Advanced text statistics: word count, sentence count, paragraph count,
@@ -676,7 +676,7 @@ Tool textStatsAdvancedTool() => Tool(
 
 /// Convert between CSV and JSON.
 Tool csvJsonTool() => Tool(
-      name: 'csv_json_convert',
+      name: 'csv_json',
       description: 'CSV 与 JSON 互转。支持自定义分隔符、表头。',
       schema: {
         'type': 'object',

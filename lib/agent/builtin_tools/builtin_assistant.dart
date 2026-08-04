@@ -349,7 +349,7 @@ Tool randomNumberTool() => Tool(
 
 /// Generates UUID v4.
 Tool uuidGeneratorTool() => Tool(
-      name: 'uuid_generator',
+      name: 'uuid',
       description: '生成一个 UUID v4（通用唯一标识符）。',
       schema: {'type': 'object', 'properties': {}},
       handler: (args) async {
