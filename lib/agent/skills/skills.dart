@@ -26,7 +26,6 @@ import 'dart:convert';
 import '../agent_constants.dart';
 import '../agent_runtime.dart';
 import '../android_tools.dart';
-import '../android_tools/android_tools_advanced.dart' show AgentMemoryBackend;
 import '../builtin_tools.dart';
 import '../data/services/android_automation_service.dart';
 import '../mcp/mcp_client.dart';

@@ -35,16 +35,17 @@ class AndroidAutomationService {
     }
     return null;
   }
+}
 
-  /// 权限类型枚举，用于统一权限检查入口。
-  enum PermissionKind {
-    accessibility,   // 无障碍服务
-    shizuku,         // Shizuku 授权
-    notification,    // 通知监听
-    usageStats,      // 使用统计权限
-    writeSecure,     // WRITE_SECURE_SETTINGS
-    dump,            // DUMP 权限
-  }
+/// 权限类型枚举，用于统一权限检查入口。
+enum PermissionKind {
+  accessibility,   // 无障碍服务
+  shizuku,         // Shizuku 授权
+  notification,    // 通知监听
+  usageStats,      // 使用统计权限
+  writeSecure,     // WRITE_SECURE_SETTINGS
+  dump,            // DUMP 权限
+}
 
   /// 统一权限检查入口：检查指定权限是否已授予，未授予时自动尝试授权。
   /// 返回 (isGranted, message)。
@@ -67,7 +68,7 @@ class AndroidAutomationService {
         final ok = r.stdout.contains('shizuku');
         return (granted: ok, message: ok ? 'Shizuku 运行中' : 'Shizuku 未运行，请先启动 Shizuku');
       case PermissionKind.notification:
-        if (status.notificationListenerEnabled) return (granted: true, message: '通知监听已启用');
+        if (status.notificationListenerGranted) return (granted: true, message: '通知监听已启用');
         await gshell(
             'settings put secure enabled_notification_listeners '
             'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
@@ -76,7 +77,7 @@ class AndroidAutomationService {
             'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
         invalidatePermissionCache();
         final refreshed = await refreshStatus();
-        return (granted: refreshed.notificationListenerEnabled, message: refreshed.notificationListenerEnabled ? '通知监听已启用' : '无法自动启用通知监听');
+        return (granted: refreshed.notificationListenerGranted, message: refreshed.notificationListenerGranted ? '通知监听已启用' : '无法自动启用通知监听');
       case PermissionKind.usageStats:
         return (granted: status.usageStatsGranted, message: status.usageStatsGranted ? '使用统计权限已授予' : '未授予使用统计权限');
       case PermissionKind.writeSecure:
@@ -86,6 +87,7 @@ class AndroidAutomationService {
         final r = await gshell('pm grant com.openagent.openagent android.permission.DUMP 2>/dev/null');
         return (granted: r.ok, message: r.ok ? 'DUMP 权限已授予' : '未授予 DUMP 权限（需要 Shizuku/Root）');
     }
+    return (granted: false, message: '未知权限类型');
   }
 
   /// Throws on non-Android platforms (which is expected — callers should gate

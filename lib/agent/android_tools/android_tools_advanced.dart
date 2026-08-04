@@ -1163,7 +1163,7 @@ Tool _visionAnalyzeRegionTool(
         final res = await s.screenResolution();
         final w = (res?[0] ?? 1080).toDouble();
         final h = (res?[1] ?? 2400).toDouble();
-        double toPx(num v, double max) => v < 1 ? v * max : v;
+        double toPx(num v, double max) => v < 1 ? v * max : v.toDouble();
         final x = toPx((args['x'] as num?)?.toDouble() ?? 0, w);
         final y = toPx((args['y'] as num?)?.toDouble() ?? 0, h);
         final rw = toPx((args['width'] as num?)?.toDouble() ?? w, w);

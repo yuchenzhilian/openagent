@@ -50,7 +50,7 @@ void main() {
       final longStr = 'a' * 1000;
       final cases = [
         ['<tool_call>', '{"name":"t","arguments":{}}', '</tool_call>'],
-        ['<tool_call>', '{"name":"t","arguments":{"k":"v@#$%"}}', '</tool_call>'],
+        ['<tool_call>', '{"name":"t","arguments":{"k":"v@#\$%"}}', '</tool_call>'],
         ['<tool_call>', '{"name":"t","arguments":{"k":"$longStr"}}', '</tool_call>'],
       ];
       for (final input in cases) {

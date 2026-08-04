@@ -4,6 +4,7 @@
 // enabled / disabled. We never toggle skills from UI code or first-launch
 // logic — all skill lifecycle decisions are taken by the LLM model through
 // these tools, aligned with "don't interfere with model judgment".
+import '../agent_constants.dart';
 import '../agent_runtime.dart';
 import 'skills.dart';
 

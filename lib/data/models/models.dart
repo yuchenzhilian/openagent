@@ -240,8 +240,8 @@ class ModelInfo {
         id: j['id'] as String? ?? '',
         name: j['name'] as String? ?? '',
         description: j['description'] as String? ?? '',
-        sizeMb: j['size_mb'] != null ? (j['size_mb'] as num?)?.toInt() : null,
-        ramMb: j['ram_mb'] != null ? (j['ram_mb'] as num?)?.toInt() : null,
+        sizeMb: (j['size_mb'] as num?)?.toInt(),
+        ramMb: (j['ram_mb'] as num?)?.toInt(),
         quant: j['quant'] as String? ?? 'Q4',
         type: (j['type'] as String?) == 'omni'
             ? ModelType.omni
