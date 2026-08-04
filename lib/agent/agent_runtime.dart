@@ -25,10 +25,9 @@ import 'package:path_provider/path_provider.dart';
 import 'agent_constants.dart';
 import 'agent_prompt.dart';
 import 'constraint_decoder.dart';
-import 'data/services/device_monitor_service.dart';
+import 'package:openagent/data/services/device_monitor_service.dart';
 import 'inference_scheduler.dart';
 import 'intent_classifier.dart';
-import 'kv_cache/h2o_strategy.dart';
 import 'kv_cache/sliding_window.dart';
 import 'tool_validator.dart';
 
@@ -187,7 +186,6 @@ abstract class AgentRuntime {
 ///   3. If no tool call is found, the response is the final answer.
 class LocalMnnAgentRuntime implements AgentRuntime {
   LocalMnnAgentRuntime(this._session, {this.maxSteps = 5, this.androidMode = false}) {
-    _h2o = H2OStrategy();
     _slidingWindow = SlidingWindowCache();
     _scheduler = InferenceScheduler(monitor: DeviceMonitorService());
     _scheduler.start();
@@ -202,7 +200,6 @@ class LocalMnnAgentRuntime implements AgentRuntime {
   int _consecutivePermissionErrors = 0;
 
   // KV Cache management.
-  late final H2OStrategy _h2o;
   late final SlidingWindowCache _slidingWindow;
 
   // Adaptive inference scheduling.

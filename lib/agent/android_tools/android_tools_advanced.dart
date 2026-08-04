@@ -340,7 +340,7 @@ Tool _fileTool(AndroidAutomationService s) => Tool(
             final ok = await s.fileWrite(path, content, append: op == 'append');
             return ok
                 ? ToolResult.ok('${op == 'append' ? '追加写入' : '写入'} $path 成功 (${content.length} 字)')
-                : ToolResult.error('写入失败');
+                : const ToolResult.error('写入失败');
           case 'list':
             final list = await s.fileListDir(path);
             return list.isEmpty
@@ -350,7 +350,7 @@ Tool _fileTool(AndroidAutomationService s) => Tool(
             final ok = await s.fileDelete(path);
             return ok
                 ? ToolResult.ok('已删除: $path')
-                : ToolResult.error('删除失败');
+                : const ToolResult.error('删除失败');
           case 'exists':
             final ok = await s.fileExists(path);
             return ToolResult.ok(ok ? '$path 存在' : '$path 不存在');
@@ -678,8 +678,8 @@ Tool buildExecutePlanTool(
           }
 
           final rawArgs = step['args'];
-          final Map<String, dynamic> resolvedArgs = rawArgs is Map
-              ? (rawArgs as Map).map<dynamic, dynamic>((k, v) => MapEntry(k is String ? k : k.toString(), applyTpl(v)))
+          final Map<String, dynamic> resolvedArgs = rawArgs is Map<String, dynamic>
+              ? (rawArgs).map((k, v) => MapEntry(k, applyTpl(v)))
               : <String, dynamic>{};
           // 执行
           try {

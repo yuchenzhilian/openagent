@@ -3,7 +3,7 @@ class McpCapability {
   final Set<String> allowedTools, allowedResources;
   final bool allowNetworkAccess, allowFileSystemAccess;
   final Duration maxExecutionTime; final int maxConcurrentCalls;
-  const McpCapability({this.allowedTools = const {}, this.allowedResources = const {}, this.allowNetworkAccess = false, this.allowFileSystemAccess = false, this.maxExecutionTime = Duration(seconds: 30), this.maxConcurrentCalls = 1});
+  const McpCapability({this.allowedTools = const {}, this.allowedResources = const {}, this.allowNetworkAccess = false, this.allowFileSystemAccess = false, this.maxExecutionTime = const Duration(seconds: 30), this.maxConcurrentCalls = 1});
   bool allowsTool(String toolName) => allowedTools.isEmpty || allowedTools.contains(toolName);
   bool allowsResource(String resourceUri) => allowedResources.isEmpty || allowedResources.contains(resourceUri);
   McpCapability merge(McpCapability other) => McpCapability(allowedTools: {...allowedTools, ...other.allowedTools}, allowedResources: {...allowedResources, ...other.allowedResources}, allowNetworkAccess: allowNetworkAccess || other.allowNetworkAccess, allowFileSystemAccess: allowFileSystemAccess || other.allowFileSystemAccess, maxExecutionTime: maxExecutionTime > other.maxExecutionTime ? maxExecutionTime : other.maxExecutionTime, maxConcurrentCalls: maxConcurrentCalls > other.maxConcurrentCalls ? maxConcurrentCalls : other.maxConcurrentCalls);

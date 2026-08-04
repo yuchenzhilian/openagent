@@ -1136,6 +1136,7 @@ class AndroidAutomationService {
       } catch (_) {
         // 非关键信息，忽略
       }
+    }
     return sb.toString();
   }
 

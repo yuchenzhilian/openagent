@@ -1,3 +1,5 @@
+// ignore_for_file: dangling_library_doc_comments
+
 /// Memory compression and archiving (hot/warm/cold tiering).
 import 'dart:convert';
 import 'dart:io';
@@ -21,20 +23,21 @@ class MemoryCompressor {
 
   Future<String?> get(String key) async {
     if (_hotCache.containsKey(key)) return _hotCache[key];
-    if (_warmIndex.containsKey(key)) { final value = await _decompress(key); if (value != null) { _hotCache[key] = value; return value; } }
+    if (_warmIndex.containsKey(key)) {
+      final value = await _decompress(key);
+      if (value != null) {
+        _hotCache[key] = value;
+        return value;
+      }
+    }
     return null;
   }
 
   Future<void> delete(String key) async {
-    _hotCache.remove(key); _warmIndex.remove(key);
-    final f1 = File('${_archiveDir.path}/warm_$key.gz'); if (await f1.exists()) await f1.delete();
-  }
-
-  Future<void> _compressToWarm(String key, String value) async {
-    final file = File('${_archiveDir.path}/warm_$key.gz');
-    await file.writeAsString(value);
-    _warmIndex[key] = file.path;
     _hotCache.remove(key);
+    _warmIndex.remove(key);
+    final f1 = File('${_archiveDir.path}/warm_$key.gz');
+    if (await f1.exists()) await f1.delete();
   }
 
   Future<String?> _decompress(String key) async {
@@ -44,8 +47,18 @@ class MemoryCompressor {
   }
 
   MemoryStats stats() {
-    int hotSize = 0; for (final v in _hotCache.values) hotSize += utf8.encode(v).length;
-    return MemoryStats(hotCount: _hotCache.length, warmCount: _warmIndex.length, coldCount: 0, totalHotSizeBytes: hotSize, totalWarmSizeBytes: _warmIndex.length * 100, totalColdSizeBytes: 0);
+    int hotSize = 0;
+    for (final v in _hotCache.values) {
+      hotSize += utf8.encode(v).length;
+    }
+    return MemoryStats(
+      hotCount: _hotCache.length,
+      warmCount: _warmIndex.length,
+      coldCount: 0,
+      totalHotSizeBytes: hotSize,
+      totalWarmSizeBytes: _warmIndex.length * 100,
+      totalColdSizeBytes: 0,
+    );
   }
 
   Future<void> clear() async { _hotCache.clear(); _warmIndex.clear(); }

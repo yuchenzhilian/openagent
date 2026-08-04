@@ -7,8 +7,10 @@
 ///
 /// Priority: P0 (part of System-Level Optimization).
 
-import '../../agent/agent_runtime.dart' show ToolResult;
-import 'device_monitor_service.dart';
+import 'dart:async';
+
+import 'agent_runtime.dart' show ToolResult;
+import '../data/services/device_monitor_service.dart';
 
 /// Inference profile describing the operating parameters for a given device
 /// state.
@@ -26,7 +28,7 @@ class InferenceProfile {
     this.maxSteps = 20,
     this.enableVlm = true,
     this.enableWebSearch = true,
-    this.idleTimeout = Duration(minutes: 5),
+    this.idleTimeout = const Duration(minutes: 5),
   });
 
   /// High-performance profile — charging, cool device.
@@ -82,7 +84,7 @@ class InferenceScheduler {
 
   final DeviceMonitorService _monitor;
   InferenceProfile _currentProfile = InferenceProfile.normal;
-  List<ProfileChangeCallback> _onProfileChange = [];
+  final List<ProfileChangeCallback> _onProfileChange = [];
 
   /// Current active profile.
   InferenceProfile get currentProfile => _currentProfile;

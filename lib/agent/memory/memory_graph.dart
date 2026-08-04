@@ -1,3 +1,5 @@
+// ignore_for_file: dangling_library_doc_comments
+
 /// Cross-session memory graph.
 import 'dart:convert';
 import 'dart:io';
@@ -28,6 +30,8 @@ class MemoryEdge {
 }
 
 class MemoryGraph {
+  MemoryGraph();
+
   final Map<String, MemoryNode> _nodes = {};
   final List<MemoryEdge> _edges = [];
 

@@ -1,3 +1,5 @@
+// ignore_for_file: dangling_library_doc_comments
+
 /// Lightweight intent classifier for agent routing.
 ///
 /// Uses keyword + regex rules (no ML model) to classify user intent into
@@ -116,7 +118,7 @@ class IntentClassifier {
     // Detect patterns like: "2+2", "3*5", "sqrt(16)", "what is 2+2"
     final mathPatterns = [
       RegExp(r'^[\d\s+\-*/().%^,]+$'),           // pure math expression
-      RegExp(r'(calculate|compute|solve|what is|what\'s)\s+\d'),
+      RegExp(r'(calculate|compute|solve|what is|whats)\s+\d'),
       RegExp(r'\d+\s*[\+\-\*/]\s*\d+'),           // arithmetic operators
       RegExp(r'(sqrt|pow|abs|sin|cos|tan|log)\(.*\)'),
     ];
@@ -168,14 +170,14 @@ class IntentClassifier {
 
   /// Check if the input is a complex multi-step task.
   bool _isComplexTask(String input) {
-    final complexPatterns = [
-      RegExp(r'(plan|步骤|第一步|首先|然后|接着)'),
-      RegExp(r'(compare|对比|分析|analyze|evaluate|评估)'),
-      RegExp(r'(create|build|make|写|编写|生成|generate)'),
-      RegExp(r'(多个|一系列|several|multiple|list of)'),
+    final complexPatterns = <bool>[
+      RegExp(r'(plan|步骤|第一步|首先|然后|接着)').hasMatch(input),
+      RegExp(r'(compare|对比|分析|analyze|evaluate|评估)').hasMatch(input),
+      RegExp(r'(create|build|make|写|编写|生成|generate)').hasMatch(input),
+      RegExp(r'(多个|一系列|several|multiple|list of)').hasMatch(input),
       // Long input likely needs complex processing.
       input.length > 200,
     ];
-    return complexPatterns.any((p) => p is RegExp ? p.hasMatch(input) : p);
+    return complexPatterns.any((p) => p);
   }
 }

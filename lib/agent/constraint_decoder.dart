@@ -7,7 +7,7 @@
 ///
 /// Usage:
 /// ```dart
-/// final decoder = ConstraintDecoder(toolSchemas: toolSchemas);
+/// final decoder = ConstraintDecoder();
 /// final stream = _session.chatStream(prompt).transform(decoder);
 /// ```
 ///
@@ -17,9 +17,10 @@
 ///   keys are allowed.  The decoder enters this mode as soon as `<tool_call>`
 ///   is detected in the output buffer and exits when `</tool_call>` is closed.
 
+import 'dart:async';
 import 'dart:convert';
 
-import 'agent_runtime.dart' show ToolSchema, kToolCallOpen, kToolCallClose;
+import 'agent_constants.dart';
 
 /// Allowed characters in constrained mode.
 const _kJsonAllowedChars = '{}[]",:abcdefghijklmnopqrstuvwxyz'
@@ -31,10 +32,7 @@ enum _DecoderMode { free, constrained }
 /// A transformer that constrains LLM token output to ensure valid JSON
 /// inside tool-call blocks.
 class ConstraintDecoder extends StreamTransformerBase<String, String> {
-  ConstraintDecoder({Map<String, ToolSchema>? toolSchemas})
-      : _toolSchemas = toolSchemas ?? {};
-
-  final Map<String, ToolSchema> _toolSchemas;
+  ConstraintDecoder();
 
   @override
   Stream<String> bind(Stream<String> stream) {

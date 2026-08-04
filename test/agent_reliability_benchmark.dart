@@ -5,10 +5,11 @@ import 'package:openagent/agent/constraint_decoder.dart';
 import 'package:openagent/agent/intent_classifier.dart';
 import 'package:openagent/agent/tool_validator.dart';
 import 'package:openagent/agent/agent_runtime.dart';
+import 'package:openagent/agent/agent_constants.dart';
 import 'dart:async';
 import 'dart:convert';
 
-Future<String> _runDecoder(StreamTransformer<String, String> decoder, List<String> chunks) async {
+Future<String> _runDecoder(StreamTransformerBase<String, String> decoder, List<String> chunks) async {
   final controller = StreamController<String>();
   final stream = controller.stream.transform(decoder);
   final result = StringBuffer();
@@ -46,10 +47,11 @@ void main() {
     });
 
     test('edge cases - empty args, special chars, long values', () async {
+      final longStr = 'a' * 1000;
       final cases = [
         ['<tool_call>', '{"name":"t","arguments":{}}', '</tool_call>'],
         ['<tool_call>', '{"name":"t","arguments":{"k":"v@#$%"}}', '</tool_call>'],
-        ['<tool_call>', '{"name":"t","arguments":{"k":"${"a" * 1000}"}}', '</tool_call>'],
+        ['<tool_call>', '{"name":"t","arguments":{"k":"$longStr"}}', '</tool_call>'],
       ];
       for (final input in cases) {
         final output = await _runDecoder(ConstraintDecoder(), input);
@@ -106,7 +108,7 @@ void main() {
 
   group('ToolValidator Schema Validation', () {
     final validator = ToolValidator();
-    Tool makeTool(Map schema) => Tool(name: 'test', description: 'test', schema: schema, handler: (_) async => ToolResult.ok('ok'));
+    Tool makeTool(Map<String, dynamic> schema) => Tool(name: 'test', description: 'test', schema: schema, handler: (_) async => const ToolResult.ok('ok'));
 
     test('required field detection', () {
       final tool = makeTool({'type': 'object', 'properties': {
@@ -131,7 +133,7 @@ void main() {
 
     test('error recovery - invalid argument returns proper error', () {
       final result = validator.toErrorResult(
-        ValidationResult(isValid: false, errorMessage: '参数 "name" 应为字符串'),
+        const ValidationResult(isValid: false, errorMessage: '参数 "name" 应为字符串'),
       );
       expect(result.isError, isTrue);
       expect(result.output, contains('name'));

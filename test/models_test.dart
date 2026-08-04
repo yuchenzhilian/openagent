@@ -62,29 +62,49 @@ void main() {
 
   group('ChatSession', () {
     test('creates with default values', () {
-      final session = ChatSession();
-      expect(session.id, isNotEmpty);
+      final session = ChatSession(
+        id: 'test-id',
+        title: '',
+        messages: [],
+        createdAt: DateTime(2024, 1, 1),
+      );
+      expect(session.id, 'test-id');
       expect(session.title, isEmpty);
       expect(session.messages, isEmpty);
       expect(session.modelId, isNull);
     });
 
     test('addMessage appends correctly', () {
-      final session = ChatSession();
+      final session = ChatSession(
+        id: 'test-id',
+        title: '',
+        messages: [],
+        createdAt: DateTime(2024, 1, 1),
+      );
       session.addMessage(ChatMessage(role: MessageRole.user, content: 'hi'));
       expect(session.messages.length, 1);
       expect(session.messages.first.content, 'hi');
     });
 
     test('reset clears messages', () {
-      final session = ChatSession();
+      final session = ChatSession(
+        id: 'test-id',
+        title: '',
+        messages: [],
+        createdAt: DateTime(2024, 1, 1),
+      );
       session.addMessage(ChatMessage(role: MessageRole.user, content: 'hi'));
       session.reset();
       expect(session.messages, isEmpty);
     });
 
     test('toJson/fromJson round-trips', () {
-      final session = ChatSession()
+      final session = ChatSession(
+        id: 'test-id',
+        title: '测试',
+        messages: [],
+        createdAt: DateTime(2024, 1, 1),
+      )
         ..addMessage(ChatMessage(role: MessageRole.user, content: '测试'))
         ..addMessage(ChatMessage(role: MessageRole.assistant, content: '回复'));
       final json = session.toJson();
@@ -96,13 +116,23 @@ void main() {
     });
 
     test('toJson with null modelId', () {
-      final session = ChatSession();
+      final session = ChatSession(
+        id: 'test-id',
+        title: '',
+        messages: [],
+        createdAt: DateTime(2024, 1, 1),
+      );
       final json = session.toJson();
       expect(json.containsKey('model_id'), isFalse);
     });
 
     test('copyWith preserves fields', () {
-      final session = ChatSession()..title = 'test';
+      final session = ChatSession(
+        id: 'test-id',
+        title: 'test',
+        messages: [],
+        createdAt: DateTime(2024, 1, 1),
+      );
       final copy = session.copyWith();
       expect(copy.title, 'test');
       expect(copy.id, session.id);
@@ -275,31 +305,37 @@ void main() {
   group('AutomationPermissionStatus', () {
     test('default constructor', () {
       const status = AutomationPermissionStatus();
-      expect(status.accessibilityService, false);
-      expect(status.shizukuService, false);
-      expect(status.rootAccess, false);
-      expect(status.notificationListener, false);
+      expect(status.accessibilityEnabled, false);
+      expect(status.shizukuGranted, false);
+      expect(status.screenshotGranted, false);
+      expect(status.usageStatsGranted, false);
+      expect(status.notificationListenerGranted, false);
+      expect(status.warningDismissed, false);
     });
 
     test('toJson/fromJson round-trip', () {
       const status = AutomationPermissionStatus(
-        accessibilityService: true,
-        shizukuService: false,
-        rootAccess: true,
-        notificationListener: false,
+        accessibilityEnabled: true,
+        shizukuGranted: false,
+        screenshotGranted: true,
+        usageStatsGranted: false,
+        notificationListenerGranted: true,
+        warningDismissed: false,
       );
       final json = status.toJson();
       final restored = AutomationPermissionStatus.fromJson(json);
-      expect(restored.accessibilityService, true);
-      expect(restored.shizukuService, false);
-      expect(restored.rootAccess, true);
-      expect(restored.notificationListener, false);
+      expect(restored.accessibilityEnabled, true);
+      expect(restored.shizukuGranted, false);
+      expect(restored.screenshotGranted, true);
+      expect(restored.usageStatsGranted, false);
+      expect(restored.notificationListenerGranted, true);
+      expect(restored.warningDismissed, false);
     });
 
     test('fromJson handles missing fields', () {
       final status = AutomationPermissionStatus.fromJson({});
-      expect(status.accessibilityService, false);
-      expect(status.shizukuService, false);
+      expect(status.accessibilityEnabled, false);
+      expect(status.shizukuGranted, false);
     });
   });
 }
