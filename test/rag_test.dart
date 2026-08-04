@@ -41,6 +41,6 @@ void main() {
   });
 
   group('KnowledgeCache', () {
-    test('addHot', () async { final c = KnowledgeCache(cacheDir: '/tmp'); await c.initialize(); c.addHot(const CachedDoc(docId: 'd1', fileName: 't.txt', sizeBytes: 100, lastAccessed: DateTime(2024, 1, 1), isHot: true)); expect(c.stats()['hot'], 1); await c.clear(); });
+    test('addHot', () async { final c = KnowledgeCache(cacheDir: '/tmp'); await c.initialize(); c.addHot(CachedDoc(docId: 'd1', fileName: 't.txt', sizeBytes: 100, lastAccessed: DateTime(2024, 1, 1), isHot: true)); expect(c.stats()['hot'], 1); await c.clear(); });
   });
 }
