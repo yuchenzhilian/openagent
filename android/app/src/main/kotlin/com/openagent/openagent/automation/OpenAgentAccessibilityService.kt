@@ -301,16 +301,20 @@ class OpenAgentAccessibilityService : AccessibilityService() {
             focus.recycle()
             if (ok) return true
         }
-        // Try 2: Clipboard + GLOBAL_ACTION_PASTE fallback.
-        // This is the reliable way to type Chinese/Unicode into non-EditText
-        // surfaces (game chat boxes, Flutter/RN custom text inputs, web
-        // canvas inputs, etc.) where ACTION_SET_TEXT silently fails.
+        // Try 2: Clipboard + paste fallback.
+        // Covers Flutter/RN custom text inputs where the underlying EditText
+        // does not accept ACTION_SET_TEXT reliably. We set the clipboard and
+        // then dispatch the node-level ACTION_PASTE on the focused node.
+        // Note: there is no paste *global action* constant in any SDK
+        // (AccessibilityService.GLOBAL_ACTION_PASTE does not exist), so we use
+        // AccessibilityNodeInfo.ACTION_PASTE, available since API 18.
         return try {
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cm.setPrimaryClip(ClipData.newPlainText("openagent_input", text))
-            // GLOBAL_ACTION_PASTE was added in API 24 (Android 7.0); our
-            // dispatchGesture fallback already pins minSdk=24 so this is safe.
-            performGlobalAction(AccessibilityService.GLOBAL_ACTION_PASTE)
+            val node = findFirst(rootInActiveWindow) { it.isFocused || it.isEditable }
+            val ok = node?.performAction(AccessibilityNodeInfo.ACTION_PASTE) ?: false
+            node?.recycle()
+            ok
         } catch (t: Throwable) {
             Log.w(TAG, "clipboard+paste fallback failed", t)
             false

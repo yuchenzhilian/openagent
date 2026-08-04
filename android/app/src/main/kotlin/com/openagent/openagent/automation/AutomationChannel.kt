@@ -27,7 +27,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.util.HashSet
-import kotlin.math.maxOf
+import kotlin.comparisons.maxOf
 
 /**
  * MethodChannel bridge between Dart (Agent runtime) and Android automation
@@ -369,15 +369,15 @@ class AutomationChannel(private val context: Context) {
                                 val n = sbn.notification
                                 val extras: android.os.Bundle? = n.extras
                                 val title = extras?.getCharSequence(android.app.Notification.EXTRA_TITLE)
-                                    ?: extras?.get(android.app.Notification.EXTRA_TITLE_BIG)
+                                    ?: extras?.getCharSequence(android.app.Notification.EXTRA_TITLE_BIG)
                                     ?: ""
                                 val text = extras?.getCharSequence(android.app.Notification.EXTRA_TEXT)
                                     ?: extras?.getCharSequence("android.textLines")
                                         ?.let { if (it is Array<*>) it.joinToString("\n") else it.toString() }
                                     ?: ""
                                 sb.appendLine("[$i] pkg=${sbn.packageName}  time=${android.text.format.DateFormat.format("MM-dd HH:mm:ss", sbn.postTime)}")
-                                if (title.isNotBlank()) sb.appendLine("    title: $title")
-                                if (text.isNotBlank()) sb.appendLine("    text:  $text")
+                                if (title.isNotEmpty()) sb.appendLine("    title: $title")
+                                if (text.isNotEmpty()) sb.appendLine("    text:  $text")
                                 sb.appendLine("    ongoing=${n.flags and android.app.Notification.FLAG_ONGOING_EVENT != 0}  clearable=${sbn.isClearable}  channel=${n.channelId ?: ""}")
                                 sbn.tag?.let { sb.appendLine("    tag=$it") }
                             }
@@ -515,7 +515,7 @@ class AutomationChannel(private val context: Context) {
                     sb.appendLine("Build.VERSION.SECURITY_PATCH = ${if (Build.VERSION.SDK_INT >= 23) Build.VERSION.SECURITY_PATCH else "(SDK<23)"}")
                     sb.appendLine("Build.FINGERPRINT  = ${Build.FINGERPRINT}")
                     sb.appendLine("Build.TYPE         = ${Build.TYPE}")
-                    sb.appendLine("Build.FLAVOR       = ${Build.FLAVOR}")
+                    sb.appendLine("Build.FLAVOR       = (none — no flavors configured)")
                     sb.appendLine("Build.TAGS         = ${Build.TAGS}")
                     sb.appendLine("Build.ID           = ${Build.ID}")
                     sb.appendLine("Build.DISPLAY      = ${Build.DISPLAY}")

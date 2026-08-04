@@ -117,7 +117,7 @@ object ScreenshotManager {
         } finally {
             runCatching { image?.close() }
             runCatching { fos?.close() }
-            runCatching { display.release() }
+            runCatching { display?.release() }
             runCatching { reader.close() }
         }
     }
