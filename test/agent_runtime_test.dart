@@ -2,7 +2,6 @@
 // error detection. These tests verify the core ReAct loop infrastructure
 // without requiring a real LLM session.
 
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:openagent/agent/agent_runtime.dart';
 import 'package:openagent/agent/agent_constants.dart';
@@ -46,7 +45,8 @@ void main() {
       expect(toolError('x', code: ToolErrorCode.permission), contains('🔒'));
       expect(toolError('x', code: ToolErrorCode.notFound), contains('🔍'));
       expect(toolError('x', code: ToolErrorCode.network), contains('🌐'));
-      expect(toolError('x', code: ToolErrorCode.invalidArgument), contains('⚠️'));
+      expect(
+          toolError('x', code: ToolErrorCode.invalidArgument), contains('⚠️'));
       expect(toolError('x', code: ToolErrorCode.unsupported), contains('🚫'));
       expect(toolError('x', code: ToolErrorCode.unknown), contains('❌'));
     });
@@ -153,15 +153,17 @@ void main() {
   group('ToolErrorCode', () {
     test('all enum values are present', () {
       expect(ToolErrorCode.values.length, 7);
-      expect(ToolErrorCode.values, containsAll([
-        ToolErrorCode.timeout,
-        ToolErrorCode.permission,
-        ToolErrorCode.notFound,
-        ToolErrorCode.network,
-        ToolErrorCode.invalidArgument,
-        ToolErrorCode.unsupported,
-        ToolErrorCode.unknown,
-      ]));
+      expect(
+          ToolErrorCode.values,
+          containsAll([
+            ToolErrorCode.timeout,
+            ToolErrorCode.permission,
+            ToolErrorCode.notFound,
+            ToolErrorCode.network,
+            ToolErrorCode.invalidArgument,
+            ToolErrorCode.unsupported,
+            ToolErrorCode.unknown,
+          ]));
     });
   });
 

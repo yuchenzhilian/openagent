@@ -127,7 +127,9 @@ Tool webSearchTool() => Tool(
           final results = <String>[];
           final relatedTopics = decoded['RelatedTopics'] as List? ?? [];
           for (final topic in relatedTopics) {
-            if (topic is Map && topic['Text'] != null && topic['FirstURL'] != null) {
+            if (topic is Map &&
+                topic['Text'] != null &&
+                topic['FirstURL'] != null) {
               final text = topic['Text'].toString();
               final url = topic['FirstURL'].toString();
               results.add('- $text\n  $url');
@@ -167,7 +169,8 @@ Tool webSearchTool() => Tool(
 /// Raw HTML content is returned — use html_to_text to strip tags.
 Tool httpFetchTool() => Tool(
       name: 'http_fetch',
-      description: '获取指定 URL 的内容（支持 HTTP/HTTPS）。返回原始文本内容，如需提取纯文本可用 html_to_text 工具。',
+      description:
+          '获取指定 URL 的内容（支持 HTTP/HTTPS）。返回原始文本内容，如需提取纯文本可用 html_to_text 工具。',
       schema: {
         'type': 'object',
         'properties': {
@@ -206,7 +209,8 @@ Tool httpFetchTool() => Tool(
         final method = (args['method'] as String?)?.toUpperCase() ?? 'GET';
         final headersRaw = args['headers'] as Map<String, dynamic>?;
         final body = (args['body'] as String?)?.trim() ?? '';
-        final timeout = ((args['timeout_sec'] as num?)?.toInt() ?? 15).clamp(5, 60);
+        final timeout =
+            ((args['timeout_sec'] as num?)?.toInt() ?? 15).clamp(5, 60);
 
         try {
           final client = HttpClient();
@@ -225,8 +229,10 @@ Tool httpFetchTool() => Tool(
               request.headers.set(e.key, e.value.toString());
             }
           }
-          request.headers.set('User-Agent', 'Mozilla/5.0 (compatible; OpenAgent/1.0)');
-          final response = await request.close().timeout(Duration(seconds: timeout));
+          request.headers
+              .set('User-Agent', 'Mozilla/5.0 (compatible; OpenAgent/1.0)');
+          final response =
+              await request.close().timeout(Duration(seconds: timeout));
           final content = await response.transform(utf8.decoder).join();
           client.close();
 
@@ -235,7 +241,9 @@ Tool httpFetchTool() => Tool(
           sb.writeln('状态码: ${response.statusCode}');
           sb.writeln('内容长度: ${content.length} 字符');
           sb.writeln('--- 内容开始 ---');
-          sb.writeln(content.length > kContentPreviewMax ? '${content.substring(0, kContentPreviewMax)}\n…(内容过长，截断前 $kContentPreviewMax 字符)' : content);
+          sb.writeln(content.length > kContentPreviewMax
+              ? '${content.substring(0, kContentPreviewMax)}\n…(内容过长，截断前 $kContentPreviewMax 字符)'
+              : content);
           sb.writeln('--- 内容结束 ---');
           return ToolResult.ok(sb.toString());
         } catch (e) {
@@ -266,20 +274,31 @@ Tool htmlToTextTool() => Tool(
         try {
           String text = html;
           // Remove script and style tags and their content.
-          text = text.replaceAll(RegExp(r'<script[^>]*>[\s\S]*?</script>', caseSensitive: false, multiLine: true), '');
-          text = text.replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false, multiLine: true), '');
+          text = text.replaceAll(
+              RegExp(r'<script[^>]*>[\s\S]*?</script>',
+                  caseSensitive: false, multiLine: true),
+              '');
+          text = text.replaceAll(
+              RegExp(r'<style[^>]*>[\s\S]*?</style>',
+                  caseSensitive: false, multiLine: true),
+              '');
           // Remove all HTML tags.
           text = text.replaceAll(RegExp(r'<[^>]+>'), '');
           // Decode common HTML entities.
-          text = text.replaceAll('&nbsp;', ' ').replaceAll('&amp;', '&')
-              .replaceAll('&lt;', '<').replaceAll('&gt;', '>')
-              .replaceAll('&quot;', '"').replaceAll('&#39;', "'");
+          text = text
+              .replaceAll('&nbsp;', ' ')
+              .replaceAll('&amp;', '&')
+              .replaceAll('&lt;', '<')
+              .replaceAll('&gt;', '>')
+              .replaceAll('&quot;', '"')
+              .replaceAll('&#39;', "'");
           // Collapse whitespace.
           text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
           // Split into lines by sentence boundaries.
           text = text.replaceAll(RegExp(r'[。！？\n]'), '\n');
 
-          final lines = text.split('\n')
+          final lines = text
+              .split('\n')
               .map((l) => l.trim())
               .where((l) => l.isNotEmpty)
               .toList();
@@ -320,9 +339,11 @@ Tool randomNumberTool() => Tool(
         final count = ((args['count'] as num?)?.toInt() ?? 1).clamp(1, 50);
         if (min > max) return const ToolResult.error('min 不能大于 max');
         final rng = math.Random();
-        final nums = List.generate(count, (_) => min + rng.nextInt(max - min + 1));
+        final nums =
+            List.generate(count, (_) => min + rng.nextInt(max - min + 1));
         final result = nums.join(', ');
-        return ToolResult.ok(count == 1 ? '随机数: $result' : '随机数 ($count个): $result');
+        return ToolResult.ok(
+            count == 1 ? '随机数: $result' : '随机数 ($count个): $result');
       },
     );
 
@@ -337,7 +358,8 @@ Tool uuidGeneratorTool() => Tool(
         final bytes = List.generate(16, (_) => rng.nextInt(256));
         bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
         bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 1
-        final uuid = '${hex(bytes[0])}${hex(bytes[1])}${hex(bytes[2])}${hex(bytes[3])}-'
+        final uuid =
+            '${hex(bytes[0])}${hex(bytes[1])}${hex(bytes[2])}${hex(bytes[3])}-'
             '${hex(bytes[4])}${hex(bytes[5])}-${hex(bytes[6])}${hex(bytes[7])}-'
             '${hex(bytes[8])}${hex(bytes[9])}-${hex(bytes[10])}${hex(bytes[11])}'
             '${hex(bytes[12])}${hex(bytes[13])}${hex(bytes[14])}${hex(bytes[15])}';
@@ -394,7 +416,8 @@ Tool colorConverterTool() => Tool(
         'properties': {
           'value': {
             'type': 'string',
-            'description': '颜色值，如 "#FF8800"、"rgb(255,136,0)"、"hsl(32,100%,50%)"',
+            'description':
+                '颜色值，如 "#FF8800"、"rgb(255,136,0)"、"hsl(32,100%,50%)"',
           },
           'from': {
             'type': 'string',
@@ -412,8 +435,10 @@ Tool colorConverterTool() => Tool(
         final from = (args['from'] as String?)?.toLowerCase() ?? '';
         final to = (args['to'] as String?)?.toLowerCase() ?? '';
         if (value.isEmpty) return const ToolResult.error('value 不能为空');
-        if (!['hex', 'rgb', 'hsl'].contains(from)) return const ToolResult.error('from 必须是 hex/rgb/hsl');
-        if (!['hex', 'rgb', 'hsl'].contains(to)) return const ToolResult.error('to 必须是 hex/rgb/hsl');
+        if (!['hex', 'rgb', 'hsl'].contains(from))
+          return const ToolResult.error('from 必须是 hex/rgb/hsl');
+        if (!['hex', 'rgb', 'hsl'].contains(to))
+          return const ToolResult.error('to 必须是 hex/rgb/hsl');
         if (from == to) return ToolResult.ok(value);
 
         try {
@@ -433,15 +458,20 @@ Tool colorConverterTool() => Tool(
               return const ToolResult.error('hex 格式无效（需 3 或 6 位）');
             }
           } else if (from == 'rgb') {
-            final m = RegExp(r'(\d+)\s*,\s*(\d+)\s*,\s*(\d+)').firstMatch(value);
-            if (m == null) return const ToolResult.error('rgb 格式无效，需如 rgb(255,136,0)');
+            final m =
+                RegExp(r'(\d+)\s*,\s*(\d+)\s*,\s*(\d+)').firstMatch(value);
+            if (m == null)
+              return const ToolResult.error('rgb 格式无效，需如 rgb(255,136,0)');
             r = int.parse(m.group(1)!).clamp(0, 255);
             g = int.parse(m.group(2)!).clamp(0, 255);
             b = int.parse(m.group(3)!).clamp(0, 255);
           } else {
             // hsl
-            final m = RegExp(r'(\d+(?:\.\d+)?)\s*[,°]\s*(\d+(?:\.\d+)?)%\s*[,]\s*(\d+(?:\.\d+)?)%').firstMatch(value);
-            if (m == null) return const ToolResult.error('hsl 格式无效，需如 hsl(32,100%,50%)');
+            final m = RegExp(
+                    r'(\d+(?:\.\d+)?)\s*[,°]\s*(\d+(?:\.\d+)?)%\s*[,]\s*(\d+(?:\.\d+)?)%')
+                .firstMatch(value);
+            if (m == null)
+              return const ToolResult.error('hsl 格式无效，需如 hsl(32,100%,50%)');
             final h = double.parse(m.group(1)!) % 360;
             final s = double.parse(m.group(2)!).clamp(0, 100);
             final l = double.parse(m.group(3)!).clamp(0, 100);
@@ -450,12 +480,31 @@ Tool colorConverterTool() => Tool(
             final x = c * (1 - ((h / 60) % 2 - 1).abs());
             final m2 = l / 100 - c / 2;
             double r1, g1, b1;
-            if (h < 60) { r1 = c; g1 = x; b1 = 0; }
-            else if (h < 120) { r1 = x; g1 = c; b1 = 0; }
-            else if (h < 180) { r1 = 0; g1 = c; b1 = x; }
-            else if (h < 240) { r1 = 0; g1 = x; b1 = c; }
-            else if (h < 300) { r1 = x; g1 = 0; b1 = c; }
-            else { r1 = c; g1 = 0; b1 = x; }
+            if (h < 60) {
+              r1 = c;
+              g1 = x;
+              b1 = 0;
+            } else if (h < 120) {
+              r1 = x;
+              g1 = c;
+              b1 = 0;
+            } else if (h < 180) {
+              r1 = 0;
+              g1 = c;
+              b1 = x;
+            } else if (h < 240) {
+              r1 = 0;
+              g1 = x;
+              b1 = c;
+            } else if (h < 300) {
+              r1 = x;
+              g1 = 0;
+              b1 = c;
+            } else {
+              r1 = c;
+              g1 = 0;
+              b1 = x;
+            }
             r = ((r1 + m2) * 255).round().clamp(0, 255);
             g = ((g1 + m2) * 255).round().clamp(0, 255);
             b = ((b1 + m2) * 255).round().clamp(0, 255);
@@ -463,7 +512,9 @@ Tool colorConverterTool() => Tool(
 
           // Convert to target.
           if (to == 'hex') {
-            return ToolResult.ok('#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}'.toUpperCase());
+            return ToolResult.ok(
+                '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}'
+                    .toUpperCase());
           } else if (to == 'rgb') {
             return ToolResult.ok('rgb($r, $g, $b)');
           } else {
@@ -472,14 +523,19 @@ Tool colorConverterTool() => Tool(
             final mx = [rN, gN, bN].reduce((a, b) => a > b ? a : b);
             final mn = [rN, gN, bN].reduce((a, b) => a < b ? a : b);
             final l = (mx + mn) / 2;
-            if (mx == mn) return ToolResult.ok('hsl(0, 0%, ${(l * 100).round()}%)');
+            if (mx == mn)
+              return ToolResult.ok('hsl(0, 0%, ${(l * 100).round()}%)');
             final d = mx - mn;
             final s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
             double h;
-            if (mx == rN) h = ((gN - bN) / d + (gN < bN ? 6 : 0)) * 60;
-            else if (mx == gN) h = ((bN - rN) / d + 2) * 60;
-            else h = ((rN - gN) / d + 4) * 60;
-            return ToolResult.ok('hsl(${h.round()}, ${(s * 100).round()}%, ${(l * 100).round()}%)');
+            if (mx == rN)
+              h = ((gN - bN) / d + (gN < bN ? 6 : 0)) * 60;
+            else if (mx == gN)
+              h = ((bN - rN) / d + 2) * 60;
+            else
+              h = ((rN - gN) / d + 4) * 60;
+            return ToolResult.ok(
+                'hsl(${h.round()}, ${(s * 100).round()}%, ${(l * 100).round()}%)');
           }
         } catch (e) {
           return ToolResult.error('颜色转换失败: $e');
@@ -507,7 +563,8 @@ Tool timerTool() => Tool(
       },
       handler: (args) async {
         final action = (args['action'] as String?)?.toLowerCase() ?? '';
-        final secs = ((args['seconds'] as num?)?.toDouble() ?? 3.0).clamp(0.5, 300.0);
+        final secs =
+            ((args['seconds'] as num?)?.toDouble() ?? 3.0).clamp(0.5, 300.0);
         final ms = (secs * 1000).round();
         if (action == 'countdown') {
           for (var i = secs.toInt(); i > 0; i--) {
@@ -543,7 +600,8 @@ Tool weatherTool() => Tool(
         try {
           final client = HttpClient();
           client.connectionTimeout = const Duration(seconds: 10);
-          final uri = Uri.parse('https://wttr.in/${Uri.encodeComponent(city.trim())}?format=%C+%t+%h+%w+%p');
+          final uri = Uri.parse(
+              'https://wttr.in/${Uri.encodeComponent(city.trim())}?format=%C+%t+%h+%w+%p');
           final request = await client.getUrl(uri);
           final response = await request.close();
           final body = await response.transform(utf8.decoder).join();
@@ -579,7 +637,8 @@ Tool ipInfoTool() => Tool(
           Uri uri;
           if (ip.isEmpty) {
             // Get public IP first.
-            final req = await client.getUrl(Uri.parse('https://api.ipify.org?format=json'));
+            final req = await client
+                .getUrl(Uri.parse('https://api.ipify.org?format=json'));
             final res = await req.close();
             final body = await res.transform(utf8.decoder).join();
             final decoded = jsonDecode(body);
@@ -599,8 +658,10 @@ Tool ipInfoTool() => Tool(
           }
           final sb = StringBuffer();
           sb.writeln('IP: ${data['query'] ?? ip}');
-          if (data['country'] != null) sb.writeln('国家: ${data['country']} (${data['countryCode']})');
-          if (data['regionName'] != null) sb.writeln('地区: ${data['regionName']}');
+          if (data['country'] != null)
+            sb.writeln('国家: ${data['country']} (${data['countryCode']})');
+          if (data['regionName'] != null)
+            sb.writeln('地区: ${data['regionName']}');
           if (data['city'] != null) sb.writeln('城市: ${data['city']}');
           if (data['zip'] != null) sb.writeln('邮编: ${data['zip']}');
           if (data['isp'] != null) sb.writeln('运营商: ${data['isp']}');
@@ -659,7 +720,8 @@ Tool textTemplateTool() => Tool(
 /// Analyze screen and make a plan (VLM-based).
 Tool agentAnalyzeAndPlanTool() => Tool(
       name: 'agent_analyze_and_plan',
-      description: '【Agent 自主决策】分析当前屏幕状态+用户目标，制定操作计划。调用此工具前请先确保 android_rpa skill 已启用。',
+      description:
+          '【Agent 自主决策】分析当前屏幕状态+用户目标，制定操作计划。调用此工具前请先确保 android_rpa skill 已启用。',
       schema: {
         'type': 'object',
         'properties': {

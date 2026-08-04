@@ -10,9 +10,8 @@ Tool mockTool(String name, {String output = 'ok', bool isError = false}) {
     name: name,
     description: 'Mock tool: $name',
     schema: {'type': 'object', 'properties': {}},
-    handler: (_) async => isError
-        ? ToolResult.error(output)
-        : ToolResult.ok(output),
+    handler: (_) async =>
+        isError ? ToolResult.error(output) : ToolResult.ok(output),
   );
 }
 
@@ -36,13 +35,15 @@ Future<Directory> createTempDir() async {
 
 /// Asserts that a [ToolResult] is successful with content matching [predicate].
 void expectOk(ToolResult result, Object Function(String output) matcher) {
-  expect(result.isError, isFalse, reason: 'Expected OK but got error: ${result.output}');
+  expect(result.isError, isFalse,
+      reason: 'Expected OK but got error: ${result.output}');
   expect(result.output, matcher);
 }
 
 /// Asserts that a [ToolResult] is an error.
 void expectError(ToolResult result, [Object? matcher]) {
-  expect(result.isError, isTrue, reason: 'Expected error but got: ${result.output}');
+  expect(result.isError, isTrue,
+      reason: 'Expected error but got: ${result.output}');
   if (matcher != null) {
     expect(result.output, matcher);
   }

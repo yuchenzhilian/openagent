@@ -16,7 +16,11 @@ void main() {
         hasNpu: true,
         gpuVendor: GpuVendor.adreno,
         memoryBandwidthGbps: 25,
-        availableBackends: [ComputeBackend.cpu, ComputeBackend.opencl, ComputeBackend.npu],
+        availableBackends: [
+          ComputeBackend.cpu,
+          ComputeBackend.opencl,
+          ComputeBackend.npu
+        ],
       );
       expect(cap.recommendedBackend, ComputeBackend.npu);
     });
@@ -25,20 +29,26 @@ void main() {
       final cap = const DeviceCapability(
         gpuVendor: GpuVendor.adreno,
         memoryBandwidthGbps: 25,
-        availableBackends: [ComputeBackend.cpu, ComputeBackend.opencl, ComputeBackend.vulkan],
+        availableBackends: [
+          ComputeBackend.cpu,
+          ComputeBackend.opencl,
+          ComputeBackend.vulkan
+        ],
       );
       expect(cap.recommendedBackend, ComputeBackend.opencl);
     });
 
     test('supportsOpenCL/Vulkan', () {
-      final cap = const DeviceCapability(availableBackends: [ComputeBackend.cpu, ComputeBackend.opencl]);
+      final cap = const DeviceCapability(
+          availableBackends: [ComputeBackend.cpu, ComputeBackend.opencl]);
       expect(cap.supportsOpenCL, isTrue);
       expect(cap.supportsVulkan, isFalse);
     });
 
     test('setCapability overrides detect', () async {
       final service = DeviceCapabilityService();
-      service.setCapability(const DeviceCapability(gpuVendor: GpuVendor.mali, memoryBandwidthGbps: 12));
+      service.setCapability(const DeviceCapability(
+          gpuVendor: GpuVendor.mali, memoryBandwidthGbps: 12));
       final cap = await service.detect();
       expect(cap.gpuVendor, GpuVendor.mali);
       expect(cap.memoryBandwidthGbps, 12);

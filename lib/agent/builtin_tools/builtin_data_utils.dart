@@ -39,8 +39,7 @@ Set<String> _tokenize(String text) {
   return terms;
 }
 
-bool _isCjk(String s) =>
-    s.codeUnits.every((c) => c >= 0x4e00 && c <= 0x9fff);
+bool _isCjk(String s) => s.codeUnits.every((c) => c >= 0x4e00 && c <= 0x9fff);
 
 class _TextChunk {
   final String source;
@@ -68,10 +67,8 @@ Tool textCounterTool() => Tool(
           return const ToolResult.error('参数 text 必须是字符串');
         }
         final charCount = text.length;
-        final wordCount = text
-            .split(RegExp(r'\s+'))
-            .where((s) => s.isNotEmpty)
-            .length;
+        final wordCount =
+            text.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).length;
         return ToolResult.ok('字符数: $charCount, 词数: $wordCount');
       },
     );
@@ -210,7 +207,8 @@ Tool regexTesterTool() => Tool(
 /// String case conversion.
 Tool stringCaseTool() => Tool(
       name: 'string_case',
-      description: '字符串大小写格式转换。支持: camelCase, PascalCase, snake_case, kebab-case, UPPER_CASE, lower_case, 首字母大写。',
+      description:
+          '字符串大小写格式转换。支持: camelCase, PascalCase, snake_case, kebab-case, UPPER_CASE, lower_case, 首字母大写。',
       schema: {
         'type': 'object',
         'properties': {
@@ -220,8 +218,17 @@ Tool stringCaseTool() => Tool(
           },
           'target_case': {
             'type': 'string',
-            'enum': ['camel', 'pascal', 'snake', 'kebab', 'upper', 'lower', 'capitalize'],
-            'description': '目标格式: camel=驼峰, pascal=大驼峰, snake=下划线, kebab=连字符, upper=全大写, lower=全小写, capitalize=首字母大写',
+            'enum': [
+              'camel',
+              'pascal',
+              'snake',
+              'kebab',
+              'upper',
+              'lower',
+              'capitalize'
+            ],
+            'description':
+                '目标格式: camel=驼峰, pascal=大驼峰, snake=下划线, kebab=连字符, upper=全大写, lower=全小写, capitalize=首字母大写',
           },
         },
         'required': ['text', 'target_case'],
@@ -237,7 +244,8 @@ Tool stringCaseTool() => Tool(
         for (final w in words) {
           var start = 0;
           for (var i = 1; i < w.length; i++) {
-            if (w[i].toUpperCase() == w[i] && w[i - 1].toLowerCase() == w[i - 1]) {
+            if (w[i].toUpperCase() == w[i] &&
+                w[i - 1].toLowerCase() == w[i - 1]) {
               result.add(w.substring(start, i));
               start = i;
             }
@@ -253,10 +261,13 @@ Tool stringCaseTool() => Tool(
           case 'camel':
             output = cleanWords[0].toLowerCase();
             for (var i = 1; i < cleanWords.length; i++) {
-              output += cleanWords[i][0].toUpperCase() + cleanWords[i].substring(1).toLowerCase();
+              output += cleanWords[i][0].toUpperCase() +
+                  cleanWords[i].substring(1).toLowerCase();
             }
           case 'pascal':
-            output = cleanWords.map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase()).join();
+            output = cleanWords
+                .map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase())
+                .join();
           case 'snake':
             output = cleanWords.map((w) => w.toLowerCase()).join('_');
           case 'kebab':
@@ -266,7 +277,9 @@ Tool stringCaseTool() => Tool(
           case 'lower':
             output = cleanWords.map((w) => w.toLowerCase()).join('_');
           case 'capitalize':
-            output = cleanWords.map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase()).join(' ');
+            output = cleanWords
+                .map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase())
+                .join(' ');
           default:
             return ToolResult.error('不支持的目标格式: $targetCase');
         }
@@ -277,13 +290,21 @@ Tool stringCaseTool() => Tool(
 /// Hex / binary / ASCII conversions.
 Tool encodeDecodeTool() => Tool(
       name: 'encode_decode',
-      description: '编解码工具。支持: hex_encode, hex_decode, binary_encode, binary_decode, ascii_to_hex, hex_to_ascii。',
+      description:
+          '编解码工具。支持: hex_encode, hex_decode, binary_encode, binary_decode, ascii_to_hex, hex_to_ascii。',
       schema: {
         'type': 'object',
         'properties': {
           'mode': {
             'type': 'string',
-            'enum': ['hex_encode', 'hex_decode', 'binary_encode', 'binary_decode', 'ascii_to_hex', 'hex_to_ascii'],
+            'enum': [
+              'hex_encode',
+              'hex_decode',
+              'binary_encode',
+              'binary_decode',
+              'ascii_to_hex',
+              'hex_to_ascii'
+            ],
             'description': '编解码模式',
           },
           'text': {
@@ -302,30 +323,39 @@ Tool encodeDecodeTool() => Tool(
         try {
           switch (mode) {
             case 'hex_encode':
-              return ToolResult.ok(text.codeUnits.map((c) => c.toRadixString(16).padLeft(2, '0')).join(' '));
+              return ToolResult.ok(text.codeUnits
+                  .map((c) => c.toRadixString(16).padLeft(2, '0'))
+                  .join(' '));
             case 'hex_decode':
               final cleaned = text.replaceAll(RegExp(r'\s+'), '');
-              if (cleaned.length % 2 != 0) return const ToolResult.error('hex 字符串长度必须为偶数');
+              if (cleaned.length % 2 != 0)
+                return const ToolResult.error('hex 字符串长度必须为偶数');
               final bytes = <int>[];
               for (var i = 0; i < cleaned.length; i += 2) {
                 bytes.add(int.parse(cleaned.substring(i, i + 2), radix: 16));
               }
               return ToolResult.ok(String.fromCharCodes(bytes));
             case 'binary_encode':
-              return ToolResult.ok(text.codeUnits.map((c) => c.toRadixString(2).padLeft(8, '0')).join(' '));
+              return ToolResult.ok(text.codeUnits
+                  .map((c) => c.toRadixString(2).padLeft(8, '0'))
+                  .join(' '));
             case 'binary_decode':
               final cleaned = text.replaceAll(RegExp(r'\s+'), '');
-              if (cleaned.length % 8 != 0) return const ToolResult.error('二进制字符串长度必须是 8 的倍数');
+              if (cleaned.length % 8 != 0)
+                return const ToolResult.error('二进制字符串长度必须是 8 的倍数');
               final bytes = <int>[];
               for (var i = 0; i < cleaned.length; i += 8) {
                 bytes.add(int.parse(cleaned.substring(i, i + 8), radix: 2));
               }
               return ToolResult.ok(String.fromCharCodes(bytes));
             case 'ascii_to_hex':
-              return ToolResult.ok(text.codeUnits.map((c) => c.toRadixString(16).padLeft(2, '0')).join(''));
+              return ToolResult.ok(text.codeUnits
+                  .map((c) => c.toRadixString(16).padLeft(2, '0'))
+                  .join(''));
             case 'hex_to_ascii':
               final cleaned = text.replaceAll(RegExp(r'\s+'), '');
-              if (cleaned.length % 2 != 0) return const ToolResult.error('hex 字符串长度必须为偶数');
+              if (cleaned.length % 2 != 0)
+                return const ToolResult.error('hex 字符串长度必须为偶数');
               final chars = <int>[];
               for (var i = 0; i < cleaned.length; i += 2) {
                 chars.add(int.parse(cleaned.substring(i, i + 2), radix: 16));
@@ -393,23 +423,136 @@ String _md5Hex(String input) {
   final bytes = utf8.encode(input);
   // Standard MD5 constants.
   const s = [
-    7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
-    5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
-    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
-    6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
+    7,
+    12,
+    17,
+    22,
+    7,
+    12,
+    17,
+    22,
+    7,
+    12,
+    17,
+    22,
+    7,
+    12,
+    17,
+    22,
+    5,
+    9,
+    14,
+    20,
+    5,
+    9,
+    14,
+    20,
+    5,
+    9,
+    14,
+    20,
+    5,
+    9,
+    14,
+    20,
+    4,
+    11,
+    16,
+    23,
+    4,
+    11,
+    16,
+    23,
+    4,
+    11,
+    16,
+    23,
+    4,
+    11,
+    16,
+    23,
+    6,
+    10,
+    15,
+    21,
+    6,
+    10,
+    15,
+    21,
+    6,
+    10,
+    15,
+    21,
+    6,
+    10,
+    15,
+    21,
   ];
   const k = [
-    0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a,
-    0xa8304613, 0xfd469501, 0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
-    0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821, 0xf61e2562, 0xc040b340,
-    0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
-    0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8,
-    0x676f02d9, 0x8d2a4c8a, 0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
-    0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70, 0x289b7ec6, 0xeaa127fa,
-    0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
-    0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92,
-    0xffeff47d, 0x85845dd1, 0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
-    0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391,
+    0xd76aa478,
+    0xe8c7b756,
+    0x242070db,
+    0xc1bdceee,
+    0xf57c0faf,
+    0x4787c62a,
+    0xa8304613,
+    0xfd469501,
+    0x698098d8,
+    0x8b44f7af,
+    0xffff5bb1,
+    0x895cd7be,
+    0x6b901122,
+    0xfd987193,
+    0xa679438e,
+    0x49b40821,
+    0xf61e2562,
+    0xc040b340,
+    0x265e5a51,
+    0xe9b6c7aa,
+    0xd62f105d,
+    0x02441453,
+    0xd8a1e681,
+    0xe7d3fbc8,
+    0x21e1cde6,
+    0xc33707d6,
+    0xf4d50d87,
+    0x455a14ed,
+    0xa9e3e905,
+    0xfcefa3f8,
+    0x676f02d9,
+    0x8d2a4c8a,
+    0xfffa3942,
+    0x8771f681,
+    0x6d9d6122,
+    0xfde5380c,
+    0xa4beea44,
+    0x4bdecfa9,
+    0xf6bb4b60,
+    0xbebfbc70,
+    0x289b7ec6,
+    0xeaa127fa,
+    0xd4ef3085,
+    0x04881d05,
+    0xd9d4d039,
+    0xe6db99e5,
+    0x1fa27cf8,
+    0xc4ac5665,
+    0xf4292244,
+    0x432aff97,
+    0xab9423a7,
+    0xfc93a039,
+    0x655b59c3,
+    0x8f0ccc92,
+    0xffeff47d,
+    0x85845dd1,
+    0x6fa87e4f,
+    0xfe2ce6e0,
+    0xa3014314,
+    0x4e0811a1,
+    0xf7537e82,
+    0xbd3af235,
+    0x2ad7d2bb,
+    0xeb86d391,
   ];
   var a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
   final origLen = bytes.length;
@@ -450,7 +593,8 @@ String _md5Hex(String input) {
       final temp = d;
       d = c;
       c = b;
-      b = (b + _leftRotate((a + f + k[i] + m[g]) & 0xffffffff, s[i])) & 0xffffffff;
+      b = (b + _leftRotate((a + f + k[i] + m[g]) & 0xffffffff, s[i])) &
+          0xffffffff;
       a = temp;
     }
     a0 = (a0 + a) & 0xffffffff;
@@ -502,7 +646,8 @@ Tool textStatsAdvancedTool() => Tool(
         // Count Chinese chars (CJK Unified Ideographs).
         final cjkCount = RegExp(r'[\u4e00-\u9fff]').allMatches(text).length;
         // Words: split on whitespace, filter empty.
-        final words = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+        final words =
+            text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
         // Sentences: split on . ! ? 。
         final sentences = text
             .split(RegExp(r'[.!?。！？\n]+'))
@@ -573,7 +718,8 @@ Tool csvJsonTool() => Tool(
               }
               return m;
             }).toList();
-            return ToolResult.ok(const JsonEncoder.withIndent('  ').convert(data));
+            return ToolResult.ok(
+                const JsonEncoder.withIndent('  ').convert(data));
           } else {
             final decoded = jsonDecode(text);
             if (decoded is! List) {
@@ -709,7 +855,11 @@ Tool markdownTableTool() => Tool(
           final allKeys = first.keys.cast<String>().toList();
           final keys = colSpec.isEmpty
               ? allKeys
-              : colSpec.split(',').map((s) => s.trim()).where((s) => allKeys.contains(s)).toList();
+              : colSpec
+                  .split(',')
+                  .map((s) => s.trim())
+                  .where((s) => allKeys.contains(s))
+                  .toList();
           if (keys.isEmpty) {
             return const ToolResult.error('没有可用的列');
           }
@@ -720,7 +870,8 @@ Tool markdownTableTool() => Tool(
             if (item is! Map) continue;
             sb.writeln('| ' +
                 keys
-                    .map((k) => (item[k]?.toString() ?? '').replaceAll('|', '\\|'))
+                    .map((k) =>
+                        (item[k]?.toString() ?? '').replaceAll('|', '\\|'))
                     .join(' | ') +
                 ' |');
           }
@@ -777,7 +928,8 @@ Tool passwordGeneratorTool() => Tool(
         if (count < 1) count = 1;
         if (count > 10) count = 10;
         final charset = StringBuffer();
-        if (useUpper) charset.write('ABCDEFGHJKLMNPQRSTUVWXYZ'); // skip I/O for clarity
+        if (useUpper)
+          charset.write('ABCDEFGHJKLMNPQRSTUVWXYZ'); // skip I/O for clarity
         if (useLower) charset.write('abcdefghijkmnopqrstuvwxyz'); // skip l
         if (useDigits) charset.write('23456789'); // skip 0/1
         if (useSymbols) charset.write('!@#\$%^&*()-_=+[]{}<>?');

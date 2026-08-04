@@ -45,8 +45,7 @@ class _OpenAgentAppState extends State<OpenAgentApp> {
           routes: [
             GoRoute(
               path: '/',
-              builder: (_, __) =>
-                  ChatPage(key: _chatKey, storage: _storage),
+              builder: (_, __) => ChatPage(key: _chatKey, storage: _storage),
             ),
             GoRoute(
               path: '/models',

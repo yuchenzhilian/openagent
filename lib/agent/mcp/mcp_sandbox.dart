@@ -55,9 +55,7 @@ class McpSandbox {
       final stderrBuf = StringBuffer();
       int totalBytes = 0;
 
-      process.stdout
-          .transform(utf8.decoder)
-          .listen((data) {
+      process.stdout.transform(utf8.decoder).listen((data) {
         totalBytes += data.length;
         if (totalBytes <= _config.maxOutputBytes) stdoutBuf.write(data);
       });
@@ -97,13 +95,11 @@ class McpSandbox {
     }
   }
 
-  bool canRead(String path) =>
-      _config.allowedReadPaths.isEmpty
-          ? false
-          : _config.allowedReadPaths.any((p) => path.startsWith(p));
+  bool canRead(String path) => _config.allowedReadPaths.isEmpty
+      ? false
+      : _config.allowedReadPaths.any((p) => path.startsWith(p));
 
-  bool canWrite(String path) =>
-      _config.allowedWritePaths.isEmpty
-          ? false
-          : _config.allowedWritePaths.any((p) => path.startsWith(p));
+  bool canWrite(String path) => _config.allowedWritePaths.isEmpty
+      ? false
+      : _config.allowedWritePaths.any((p) => path.startsWith(p));
 }

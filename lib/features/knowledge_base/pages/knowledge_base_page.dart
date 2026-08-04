@@ -156,8 +156,7 @@ class _KnowledgeBasePageState extends State<KnowledgeBasePage> {
 
   void _snack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -198,8 +197,8 @@ class _KnowledgeBasePageState extends State<KnowledgeBasePage> {
                           'adb push notes.txt '
                           '/sdcard/Android/data/com.openagent.openagent/'
                           'files/knowledge_base/',
-                          style: TextStyle(
-                              fontFamily: 'monospace', fontSize: 11),
+                          style:
+                              TextStyle(fontFamily: 'monospace', fontSize: 11),
                         ),
                       ),
                     ],
@@ -218,8 +217,8 @@ class _KnowledgeBasePageState extends State<KnowledgeBasePage> {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: ExpansionTile(
         leading: const Icon(Icons.description_outlined),
-        title: Text(doc.name,
-            style: const TextStyle(fontWeight: FontWeight.w500)),
+        title:
+            Text(doc.name, style: const TextStyle(fontWeight: FontWeight.w500)),
         subtitle: Text(
           '${_formatSize(doc.sizeBytes)} · ${doc.charCount} 字符',
           style: TextStyle(color: Colors.grey.shade500, fontSize: 12),

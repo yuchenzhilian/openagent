@@ -7,19 +7,35 @@ import 'dart:io';
 enum MemoryTier { hot, warm, cold }
 
 class MemoryStats {
-  final int hotCount, warmCount, coldCount, totalHotSizeBytes, totalWarmSizeBytes, totalColdSizeBytes;
-  const MemoryStats({required this.hotCount, required this.warmCount, required this.coldCount, required this.totalHotSizeBytes, required this.totalWarmSizeBytes, required this.totalColdSizeBytes});
+  final int hotCount,
+      warmCount,
+      coldCount,
+      totalHotSizeBytes,
+      totalWarmSizeBytes,
+      totalColdSizeBytes;
+  const MemoryStats(
+      {required this.hotCount,
+      required this.warmCount,
+      required this.coldCount,
+      required this.totalHotSizeBytes,
+      required this.totalWarmSizeBytes,
+      required this.totalColdSizeBytes});
 }
 
 class MemoryCompressor {
-  MemoryCompressor({required String archiveDir}) : _archiveDir = Directory('$archiveDir/memory_archive');
+  MemoryCompressor({required String archiveDir})
+      : _archiveDir = Directory('$archiveDir/memory_archive');
   final Directory _archiveDir;
   final Map<String, String> _hotCache = {};
   final Map<String, String> _warmIndex = {};
 
-  Future<void> initialize() async { if (!await _archiveDir.exists()) await _archiveDir.create(recursive: true); }
+  Future<void> initialize() async {
+    if (!await _archiveDir.exists()) await _archiveDir.create(recursive: true);
+  }
 
-  Future<void> set(String key, String value) async { _hotCache[key] = value; }
+  Future<void> set(String key, String value) async {
+    _hotCache[key] = value;
+  }
 
   Future<String?> get(String key) async {
     if (_hotCache.containsKey(key)) return _hotCache[key];
@@ -61,5 +77,8 @@ class MemoryCompressor {
     );
   }
 
-  Future<void> clear() async { _hotCache.clear(); _warmIndex.clear(); }
+  Future<void> clear() async {
+    _hotCache.clear();
+    _warmIndex.clear();
+  }
 }

@@ -38,11 +38,13 @@ class AndroidAutomationService {
 
   /// 统一权限检查入口：检查指定权限是否已授予，未授予时自动尝试授权。
   /// 返回 (isGranted, message)。
-  Future<({bool granted, String message})> ensurePermission(PermissionKind kind) async {
+  Future<({bool granted, String message})> ensurePermission(
+      PermissionKind kind) async {
     final status = await refreshStatus();
     switch (kind) {
       case PermissionKind.accessibility:
-        if (status.accessibilityEnabled) return (granted: true, message: '无障碍服务已启用');
+        if (status.accessibilityEnabled)
+          return (granted: true, message: '无障碍服务已启用');
         // 尝试自动启用
         final r = await gshell(
             'settings put secure enabled_accessibility_services '
@@ -50,37 +52,60 @@ class AndroidAutomationService {
         if (r.ok) await gshell('settings put secure accessibility_enabled 1');
         invalidatePermissionCache();
         final refreshed = await refreshStatus();
-        return (granted: refreshed.accessibilityEnabled, message: refreshed.accessibilityEnabled ? '无障碍服务已启用' : '无法自动启用无障碍服务，请手动在设置中开启');
+        return (
+          granted: refreshed.accessibilityEnabled,
+          message: refreshed.accessibilityEnabled
+              ? '无障碍服务已启用'
+              : '无法自动启用无障碍服务，请手动在设置中开启'
+        );
       case PermissionKind.shizuku:
         final r = await gshell('ps -ef | grep shizuku 2>/dev/null');
         final ok = r.stdout.contains('shizuku');
-        return (granted: ok, message: ok ? 'Shizuku 运行中' : 'Shizuku 未运行，请先启动 Shizuku');
+        return (
+          granted: ok,
+          message: ok ? 'Shizuku 运行中' : 'Shizuku 未运行，请先启动 Shizuku'
+        );
       case PermissionKind.notification:
-        if (status.notificationListenerGranted) return (granted: true, message: '通知监听已启用');
-        await gshell(
-            'settings put secure enabled_notification_listeners '
+        if (status.notificationListenerGranted)
+          return (granted: true, message: '通知监听已启用');
+        await gshell('settings put secure enabled_notification_listeners '
             'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
-        await gshell(
-            'settings put secure enabled_notification_assistant '
+        await gshell('settings put secure enabled_notification_assistant '
             'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
         invalidatePermissionCache();
         final refreshed = await refreshStatus();
-        return (granted: refreshed.notificationListenerGranted, message: refreshed.notificationListenerGranted ? '通知监听已启用' : '无法自动启用通知监听');
+        return (
+          granted: refreshed.notificationListenerGranted,
+          message:
+              refreshed.notificationListenerGranted ? '通知监听已启用' : '无法自动启用通知监听'
+        );
       case PermissionKind.usageStats:
-        return (granted: status.usageStatsGranted, message: status.usageStatsGranted ? '使用统计权限已授予' : '未授予使用统计权限');
+        return (
+          granted: status.usageStatsGranted,
+          message: status.usageStatsGranted ? '使用统计权限已授予' : '未授予使用统计权限'
+        );
       case PermissionKind.writeSecure:
-        final r = await gshell('pm grant com.openagent.openagent android.permission.WRITE_SECURE_SETTINGS 2>/dev/null');
-        return (granted: r.ok, message: r.ok ? 'WRITE_SECURE_SETTINGS 已授予' : '未授予 WRITE_SECURE_SETTINGS（需要 Shizuku/Root）');
+        final r = await gshell(
+            'pm grant com.openagent.openagent android.permission.WRITE_SECURE_SETTINGS 2>/dev/null');
+        return (
+          granted: r.ok,
+          message: r.ok
+              ? 'WRITE_SECURE_SETTINGS 已授予'
+              : '未授予 WRITE_SECURE_SETTINGS（需要 Shizuku/Root）'
+        );
       case PermissionKind.dump:
-        final r = await gshell('pm grant com.openagent.openagent android.permission.DUMP 2>/dev/null');
-        return (granted: r.ok, message: r.ok ? 'DUMP 权限已授予' : '未授予 DUMP 权限（需要 Shizuku/Root）');
+        final r = await gshell(
+            'pm grant com.openagent.openagent android.permission.DUMP 2>/dev/null');
+        return (
+          granted: r.ok,
+          message: r.ok ? 'DUMP 权限已授予' : '未授予 DUMP 权限（需要 Shizuku/Root）'
+        );
     }
   }
 
   /// Throws on non-Android platforms (which is expected — callers should gate
   /// on [isSupported] before invoking anything else).
-  bool get isSupported =>
-      defaultTargetPlatform == TargetPlatform.android;
+  bool get isSupported => defaultTargetPlatform == TargetPlatform.android;
 
   // ---- Permission checks / intents -----------------------------------------
 
@@ -122,9 +147,8 @@ class AndroidAutomationService {
       // ignore — fall back to legacy two-bool call below.
     }
 
-    final a11y = await _channel.invokeMethod<bool>(
-            'is_accessibility_enabled') ??
-        false;
+    final a11y =
+        await _channel.invokeMethod<bool>('is_accessibility_enabled') ?? false;
     final shizuku =
         await _channel.invokeMethod<bool>('is_shizuku_available') ?? false;
     _cachedStatus = AutomationPermissionStatus(
@@ -150,8 +174,9 @@ class AndroidAutomationService {
   /// Agent to sanity-check "I am in the right App" before issuing clicks.
   Future<TopAppInfo> getTopApp() async {
     if (!isSupported) return const TopAppInfo(package: '', activity: '');
-    final r = await _channel.invokeMapMethod<String, dynamic>('android_top_app') ??
-        <String, dynamic>{};
+    final r =
+        await _channel.invokeMapMethod<String, dynamic>('android_top_app') ??
+            <String, dynamic>{};
     return TopAppInfo(
       package: (r['package'] as String?) ?? '',
       activity: (r['activity'] as String?) ?? '',
@@ -161,7 +186,9 @@ class AndroidAutomationService {
   /// Raw passthrough to `Runtime.exec` (or Shizuku when available). Only for
   /// power-users / L2 dispatch.
   Future<ShellResult> gshell(String command) async {
-    if (!isSupported) return const ShellResult(exitCode: -1, ok: false, stdout: '', stderr: 'platform-not-android');
+    if (!isSupported)
+      return const ShellResult(
+          exitCode: -1, ok: false, stdout: '', stderr: 'platform-not-android');
     final r = await _channel.invokeMapMethod<String, dynamic>(
           'android_gshell',
           {'command': command},
@@ -199,7 +226,9 @@ class AndroidAutomationService {
   /// 设置安全模式。开启时无障碍服务跳过所有手势执行。
   Future<bool> setSafeMode(bool enabled) async {
     if (!isSupported) return false;
-    return await _channel.invokeMethod<bool>('android_set_safe_mode', {'enabled': enabled}) ?? false;
+    return await _channel.invokeMethod<bool>(
+            'android_set_safe_mode', {'enabled': enabled}) ??
+        false;
   }
 
   /// 查询当前是否处于安全模式。
@@ -263,9 +292,10 @@ class AndroidAutomationService {
     // Since we can't get coords directly, fall back to shell approach
     // Use accessibility service to perform long click on the node
     final ok = await _channel.invokeMethod<bool>('android_long_click_by_text', {
-      'text': text,
-      'exact': exact,
-    }) ?? false;
+          'text': text,
+          'exact': exact,
+        }) ??
+        false;
     if (ok) return true;
     // Fallback: find the text via grep in dump, extract coordinates
     final lines = dump.map((n) => n.toString()).toList();
@@ -300,15 +330,13 @@ class AndroidAutomationService {
         }) ??
         false;
     if (ok) return true;
-    final shell =
-        await gshell('input swipe $x1 $y1 $x2 $y2 $durationMs');
+    final shell = await gshell('input swipe $x1 $y1 $x2 $y2 $durationMs');
     return shell.ok && shell.exitCode == 0;
   }
 
   Future<bool> scrollForward() async {
     if (!isSupported) return false;
-    return await _channel.invokeMethod<bool>('android_scroll_forward') ??
-        false;
+    return await _channel.invokeMethod<bool>('android_scroll_forward') ?? false;
   }
 
   Future<bool> inputText(String text) async {
@@ -345,8 +373,7 @@ class AndroidAutomationService {
     bool exact = false,
   }) async {
     if (!isSupported) return false;
-    final deadline =
-        DateTime.now().add(Duration(seconds: timeoutSec));
+    final deadline = DateTime.now().add(Duration(seconds: timeoutSec));
     final needle = text.toLowerCase();
     while (DateTime.now().isBefore(deadline)) {
       final dump = await dumpUiSummary(limit: 200);
@@ -389,28 +416,30 @@ class AndroidAutomationService {
       final editable = n['editable'] == true ? '✎可输' : '';
       final scrollable = n['scrollable'] == true ? '↕可滑' : '';
       final b = n['bounds'];
-      final bounds = b is List && b.length == 4
-          ? '[${b[0]},${b[1]}→${b[2]},${b[3]}]'
-          : '';
+      final bounds =
+          b is List && b.length == 4 ? '[${b[0]},${b[1]}→${b[2]},${b[3]}]' : '';
       final flags = [clickable, editable, scrollable]
           .where((s) => s.isNotEmpty)
           .join(' ');
       sb.writeln('  $i. ${text.isNotEmpty ? "\"$text\"" : '(无文字)'} '
-          '${id.isNotEmpty ? "id=$id " : ""}'
-          '$flags $bounds'.trim());
+              '${id.isNotEmpty ? "id=$id " : ""}'
+              '$flags $bounds'
+          .trim());
     }
     return sb.toString();
   }
 
   Future<List<String>> listInstalledPackages() async {
     if (!isSupported) return const [];
-    final out = await _channel.invokeListMethod<String>('android_list_packages');
+    final out =
+        await _channel.invokeListMethod<String>('android_list_packages');
     return List<String>.unmodifiable(out ?? const []);
   }
 
   Future<List<int>?> screenResolution() async {
     if (!isSupported) return null;
-    final out = await _channel.invokeListMethod<int>('android_screen_resolution');
+    final out =
+        await _channel.invokeListMethod<int>('android_screen_resolution');
     return out?.toList();
   }
 
@@ -524,32 +553,61 @@ class AndroidAutomationService {
   ///       打电话/发短信/发邮件、分享文本/图片到任意 App、打开系统设置页面等。
   Future<ShellResult> sendIntent({
     String? action, // 如 android.intent.action.VIEW / DIAL / SENDTO
-    String? data,   // 如 tel:10086 / https://... / sms:... / smsto:
-    String? type,   // 如 text/plain / image/*
+    String? data, // 如 tel:10086 / https://... / sms:... / smsto:
+    String? type, // 如 text/plain / image/*
     List<String>? categories, // 如 android.intent.category.BROWSABLE
     String? component, // 如 com.tencent.mm/.ui.LauncherUI
     Map<String, String>? extrasString, // -e key value
-    Map<String, int>? extrasInt,      // --ei key value
-    Map<String, bool>? extrasBool,    // --ez key value
-    String? package,  // -p 限制到某包
+    Map<String, int>? extrasInt, // --ei key value
+    Map<String, bool>? extrasBool, // --ez key value
+    String? package, // -p 限制到某包
     bool waitForResult = false, // -W
   }) async {
     if (!isSupported) {
-      return ShellResult(ok: false, exitCode: -1, stdout: '', stderr: 'not supported');
+      return ShellResult(
+          ok: false, exitCode: -1, stdout: '', stderr: 'not supported');
     }
     final parts = <String>['am', 'start'];
     if (waitForResult) parts.add('-W');
-    if (action != null) { parts.add('-a'); parts.add(action); }
-    if (data != null)   { parts.add('-d'); parts.add("'$data'"); }
-    if (type != null)   { parts.add('-t'); parts.add(type); }
-    if (package != null){ parts.add('-p'); parts.add(package); }
-    if (component != null) { parts.add('-n'); parts.add(component); }
-    categories?.forEach((c) { parts.add('-c'); parts.add(c); });
-    extrasString?.forEach((k, v) {
-      parts.add('-e'); parts.add(k); parts.add("'${v.replaceAll("'", "\\'")}'");
+    if (action != null) {
+      parts.add('-a');
+      parts.add(action);
+    }
+    if (data != null) {
+      parts.add('-d');
+      parts.add("'$data'");
+    }
+    if (type != null) {
+      parts.add('-t');
+      parts.add(type);
+    }
+    if (package != null) {
+      parts.add('-p');
+      parts.add(package);
+    }
+    if (component != null) {
+      parts.add('-n');
+      parts.add(component);
+    }
+    categories?.forEach((c) {
+      parts.add('-c');
+      parts.add(c);
     });
-    extrasInt?.forEach((k, v) { parts.add('--ei'); parts.add(k); parts.add('$v'); });
-    extrasBool?.forEach((k, v) { parts.add('--ez'); parts.add(k); parts.add(v ? 'true' : 'false'); });
+    extrasString?.forEach((k, v) {
+      parts.add('-e');
+      parts.add(k);
+      parts.add("'${v.replaceAll("'", "\\'")}'");
+    });
+    extrasInt?.forEach((k, v) {
+      parts.add('--ei');
+      parts.add(k);
+      parts.add('$v');
+    });
+    extrasBool?.forEach((k, v) {
+      parts.add('--ez');
+      parts.add(k);
+      parts.add(v ? 'true' : 'false');
+    });
     return gshell(parts.join(' '));
   }
 
@@ -558,21 +616,25 @@ class AndroidAutomationService {
   ///          应用内部：/data/data/com.openagent.openagent/files/ (需Root或本App)
   Future<String> fileRead(String path) async =>
       (await gshell('cat "$path"')).stdout;
-  Future<bool> fileWrite(String path, String content, {bool append = false}) async {
+  Future<bool> fileWrite(String path, String content,
+      {bool append = false}) async {
     final esc = content.replaceAll("'", "'\\''");
     final op = append ? '>>' : '>';
     final r = await gshell("echo '$esc' $op '$path'");
     return r.ok && r.exitCode == 0;
   }
+
   Future<List<String>> fileListDir(String path) async {
     final r = await gshell('ls -la "$path"');
     if (!(r.ok && r.exitCode == 0)) return const [];
     return r.stdout.split('\n').where((l) => l.trim().isNotEmpty).toList();
   }
+
   Future<bool> fileDelete(String path) async {
     final r = await gshell('rm -rf "$path"');
     return r.ok && r.exitCode == 0;
   }
+
   Future<bool> fileExists(String path) async {
     final r = await gshell('[ -e "$path" ] && echo 1 || echo 0');
     return r.stdout.trim() == '1';
@@ -586,8 +648,8 @@ class AndroidAutomationService {
     final r1 = await gshell('dumpsys package $packageName');
     if (r1.ok) {
       sb.writeln('===== dumpsys package $packageName =====');
-      sb.writeln(verbose ? r1.stdout :
-          r1.stdout.split('\n').take(80).join('\n'));
+      sb.writeln(
+          verbose ? r1.stdout : r1.stdout.split('\n').take(80).join('\n'));
     }
     final r2 = await gshell('pm list packages -f | grep -i "$packageName"');
     if (r2.ok && r2.stdout.trim().isNotEmpty) {
@@ -605,12 +667,14 @@ class AndroidAutomationService {
   /// LLM 可以基于推送内容自主决策（比如收到微信消息自动回复、收到验证码自动填）。
   Future<String> getNotifications({int limit = 30}) async {
     if (!isSupported) return '';
-    final out = await _channel.invokeMethod<String>('android_get_notifications', {
+    final out =
+        await _channel.invokeMethod<String>('android_get_notifications', {
       'limit': limit,
     });
     if (out != null && out.trim().isNotEmpty) return out;
     // shell fallback (需要 Root 或 NotificationListenerService): dumpsys notification
-    final r = await gshell('dumpsys notification --noredact 2>/dev/null | head -n ${limit * 10}');
+    final r = await gshell(
+        'dumpsys notification --noredact 2>/dev/null | head -n ${limit * 10}');
     return r.stdout;
   }
 
@@ -621,8 +685,10 @@ class AndroidAutomationService {
   ///   某些游戏/视频 App 的 View 树是空的但 Window 层可以看到真实的 Layer 信息、
   ///   悬浮窗/分屏/PiP 也能看到。LLM 把两个 dump 交叉比对，判断更准。
   Future<String> dumpWindows({int limitLines = 200}) async {
-    final focus = await gshell('dumpsys window windows | grep -E "mCurrentFocus|mFocusedApp|mInputMethodTarget|STATUS_BAR|NAVIGATION_BAR" 2>/dev/null');
-    final full = await gshell('dumpsys window windows 2>/dev/null | head -n $limitLines');
+    final focus = await gshell(
+        'dumpsys window windows | grep -E "mCurrentFocus|mFocusedApp|mInputMethodTarget|STATUS_BAR|NAVIGATION_BAR" 2>/dev/null');
+    final full = await gshell(
+        'dumpsys window windows 2>/dev/null | head -n $limitLines');
     final sb = StringBuffer();
     sb.writeln('===== WindowManager 焦点 =====');
     sb.writeln(focus.stdout.trim().isEmpty ? '(dumpsys不可用)' : focus.stdout);
@@ -642,7 +708,9 @@ class AndroidAutomationService {
     final sb = StringBuffer();
     final escaped = kw.replaceAll("'", "''");
     // Shell fallback (most devices work if permission granted; Root always works)
-    final where = kw.isEmpty ? '' : "display_name LIKE '%$escaped%' OR data1 LIKE '%$escaped%'";
+    final where = kw.isEmpty
+        ? ''
+        : "display_name LIKE '%$escaped%' OR data1 LIKE '%$escaped%'";
     final selectionArgs = kw.isEmpty ? '' : "WHERE $where";
     final r1 = await gshell(
       "content query --uri content://com.android.contacts/data --projection display_name:data1:mimetype:contact_id $selectionArgs --limit $limit 2>/dev/null",
@@ -835,7 +903,8 @@ class AndroidAutomationService {
       sb.writeln(r3.stdout);
     }
     if (sb.isEmpty) {
-      sb.writeln('(最近任务不可用：请授予 QUERY_ALL_PACKAGES / PACKAGE_USAGE_STATS，或开 Root/Shizuku)');
+      sb.writeln(
+          '(最近任务不可用：请授予 QUERY_ALL_PACKAGES / PACKAGE_USAGE_STATS，或开 Root/Shizuku)');
     }
     return sb.toString();
   }
@@ -848,7 +917,8 @@ class AndroidAutomationService {
     );
     final sb = StringBuffer();
     if (r1.ok && r1.stdout.trim().isNotEmpty) {
-      sb.writeln('===== dumpsys activity top (前 $limitLines 行, 含 Fragment 栈) =====');
+      sb.writeln(
+          '===== dumpsys activity top (前 $limitLines 行, 含 Fragment 栈) =====');
       sb.writeln(r1.stdout);
     }
     final r2 = await gshell(
@@ -872,12 +942,15 @@ class AndroidAutomationService {
       sb.writeln('===== WiFi Scan (dumpsys wifi, limit=$limit) =====');
       sb.writeln(r1.stdout);
     }
-    final r2 = await gshell("cmd -w wifi list-scan-results 2>/dev/null | head -n $limit");
+    final r2 = await gshell(
+        "cmd -w wifi list-scan-results 2>/dev/null | head -n $limit");
     if (r2.ok && r2.stdout.trim().isNotEmpty) {
       sb.writeln('\n===== cmd wifi list-scan-results =====');
       sb.writeln(r2.stdout);
     }
-    if (sb.isEmpty) sb.writeln('(WiFi 扫描不可用：请授予 ACCESS_FINE_LOCATION + 开 WiFi，或用 Root/Shizuku)');
+    if (sb.isEmpty)
+      sb.writeln(
+          '(WiFi 扫描不可用：请授予 ACCESS_FINE_LOCATION + 开 WiFi，或用 Root/Shizuku)');
     return sb.toString();
   }
 
@@ -900,9 +973,11 @@ class AndroidAutomationService {
       sb.writeln('\n===== ISMS (短信卡订阅详情) =====');
       sb.writeln(r2.stdout);
     }
-    final r3 = await gshell("service call iphonesubinfo 1 2>/dev/null; service call iphonesubinfo 2 2>/dev/null | head -n 12");
+    final r3 = await gshell(
+        "service call iphonesubinfo 1 2>/dev/null; service call iphonesubinfo 2 2>/dev/null | head -n 12");
     if (r3.ok && r3.stdout.trim().isNotEmpty) {
-      sb.writeln('\n===== iphonesubinfo (若有 READ_PHONE_STATE 则含 IMEI/IMSI 原文) =====');
+      sb.writeln(
+          '\n===== iphonesubinfo (若有 READ_PHONE_STATE 则含 IMEI/IMSI 原文) =====');
       sb.writeln(r3.stdout);
     }
     if (sb.isEmpty) sb.writeln('(SIM 信息不可用：请授予 READ_PHONE_STATE 或 Root)');
@@ -934,28 +1009,35 @@ class AndroidAutomationService {
       sb.writeln('\n===== NotificationLogging (通知日志) =====');
       sb.writeln(r3.stdout);
     }
-    if (sb.isEmpty) sb.writeln('(Toast/通知历史不可用：部分 ROM 只保留 10s 内的 Toast，或需要 NotificationListener 权限)');
+    if (sb.isEmpty)
+      sb.writeln(
+          '(Toast/通知历史不可用：部分 ROM 只保留 10s 内的 Toast，或需要 NotificationListener 权限)');
     return sb.toString();
   }
 
   /// 应用冷启动 (先杀再启) + 杀后台进程：
   ///   am force-stop 彻底杀掉缓存进程，然后 am start -n / monkey -p 干净启动。
   ///   LLM 可以自己判断"微信卡死了要不要强制重启"、"某 App 出 Bug 了要冷启动清缓存"。
-  Future<ShellResult> killAndRestartApp(String packageName, {bool killOnly = false}) async {
+  Future<ShellResult> killAndRestartApp(String packageName,
+      {bool killOnly = false}) async {
     if (packageName.trim().isEmpty) {
-      return ShellResult(ok: false, exitCode: -1, stdout: '', stderr: 'packageName 不能为空');
+      return ShellResult(
+          ok: false, exitCode: -1, stdout: '', stderr: 'packageName 不能为空');
     }
-    final kill = await gshell('am force-stop $packageName 2>/dev/null; am kill $packageName 2>/dev/null; echo killed_$packageName');
+    final kill = await gshell(
+        'am force-stop $packageName 2>/dev/null; am kill $packageName 2>/dev/null; echo killed_$packageName');
     if (killOnly) return kill;
     await Future<void>.delayed(const Duration(milliseconds: 400));
     final start = await openAppWithResult(packageName);
     if (start.ok) return start;
     // 第二个 fallback: monkey 1 次启动
-    final monkey = await gshell('monkey -p $packageName -c android.intent.category.LAUNCHER 1 2>/dev/null');
+    final monkey = await gshell(
+        'monkey -p $packageName -c android.intent.category.LAUNCHER 1 2>/dev/null');
     return ShellResult(
       ok: monkey.ok,
       exitCode: monkey.exitCode,
-      stdout: 'force-stop 输出:\n${kill.stdout}\nmonkey fallback 输出:\n${monkey.stdout}',
+      stdout:
+          'force-stop 输出:\n${kill.stdout}\nmonkey fallback 输出:\n${monkey.stdout}',
       stderr: monkey.stderr,
     );
   }
@@ -964,7 +1046,8 @@ class AndroidAutomationService {
     final r = await gshell(
       "monkey -p $packageName -c android.intent.category.LAUNCHER 1 2>/dev/null",
     );
-    if (r.ok && !r.stdout.toLowerCase().contains('no activities found to run')) return r;
+    if (r.ok && !r.stdout.toLowerCase().contains('no activities found to run'))
+      return r;
     // Fallback 2: 通过 PackageManager.getLaunchIntentForPackage 等效 cmd
     return gshell(
       "cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER $packageName 2>/dev/null",
@@ -1021,7 +1104,8 @@ class AndroidAutomationService {
         "settings get secure enabled_notification_listeners 2>/dev/null",
       );
       if (r3.ok && r3.stdout.trim().isNotEmpty) {
-        sb.writeln('\n===== 特殊开关（Accessibility / NotificationListener / FloatWindow / Location）=====');
+        sb.writeln(
+            '\n===== 特殊开关（Accessibility / NotificationListener / FloatWindow / Location）=====');
         sb.writeln(r3.stdout);
       }
     }
@@ -1031,7 +1115,8 @@ class AndroidAutomationService {
   /// 请求运行时权限（优先通过原生 MethodChannel 调 ContextCompat.requestPermissions；
   ///   如果 Activity 前台不可用，则 fallback 打开系统应用详情页让用户点授权）。
   ///   代码层绝不替用户决定"要不要授权某权限"，全由你 (LLM) 指定请求哪几个。
-  Future<ShellResult> requestRuntimePermissions(List<String> perms, {bool openSettingsIfNeeded = true}) async {
+  Future<ShellResult> requestRuntimePermissions(List<String> perms,
+      {bool openSettingsIfNeeded = true}) async {
     try {
       final r = await _channel.invokeMethod<String>(
         'android_request_permissions',
@@ -1044,7 +1129,11 @@ class AndroidAutomationService {
       // method not implemented => fall through to settings intent
     }
     if (!openSettingsIfNeeded) {
-      return ShellResult(ok: false, exitCode: -2, stdout: '', stderr: '原生权限申请通道不可用，openSettingsIfNeeded=false 已禁用跳转设置');
+      return ShellResult(
+          ok: false,
+          exitCode: -2,
+          stdout: '',
+          stderr: '原生权限申请通道不可用，openSettingsIfNeeded=false 已禁用跳转设置');
     }
     // 用户没在前台或者原生没实现：跳到应用详情页，让用户自己点"权限"
     final intentR = await sendIntent(
@@ -1063,7 +1152,8 @@ class AndroidAutomationService {
   }
 
   static String _pkgName() {
-    return const String.fromEnvironment('APP_PKG', defaultValue: 'com.openagent.openagent');
+    return const String.fromEnvironment('APP_PKG',
+        defaultValue: 'com.openagent.openagent');
   }
 
   // ==========================================================================
@@ -1109,7 +1199,8 @@ class AndroidAutomationService {
     }
     // 原生 Build 字段 (更准确的版本号/Build.SERIAL 脱敏等)
     try {
-      final native = await _channel.invokeMethod<String>('android_get_build_info');
+      final native =
+          await _channel.invokeMethod<String>('android_get_build_info');
       if (native != null && native.trim().isNotEmpty) {
         sb.writeln('\n===== 原生 Build.* 字段 =====');
         sb.writeln(native);
@@ -1156,7 +1247,8 @@ class AndroidAutomationService {
   /// 查询手机媒体库（DCIM / Pictures / Download / Screenshots / Camera / ALL）
   ///   返回原始 content resolver 行：_data / _display_name / date_modified / mime_type / _size / bucket_display_name。
   Future<String> queryMediaGallery({
-    String bucket = 'DCIM', // DCIM / Pictures / Download / Screenshots / Camera / ALL
+    String bucket =
+        'DCIM', // DCIM / Pictures / Download / Screenshots / Camera / ALL
     String? keyword,
     int limit = 60,
     bool includeVideos = true,
@@ -1166,7 +1258,9 @@ class AndroidAutomationService {
         ? "mime_type LIKE 'image/%' OR mime_type LIKE 'video/%'"
         : "mime_type LIKE 'image/%'";
     final kw = (keyword ?? '').trim();
-    final kwFilter = kw.isEmpty ? '' : " AND (_display_name LIKE '%${kw.replaceAll("'", "''")}%')";
+    final kwFilter = kw.isEmpty
+        ? ''
+        : " AND (_display_name LIKE '%${kw.replaceAll("'", "''")}%')";
     final bucketFilter = bucket.toUpperCase() == 'ALL'
         ? ''
         : bucket.trim().isEmpty
@@ -1177,7 +1271,8 @@ class AndroidAutomationService {
       "content query --uri content://media/external/file --projection _id:_data:_display_name:date_modified:mime_type:_size:bucket_display_name:width:height $where --sort 'date_modified DESC' --limit $limit 2>/dev/null",
     );
     if (r1.ok && r1.stdout.trim().isNotEmpty) {
-      sb.writeln('===== 媒体库 (media/external/file, bucket=$bucket, limit=$limit) =====');
+      sb.writeln(
+          '===== 媒体库 (media/external/file, bucket=$bucket, limit=$limit) =====');
       sb.writeln(r1.stdout);
     } else {
       sb.writeln('(media content 查询不可用，降级为文件系统 ls)');
@@ -1213,7 +1308,9 @@ class AndroidAutomationService {
         "settings put system screen_brightness_mode 1 2>/dev/null; echo mode_auto=\$?",
       );
     } else {
-      final b = (brightness is num ? brightness.toInt() : int.tryParse(brightness.toString()) ?? -1)
+      final b = (brightness is num
+              ? brightness.toInt()
+              : int.tryParse(brightness.toString()) ?? -1)
           .clamp(0, 255);
       r = await gshell(
         "settings put system screen_brightness_mode 0 2>/dev/null; settings put system screen_brightness $b 2>/dev/null; echo brightness=$b",
@@ -1248,7 +1345,8 @@ class AndroidAutomationService {
     return ShellResult(
       ok: false,
       exitCode: r2.exitCode,
-      stdout: '亮度调节失败 (缺少 WRITE_SETTINGS 权限)，已跳转"设置→显示"请手动开关或允许修改系统设置。当前亮度：\n${verify.stdout}',
+      stdout:
+          '亮度调节失败 (缺少 WRITE_SETTINGS 权限)，已跳转"设置→显示"请手动开关或允许修改系统设置。当前亮度：\n${verify.stdout}',
       stderr: 'need WRITE_SETTINGS',
     );
   }
@@ -1260,12 +1358,16 @@ class AndroidAutomationService {
     final listR = await gshell("cmd ime list -s 2>/dev/null");
     final sb = StringBuffer();
     sb.writeln('===== 已启用输入法列表 =====');
-    sb.writeln(listR.ok && listR.stdout.isNotEmpty ? listR.stdout : '(cmd ime 不可用，需 Root 或 adb shell permissions)');
+    sb.writeln(listR.ok && listR.stdout.isNotEmpty
+        ? listR.stdout
+        : '(cmd ime 不可用，需 Root 或 adb shell permissions)');
     final id = imeId.trim();
     if (id == 'picker') {
       final r = await gshell("cmd ime show-input-method-picker 2>/dev/null");
       sb.writeln('\n===== 已弹出系统输入法选择器 =====');
-      sb.writeln(r.stdout.isNotEmpty ? r.stdout : '(shell 用户也没有权限弹 picker，请手动下拉通知栏改输入法)');
+      sb.writeln(r.stdout.isNotEmpty
+          ? r.stdout
+          : '(shell 用户也没有权限弹 picker，请手动下拉通知栏改输入法)');
       return sb.toString();
     }
     if (id == 'next' || id == 'prev') {
@@ -1279,7 +1381,8 @@ class AndroidAutomationService {
     final r = await gshell("cmd ime set $id 2>/dev/null; echo set_$id");
     sb.writeln('\n===== 切换到 $id 结果 =====');
     sb.writeln(r.stdout);
-    final cur = await gshell("dumpsys input_method 2>/dev/null | grep -iE 'mCurMethodId|mCurMethod|ime_enabled_input_methods' | head -n 10");
+    final cur = await gshell(
+        "dumpsys input_method 2>/dev/null | grep -iE 'mCurMethodId|mCurMethod|ime_enabled_input_methods' | head -n 10");
     if (cur.ok && cur.stdout.isNotEmpty) {
       sb.writeln('\n===== 当前生效 IME =====');
       sb.writeln(cur.stdout);
@@ -1297,11 +1400,17 @@ class AndroidAutomationService {
     String? targetPackage,
     String? targetComponent, // e.g. com.tencent.mm/.ui.tools.ShareToTimelineUI
   }) async {
-    if ((imagePath == null || imagePath.isEmpty) && (text == null || text.isEmpty)) {
-      return ShellResult(ok: false, exitCode: -1, stdout: '', stderr: 'image_path 和 text 至少填一个');
+    if ((imagePath == null || imagePath.isEmpty) &&
+        (text == null || text.isEmpty)) {
+      return ShellResult(
+          ok: false,
+          exitCode: -1,
+          stdout: '',
+          stderr: 'image_path 和 text 至少填一个');
     }
     final extras = <String, String>{};
-    if (text != null && text.isNotEmpty) extras['android.intent.extra.TEXT'] = text;
+    if (text != null && text.isNotEmpty)
+      extras['android.intent.extra.TEXT'] = text;
     if (text != null && text.isNotEmpty && text.length > 80) {
       extras['android.intent.extra.SUBJECT'] = text.substring(0, 80);
     } else if (text != null && text.isNotEmpty) {
@@ -1326,25 +1435,31 @@ class AndroidAutomationService {
 
   /// 设置壁纸：把一张图片 (绝对路径) 设为桌面壁纸 / 锁屏壁纸 / 同时两者。
   ///   无权限时 fallback 为用 ACTION_ATTACH_DATA 打开系统壁纸设置。
-  Future<ShellResult> setWallpaper(String imagePath, {String which = 'both' /* home | lock | both */}) async {
+  Future<ShellResult> setWallpaper(String imagePath,
+      {String which = 'both' /* home | lock | both */}) async {
     final p = imagePath.trim();
-    if (p.isEmpty) return ShellResult(ok: false, exitCode: -1, stdout: '', stderr: 'image_path 为空');
+    if (p.isEmpty)
+      return ShellResult(
+          ok: false, exitCode: -1, stdout: '', stderr: 'image_path 为空');
     final f = File(p);
     if (!await f.exists()) {
-      return ShellResult(ok: false, exitCode: -2, stdout: '', stderr: '图片路径不存在: $p');
+      return ShellResult(
+          ok: false, exitCode: -2, stdout: '', stderr: '图片路径不存在: $p');
     }
     // 原生 WallpaperManager 优先 (通过 channel)
     try {
-      final r = await _channel.invokeMethod<String>('android_set_wallpaper', <String, dynamic>{
-          'path': p,
-          'which': which,
-        });
-        if (r != null && r.toLowerCase().contains('ok')) {
-          return ShellResult(ok: true, exitCode: 0, stdout: '✅ 壁纸已设置 ($which)\n$r', stderr: '');
-        }
-      } catch (_) {
-        // 壁纸设置失败，尝试 fallback 方法
+      final r = await _channel
+          .invokeMethod<String>('android_set_wallpaper', <String, dynamic>{
+        'path': p,
+        'which': which,
+      });
+      if (r != null && r.toLowerCase().contains('ok')) {
+        return ShellResult(
+            ok: true, exitCode: 0, stdout: '✅ 壁纸已设置 ($which)\n$r', stderr: '');
       }
+    } catch (_) {
+      // 壁纸设置失败，尝试 fallback 方法
+    }
     final intentR = await sendIntent(
       action: 'android.intent.action.ATTACH_DATA',
       data: 'file://$p',
@@ -1388,12 +1503,12 @@ class AndroidAutomationService {
 
 /// 权限类型枚举，用于统一权限检查入口。
 enum PermissionKind {
-  accessibility,   // 无障碍服务
-  shizuku,         // Shizuku 授权
-  notification,    // 通知监听
-  usageStats,      // 使用统计权限
-  writeSecure,     // WRITE_SECURE_SETTINGS
-  dump,            // DUMP 权限
+  accessibility, // 无障碍服务
+  shizuku, // Shizuku 授权
+  notification, // 通知监听
+  usageStats, // 使用统计权限
+  writeSecure, // WRITE_SECURE_SETTINGS
+  dump, // DUMP 权限
 }
 
 enum AndroidKey {

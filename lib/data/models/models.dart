@@ -65,11 +65,10 @@ class ChatMessage {
         role: _roleFromString(j['role'] as String? ?? 'user'),
         content: j['content'] as String? ?? '',
         timestamp: j['timestamp'] != null
-            ? (DateTime.tryParse(j['timestamp'] as String? ?? '') ?? DateTime.now())
+            ? (DateTime.tryParse(j['timestamp'] as String? ?? '') ??
+                DateTime.now())
             : null,
-        mediaPaths: (j['media_paths'] as List?)
-                ?.whereType<String>()
-                .toList() ??
+        mediaPaths: (j['media_paths'] as List?)?.whereType<String>().toList() ??
             const [],
       );
 }
@@ -134,10 +133,12 @@ class ChatSession {
         id: j['id'] as String? ?? '',
         title: j['title'] as String? ?? '新对话',
         messages: (j['messages'] as List? ?? [])
-            .map((m) => ChatMessage.fromJson(m is Map<String, dynamic> ? m : <String, dynamic>{}))
+            .map((m) => ChatMessage.fromJson(
+                m is Map<String, dynamic> ? m : <String, dynamic>{}))
             .toList(),
         createdAt: j['createdAt'] != null
-            ? (DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now())
+            ? (DateTime.tryParse(j['createdAt'] as String? ?? '') ??
+                DateTime.now())
             : DateTime.now(),
         modelId: j['modelId'] as String?,
       );
@@ -243,9 +244,8 @@ class ModelInfo {
         sizeMb: (j['size_mb'] as num?)?.toInt() ?? 0,
         ramMb: (j['ram_mb'] as num?)?.toInt() ?? 0,
         quant: j['quant'] as String? ?? 'Q4',
-        type: (j['type'] as String?) == 'omni'
-            ? ModelType.omni
-            : ModelType.text,
+        type:
+            (j['type'] as String?) == 'omni' ? ModelType.omni : ModelType.text,
         downloadUrl: j['download_url'] as String? ?? '',
         configFilename: j['config_filename'] as String? ?? 'config.json',
       );
@@ -296,8 +296,7 @@ class SamplingConfig {
         topK: (j['top_k'] as num?)?.toInt() ?? 40,
         topP: (j['top_p'] as num?)?.toDouble() ?? 0.9,
         maxNewTokens: (j['max_new_tokens'] as num?)?.toInt() ?? 1024,
-        repetitionPenalty:
-            (j['repetition_penalty'] as num?)?.toDouble() ?? 1.1,
+        repetitionPenalty: (j['repetition_penalty'] as num?)?.toDouble() ?? 1.1,
       );
 }
 
@@ -422,7 +421,8 @@ class AutomationPermissionStatus {
         shizukuGranted: shizukuGranted ?? this.shizukuGranted,
         screenshotGranted: screenshotGranted ?? this.screenshotGranted,
         usageStatsGranted: usageStatsGranted ?? this.usageStatsGranted,
-        notificationListenerGranted: notificationListenerGranted ?? this.notificationListenerGranted,
+        notificationListenerGranted:
+            notificationListenerGranted ?? this.notificationListenerGranted,
         warningDismissed: warningDismissed ?? this.warningDismissed,
       );
 
@@ -441,7 +441,8 @@ class AutomationPermissionStatus {
         shizukuGranted: j['shizuku'] as bool? ?? false,
         screenshotGranted: j['screenshot'] as bool? ?? false,
         usageStatsGranted: j['usage_stats'] as bool? ?? false,
-        notificationListenerGranted: j['notification_listener'] as bool? ?? false,
+        notificationListenerGranted:
+            j['notification_listener'] as bool? ?? false,
         warningDismissed: j['warning_dismissed'] as bool? ?? false,
       );
 }

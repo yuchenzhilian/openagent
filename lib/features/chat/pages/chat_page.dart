@@ -107,7 +107,8 @@ class ChatPageState extends State<ChatPage> {
 
   Future<void> _ensureModelLoaded() async {
     // ---- Cloud LLM path (no local model required) ----
-    if (_config.modelSource == ModelSource.cloud && _config.cloud.isConfigured) {
+    if (_config.modelSource == ModelSource.cloud &&
+        _config.cloud.isConfigured) {
       final cloudKey = '${_config.cloud.provider}:${_config.cloud.model}';
       if (cloudKey == _loadedModelId && _cloudSession != null) return;
       _session?.dispose();
@@ -122,7 +123,8 @@ class ChatPageState extends State<ChatPage> {
             provider: _mapCloudProvider(_config.cloud.provider),
             apiKey: _config.cloud.apiKey,
             model: _config.cloud.model,
-            baseUrl: _config.cloud.baseUrl.isEmpty ? null : _config.cloud.baseUrl,
+            baseUrl:
+                _config.cloud.baseUrl.isEmpty ? null : _config.cloud.baseUrl,
             systemPrompt: _config.cloud.systemPrompt.isNotEmpty
                 ? _config.cloud.systemPrompt
                 : _config.systemPrompt,
@@ -133,7 +135,8 @@ class ChatPageState extends State<ChatPage> {
         _usingCloud = true;
         _modelType = ModelType.text; // cloud is text-only
         _loadedModelId = cloudKey;
-        _statusLine = '☁️ 已连接云端 LLM: ${_config.cloud.provider} / ${_config.cloud.model}';
+        _statusLine =
+            '☁️ 已连接云端 LLM: ${_config.cloud.provider} / ${_config.cloud.model}';
       } catch (e) {
         _cloudSession = null;
         _loadedModelId = null;
@@ -253,33 +256,104 @@ class ChatPageState extends State<ChatPage> {
 
     // ---- Keywords that suggest Android automation ----
     final automationKeywords = [
-      '操作手机', '打开微信', '打开抖音', '打开小红书', '打开b站', '打开bilibili',
-      '打开qq', '打开支付宝', '打开游戏', '发微信', '发朋友圈', '发抖音',
-      '点开', '帮我点', '帮我发', '帮我刷', '帮我写', '帮我输',
-      '点击', '滑动', '截屏', '截图', '自动化',
-      'open wechat', 'open douyin', 'open app', 'click ', 'tap ',
-      'android', '自动化', '帮我操作', '帮我弄', '弄一下',
-      '打开设置', '打开相机', '打开相册', '打电话', '发短信',
+      '操作手机',
+      '打开微信',
+      '打开抖音',
+      '打开小红书',
+      '打开b站',
+      '打开bilibili',
+      '打开qq',
+      '打开支付宝',
+      '打开游戏',
+      '发微信',
+      '发朋友圈',
+      '发抖音',
+      '点开',
+      '帮我点',
+      '帮我发',
+      '帮我刷',
+      '帮我写',
+      '帮我输',
+      '点击',
+      '滑动',
+      '截屏',
+      '截图',
+      '自动化',
+      'open wechat',
+      'open douyin',
+      'open app',
+      'click ',
+      'tap ',
+      'android',
+      '自动化',
+      '帮我操作',
+      '帮我弄',
+      '弄一下',
+      '打开设置',
+      '打开相机',
+      '打开相册',
+      '打电话',
+      '发短信',
     ];
 
     // ---- Keywords that suggest web search / HTTP ----
     final webSearchKeywords = [
-      '搜索', '查一下', '查一查', '找找', '网上', '搜一下', '搜一搜',
-      '搜索一下', '百度', '谷歌', 'google', 'search', 'web',
-      '查资料', '查信息', '查新闻', '今天的', '天气', '实时',
-      '查', '找', '搜', '最新', '热点', '新闻',
+      '搜索',
+      '查一下',
+      '查一查',
+      '找找',
+      '网上',
+      '搜一下',
+      '搜一搜',
+      '搜索一下',
+      '百度',
+      '谷歌',
+      'google',
+      'search',
+      'web',
+      '查资料',
+      '查信息',
+      '查新闻',
+      '今天的',
+      '天气',
+      '实时',
+      '查',
+      '找',
+      '搜',
+      '最新',
+      '热点',
+      '新闻',
     ];
 
     // ---- Keywords that suggest calculation / math ----
     final mathKeywords = [
-      '计算', '算一下', '算一算', '统计', '数学', '加减乘除',
-      'calculate', 'compute', 'math', 'count', '求和', '平均',
+      '计算',
+      '算一下',
+      '算一算',
+      '统计',
+      '数学',
+      '加减乘除',
+      'calculate',
+      'compute',
+      'math',
+      'count',
+      '求和',
+      '平均',
     ];
 
     // ---- Keywords that suggest code / developer tasks ----
     final codeKeywords = [
-      '写代码', '编程', '代码', '函数', '写一个', 'bug', 'debug',
-      'code', 'function', 'implement', '写个脚本',
+      '写代码',
+      '编程',
+      '代码',
+      '函数',
+      '写一个',
+      'bug',
+      'debug',
+      'code',
+      'function',
+      'implement',
+      '写个脚本',
     ];
 
     bool needsAgent = false;
@@ -355,8 +429,8 @@ class ChatPageState extends State<ChatPage> {
       content: prompt.isEmpty ? '(图片)' : prompt,
       mediaPaths: media,
     );
-    final assistantMsg =
-        ChatMessage(role: MessageRole.assistant, content: '', isStreaming: true);
+    final assistantMsg = ChatMessage(
+        role: MessageRole.assistant, content: '', isStreaming: true);
 
     setState(() {
       _current!.messages.addAll([userMsg, assistantMsg]);
@@ -514,7 +588,9 @@ class ChatPageState extends State<ChatPage> {
       extraInfo: {
         'android_supported': _android.isSupported,
         'automation_ui_switch_on': enableAndroidAutomation,
-        'android_legacy_preload_on': enableAndroidAutomation ? 'yes (60+ android tools preloaded)' : 'no; skill_enable android_rpa yourself',
+        'android_legacy_preload_on': enableAndroidAutomation
+            ? 'yes (60+ android tools preloaded)'
+            : 'no; skill_enable android_rpa yourself',
       },
     )) {
       agent.registerTool(t);
@@ -562,9 +638,9 @@ class ChatPageState extends State<ChatPage> {
         case AgentToolCallEvent(:final toolName, :final arguments):
           _toolCallStartTimes[toolName] = DateTime.now();
           _toolCallCount++;
-          final prettyArgs = const JsonEncoder.withIndent('  ').convert(arguments);
-          assistantMsg.content +=
-              '\n\n---\n\n🔧 **调用工具**: `$toolName`\n\n'
+          final prettyArgs =
+              const JsonEncoder.withIndent('  ').convert(arguments);
+          assistantMsg.content += '\n\n---\n\n🔧 **调用工具**: `$toolName`\n\n'
               '```json\n$prettyArgs\n```\n\n';
           setState(() {});
           _scrollToBottom();
@@ -575,8 +651,7 @@ class ChatPageState extends State<ChatPage> {
               ? '⏱ ${DateTime.now().difference(elapsed).inMilliseconds}ms'
               : '';
           final icon = result.isError ? '❌' : '✅';
-          assistantMsg.content +=
-              '$icon **$toolName 结果** $elapsedStr:\n\n'
+          assistantMsg.content += '$icon **$toolName 结果** $elapsedStr:\n\n'
               '```\n${result.output}\n```\n\n---\n\n';
           setState(() {});
           _scrollToBottom();
@@ -667,9 +742,10 @@ class ChatPageState extends State<ChatPage> {
       await exportsDir.create(recursive: true);
     }
 
-    final safeTitle = session.title
-        .replaceAll(RegExp(r'[^\w\u4e00-\u9fff]'), '_');
-    final filename = '${safeTitle}_${DateTime.now().millisecondsSinceEpoch}.txt';
+    final safeTitle =
+        session.title.replaceAll(RegExp(r'[^\w\u4e00-\u9fff]'), '_');
+    final filename =
+        '${safeTitle}_${DateTime.now().millisecondsSinceEpoch}.txt';
     final file = File('${exportsDir.path}/$filename');
     await file.writeAsString(buffer.toString());
 
@@ -678,8 +754,7 @@ class ChatPageState extends State<ChatPage> {
 
   void _snack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   /// Toggle the Android-automation extension for the Agent runtime.
@@ -719,7 +794,8 @@ class ChatPageState extends State<ChatPage> {
               child: const Text('取消'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red.shade800),
+              style:
+                  FilledButton.styleFrom(backgroundColor: Colors.red.shade800),
               onPressed: () => Navigator.pop(c, true),
               child: const Text('我已知晓，继续'),
             ),
@@ -826,8 +902,7 @@ class ChatPageState extends State<ChatPage> {
       }
 
       final modelsDir = await widget.storage.getModelsDir();
-      final recordingsDir =
-          Directory('${modelsDir.parent.path}/recordings');
+      final recordingsDir = Directory('${modelsDir.parent.path}/recordings');
       if (!await recordingsDir.exists()) {
         await recordingsDir.create(recursive: true);
       }
@@ -912,22 +987,19 @@ class ChatPageState extends State<ChatPage> {
               padding: EdgeInsets.symmetric(horizontal: 12),
               child: Center(
                   child: SizedBox(
-                      width: 18, height: 18,
+                      width: 18,
+                      height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2))),
             ),
           IconButton(
             icon: Icon(_automationEnabled
                 ? Icons.phone_android
                 : Icons.phone_android_outlined),
-            color: _automationEnabled
-                ? Colors.green.shade700
-                : null,
+            color: _automationEnabled ? Colors.green.shade700 : null,
             tooltip: _automationEnabled
                 ? '手机自动化已开启（操作微信/抖音/游戏等）'
                 : '手机自动化：操作微信/抖音/游戏等 (需开启Agent模式)',
-            onPressed: _isOmni
-                ? null
-                : _toggleAutomation,
+            onPressed: _isOmni ? null : _toggleAutomation,
           ),
           IconButton(
             icon: const Icon(Icons.security_outlined),
@@ -972,7 +1044,9 @@ class ChatPageState extends State<ChatPage> {
           child: Row(children: [
             const Icon(Icons.info_outline, size: 18),
             const SizedBox(width: 8),
-            Expanded(child: Text(_statusLine!, style: const TextStyle(fontSize: 13))),
+            Expanded(
+                child:
+                    Text(_statusLine!, style: const TextStyle(fontSize: 13))),
           ]),
         ),
       );
@@ -989,8 +1063,7 @@ class ChatPageState extends State<ChatPage> {
           if (_loadedModelId != null)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                  '当前模型: $_loadedModelId${_isOmni ? ' (多模态)' : ''}',
+              child: Text('当前模型: $_loadedModelId${_isOmni ? ' (多模态)' : ''}',
                   style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
             ),
           if (_agentMode && !_isOmni)
@@ -1052,8 +1125,10 @@ class ChatPageState extends State<ChatPage> {
       spacing: 6,
       runSpacing: 6,
       children: paths.map((p) {
-        final isAudio = p.endsWith('.m4a') || p.endsWith('.aac') ||
-            p.endsWith('.wav') || p.endsWith('.mp3');
+        final isAudio = p.endsWith('.m4a') ||
+            p.endsWith('.aac') ||
+            p.endsWith('.wav') ||
+            p.endsWith('.mp3');
         if (isAudio) {
           return Container(
             width: 120,
@@ -1068,15 +1143,16 @@ class ChatPageState extends State<ChatPage> {
                 Icon(Icons.audio_file, color: Colors.indigo.shade400, size: 20),
                 const SizedBox(width: 6),
                 Text('语音消息',
-                    style: TextStyle(color: Colors.indigo.shade400, fontSize: 12)),
+                    style:
+                        TextStyle(color: Colors.indigo.shade400, fontSize: 12)),
               ],
             ),
           );
         }
         return ClipRRect(
           borderRadius: BorderRadius.circular(6),
-          child: Image.file(File(p),
-              width: 120, height: 120, fit: BoxFit.cover),
+          child:
+              Image.file(File(p), width: 120, height: 120, fit: BoxFit.cover),
         );
       }).toList(),
     );
@@ -1119,9 +1195,7 @@ class ChatPageState extends State<ChatPage> {
                   icon: Icon(
                     _isRecording ? Icons.stop : Icons.mic_outlined,
                     size: 22,
-                    color: _isRecording
-                        ? Colors.red
-                        : null,
+                    color: _isRecording ? Colors.red : null,
                   ),
                   tooltip: _isRecording ? '停止录音' : '语音输入',
                   onPressed: _hasSession ? _toggleRecording : null,
@@ -1129,14 +1203,11 @@ class ChatPageState extends State<ChatPage> {
               // Agent mode toggle — only for text models.
               IconButton(
                 icon: Icon(
-                  _agentMode
-                      ? Icons.smart_toy
-                      : Icons.smart_toy_outlined,
+                  _agentMode ? Icons.smart_toy : Icons.smart_toy_outlined,
                   size: 22,
                 ),
-                color: _agentMode
-                    ? Theme.of(context).colorScheme.primary
-                    : null,
+                color:
+                    _agentMode ? Theme.of(context).colorScheme.primary : null,
                 tooltip: _agentMode ? 'Agent 已开启' : 'Agent 模式',
                 onPressed: _isOmni
                     ? null
@@ -1193,8 +1264,10 @@ class ChatPageState extends State<ChatPage> {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final path = _attachedMedia[i];
-          final isAudio = path.endsWith('.m4a') || path.endsWith('.aac') ||
-              path.endsWith('.wav') || path.endsWith('.mp3');
+          final isAudio = path.endsWith('.m4a') ||
+              path.endsWith('.aac') ||
+              path.endsWith('.wav') ||
+              path.endsWith('.mp3');
           return Stack(children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -1220,8 +1293,7 @@ class ChatPageState extends State<ChatPage> {
                     color: Colors.black54,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close,
-                      size: 14, color: Colors.white),
+                  child: const Icon(Icons.close, size: 14, color: Colors.white),
                 ),
               ),
             ),
@@ -1241,7 +1313,8 @@ class ChatPageState extends State<ChatPage> {
           ..._sessions.map((s) => ListTile(
                 selected: s.id == _current?.id,
                 leading: const Icon(Icons.chat_bubble_outline),
-                title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                title:
+                    Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                 onTap: () => _switchSession(s),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20),
@@ -1259,7 +1332,8 @@ class _TypingIndicator extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 8),
       child: SizedBox(
-        width: 16, height: 16,
+        width: 16,
+        height: 16,
         child: CircularProgressIndicator(strokeWidth: 2),
       ),
     );

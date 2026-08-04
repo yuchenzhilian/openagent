@@ -57,7 +57,8 @@ enum ToolErrorCode {
 }
 
 /// Build a standardized error message with optional fix advice.
-String toolError(String reason, {ToolErrorCode code = ToolErrorCode.unknown, String? advice}) {
+String toolError(String reason,
+    {ToolErrorCode code = ToolErrorCode.unknown, String? advice}) {
   final codeTag = switch (code) {
     ToolErrorCode.timeout => '⏱',
     ToolErrorCode.permission => '🔒',
@@ -150,9 +151,8 @@ abstract class AgentRuntime {
     return (json: null, remainder: buffer.substring(openIdx));
   }
 
-  final jsonStr = buffer
-      .substring(openIdx + kToolCallOpen.length, closeIdx)
-      .trim();
+  final jsonStr =
+      buffer.substring(openIdx + kToolCallOpen.length, closeIdx).trim();
   final remainder = buffer.substring(closeIdx + kToolCallClose.length);
   return (json: jsonStr, remainder: remainder);
 }
@@ -184,7 +184,8 @@ abstract class AgentRuntime {
 ///      and its result is fed back for the next round.
 ///   3. If no tool call is found, the response is the final answer.
 class LocalMnnAgentRuntime implements AgentRuntime {
-  LocalMnnAgentRuntime(this._session, {this.maxSteps = 5, this.androidMode = false}) {
+  LocalMnnAgentRuntime(this._session,
+      {this.maxSteps = 5, this.androidMode = false}) {
     _slidingWindow = SlidingWindowCache();
     _scheduler = InferenceScheduler(monitor: DeviceMonitorService());
     _scheduler.start();
@@ -251,15 +252,17 @@ class LocalMnnAgentRuntime implements AgentRuntime {
       var toolCallDetected = false;
 
       try {
-        await for (final chunk in _session.chatStream(conversation.toString())) {
+        await for (final chunk
+            in _session.chatStream(conversation.toString())) {
           buffer.write(chunk);
 
           // Check for tool call in the accumulated buffer.
           final parsed = _tryParseToolCall(buffer.toString());
           if (parsed.json != null) {
             // Emit any text before the tool call tag.
-            final beforeTool = buffer.toString().substring(0,
-                buffer.toString().indexOf(kToolCallOpen));
+            final beforeTool = buffer
+                .toString()
+                .substring(0, buffer.toString().indexOf(kToolCallOpen));
             if (beforeTool.isNotEmpty) {
               yield AgentTokenEvent(beforeTool);
             }
@@ -278,11 +281,11 @@ class LocalMnnAgentRuntime implements AgentRuntime {
               );
 
               // Feed the tool result back into the conversation.
-              conversation.write(buffer.toString().substring(0,
+              conversation.write(buffer.toString().substring(
+                  0,
                   buffer.toString().indexOf(kToolCallClose) +
-                  kToolCallClose.length));
-              conversation.writeln(
-                  '\n[工具结果] ${result.output}');
+                      kToolCallClose.length));
+              conversation.writeln('\n[工具结果] ${result.output}');
 
               toolCallDetected = true;
 
@@ -335,7 +338,9 @@ class LocalMnnAgentRuntime implements AgentRuntime {
     final toolList = _tools.values.map((t) {
       final params = t.schema['properties'];
       final paramStr = params is Map
-          ? params.keys.map((k) => '$k: ${(params[k] as Map?)?['description'] ?? ''}').join(', ')
+          ? params.keys
+              .map((k) => '$k: ${(params[k] as Map?)?['description'] ?? ''}')
+              .join(', ')
           : '无';
       return '- ${t.name}: ${t.description}。参数: {$paramStr}';
     }).join('\n');
@@ -351,8 +356,8 @@ class LocalMnnAgentRuntime implements AgentRuntime {
   Future<ToolResult> executeTool(String name, Map<String, dynamic> args) async {
     final tool = _tools[name];
     if (tool == null) {
-      return ToolResult.error(
-          toolError('未知工具: $name', advice: '用 skill_list 查看可用工具，或 skill_enable 启用对应技能。'));
+      return ToolResult.error(toolError('未知工具: $name',
+          advice: '用 skill_list 查看可用工具，或 skill_enable 启用对应技能。'));
     }
 
     // 1. Schema validation (fast path — reject invalid args early).
@@ -378,11 +383,11 @@ class LocalMnnAgentRuntime implements AgentRuntime {
           _consecutivePermissionErrors++;
           if (_consecutivePermissionErrors >= 2) {
             _consecutivePermissionErrors = 0;
-            return ToolResult.error(
-                toolError('连续多次操作因权限失败',
-                    code: ToolErrorCode.permission,
-                    advice: '调用 android_permission_self_heal action=check_and_fix 自动修复权限。\n'
-                        '或调用 android_shizuku_simplified action=check 查看权限状态。'));
+            return ToolResult.error(toolError('连续多次操作因权限失败',
+                code: ToolErrorCode.permission,
+                advice:
+                    '调用 android_permission_self_heal action=check_and_fix 自动修复权限。\n'
+                    '或调用 android_shizuku_simplified action=check 查看权限状态。'));
           }
         } else {
           _consecutivePermissionErrors = 0;
@@ -393,8 +398,12 @@ class LocalMnnAgentRuntime implements AgentRuntime {
 
         // If the error is retryable, attempt a retry.
         if (attempt < maxRetries && _isRetryableError(result.output)) {
-          final delay = Duration(milliseconds: 500 * (1 << attempt)); // 500ms, 1s
-          await _logExecution(name, args, ToolResult.ok('等待重试 #${attempt + 1} ($delay)'),
+          final delay =
+              Duration(milliseconds: 500 * (1 << attempt)); // 500ms, 1s
+          await _logExecution(
+              name,
+              args,
+              ToolResult.ok('等待重试 #${attempt + 1} ($delay)'),
               stopwatch.elapsedMilliseconds);
           await Future.delayed(delay);
           continue; // Retry
@@ -406,28 +415,34 @@ class LocalMnnAgentRuntime implements AgentRuntime {
         stopwatch.stop();
         if (attempt < maxRetries) {
           final delay = Duration(milliseconds: 500 * (1 << attempt));
-          await _logExecution(name, args, ToolResult.ok('超时重试 #${attempt + 1} ($delay)'),
+          await _logExecution(
+              name,
+              args,
+              ToolResult.ok('超时重试 #${attempt + 1} ($delay)'),
               stopwatch.elapsedMilliseconds);
           await Future.delayed(delay);
           continue; // Retry with increased timeout
         }
-        final err = ToolResult.error(
-            toolError('工具执行超时 (${_defaultToolTimeout.inSeconds}秒): $name',
-                code: ToolErrorCode.timeout, advice: '如果操作确实需要更长时间，可增大超时设置。'));
+        final err = ToolResult.error(toolError(
+            '工具执行超时 (${_defaultToolTimeout.inSeconds}秒): $name',
+            code: ToolErrorCode.timeout,
+            advice: '如果操作确实需要更长时间，可增大超时设置。'));
         await _logExecution(name, args, err, stopwatch.elapsedMilliseconds);
         return err;
       } catch (e) {
         stopwatch.stop();
         if (attempt < maxRetries && _isRetryableException(e)) {
           final delay = Duration(milliseconds: 500 * (1 << attempt));
-          await _logExecution(name, args, ToolResult.ok('异常重试 #${attempt + 1} ($delay)'),
+          await _logExecution(
+              name,
+              args,
+              ToolResult.ok('异常重试 #${attempt + 1} ($delay)'),
               stopwatch.elapsedMilliseconds);
           await Future.delayed(delay);
           continue;
         }
-        final err = ToolResult.error(
-            toolError('工具执行失败: $e',
-                advice: '检查工具参数是否正确，或查看 agent_execution.log 获取详细错误信息。'));
+        final err = ToolResult.error(toolError('工具执行失败: $e',
+            advice: '检查工具参数是否正确，或查看 agent_execution.log 获取详细错误信息。'));
         await _logExecution(name, args, err, stopwatch.elapsedMilliseconds);
         return err;
       }
@@ -459,9 +474,19 @@ class LocalMnnAgentRuntime implements AgentRuntime {
   /// 检测错误信息是否与权限相关。支持 toolError 格式（🔒 前缀）和传统文本。
   bool _isPermissionError(String message) {
     final keywords = [
-      '权限', 'permission', 'denied', 'WRITE_SECURE', 'ACCESS_',
-      '拒绝', '未授权', 'forbidden', 'not granted',
-      'Shizuku', 'shizuku', 'accessibility', '无障碍',
+      '权限',
+      'permission',
+      'denied',
+      'WRITE_SECURE',
+      'ACCESS_',
+      '拒绝',
+      '未授权',
+      'forbidden',
+      'not granted',
+      'Shizuku',
+      'shizuku',
+      'accessibility',
+      '无障碍',
       '🔒',
     ];
     final lower = message.toLowerCase();
@@ -469,14 +494,16 @@ class LocalMnnAgentRuntime implements AgentRuntime {
   }
 
   /// 记录工具执行日志到文件。
-  Future<void> _logExecution(String toolName, Map<String, dynamic> args, ToolResult result, int ms) async {
+  Future<void> _logExecution(String toolName, Map<String, dynamic> args,
+      ToolResult result, int ms) async {
     try {
       final logDir = await getApplicationDocumentsDirectory();
       final logFile = File('${logDir.path}/agent_execution.log');
       final argSummary = args.toString().length > kLogArgMaxLen
           ? '${args.toString().substring(0, kLogArgMaxLen)}...'
           : args.toString();
-      final line = '[${DateTime.now().toIso8601String()}] $toolName | $argSummary | ${result.isError ? "ERROR" : "OK"} | ${ms}ms\n';
+      final line =
+          '[${DateTime.now().toIso8601String()}] $toolName | $argSummary | ${result.isError ? "ERROR" : "OK"} | ${ms}ms\n';
       await logFile.writeAsString(line, mode: FileMode.append);
       // 控制日志大小：超过 5000 行时截断
       await _trimLogIfNeeded(logFile);

@@ -230,7 +230,8 @@ void main() {
     });
 
     test('fromJson handles null fields', () {
-      final config = AppConfig.fromJson({'active_model_id': null, 'system_prompt': null});
+      final config =
+          AppConfig.fromJson({'active_model_id': null, 'system_prompt': null});
       expect(config.activeModelId, isNull);
       expect(config.systemPrompt, isEmpty);
     });

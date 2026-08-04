@@ -101,7 +101,8 @@ Tool dateCalculatorTool() => Tool(
         'properties': {
           'date': {
             'type': 'string',
-            'description': '基准日期（ISO 格式 YYYY-MM-DD 或 YYYY-MM-DDTHH:MM:SS），默认当前时间',
+            'description':
+                '基准日期（ISO 格式 YYYY-MM-DD 或 YYYY-MM-DDTHH:MM:SS），默认当前时间',
           },
           'add_days': {
             'type': 'integer',
@@ -166,7 +167,8 @@ Tool dateCalculatorTool() => Tool(
             final cmp = DateTime.parse(cmpStr);
             final diff = result.difference(cmp);
             sb.writeln('\n对比 $cmpStr:');
-            sb.writeln('  相差 ${diff.inDays} 天 ${diff.inHours.remainder(24)} 小时 ${diff.inMinutes.remainder(60)} 分钟');
+            sb.writeln(
+                '  相差 ${diff.inDays} 天 ${diff.inHours.remainder(24)} 小时 ${diff.inMinutes.remainder(60)} 分钟');
             sb.writeln('  总小时: ${diff.inHours}, 总分钟: ${diff.inMinutes}');
           }
           return ToolResult.ok(sb.toString());
@@ -256,8 +258,7 @@ class _ExprParser {
     }
     // Number
     final start = _pos;
-    while (_pos < _input.length &&
-        (_input[_pos].contains(RegExp(r'[0-9.]')))) {
+    while (_pos < _input.length && (_input[_pos].contains(RegExp(r'[0-9.]')))) {
       _pos++;
     }
     if (_pos == start) {

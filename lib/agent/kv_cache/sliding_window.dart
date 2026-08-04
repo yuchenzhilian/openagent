@@ -10,7 +10,9 @@ class SummaryEntry {
   final DateTime timestamp;
   final int originalLength;
   const SummaryEntry({
-    required this.summary, required this.timestamp, required this.originalLength,
+    required this.summary,
+    required this.timestamp,
+    required this.originalLength,
   });
 }
 
@@ -39,12 +41,17 @@ class SlidingWindowCache {
     }
     final summaryText = toSummarize.toString();
     _summaries.add(SummaryEntry(
-      summary: summaryText.length > 200 ? '${summaryText.substring(0, 200)}...' : summaryText,
+      summary: summaryText.length > 200
+          ? '${summaryText.substring(0, 200)}...'
+          : summaryText,
       timestamp: now,
       originalLength: summaryText.length,
     ));
     while (_summaries.length > summaryCacheSize) _summaries.removeAt(0);
-    return (windowText: _window.map((e) => e.text).join('\n'), toSummarize: summaryText);
+    return (
+      windowText: _window.map((e) => e.text).join('\n'),
+      toSummarize: summaryText
+    );
   }
 
   String get windowContent => _window.map((e) => e.text).join('\n');
@@ -61,5 +68,8 @@ class SlidingWindowCache {
     return buf.toString();
   }
 
-  void reset() { _window.clear(); _summaries.clear(); }
+  void reset() {
+    _window.clear();
+    _summaries.clear();
+  }
 }

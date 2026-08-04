@@ -99,7 +99,8 @@ class SkillManager {
   /// remember_enabled toggle: model says "next session bootstrap, re-enable me".
   /// Multiple ids supported via "id1,id2,id3" comma-list. returns OK/ERROR per id.
   String setRemembered(String commaIds, {required bool remember}) {
-    final ids = commaIds.split(RegExp(r'[,,;\s]+')).where((s) => s.isNotEmpty).toList();
+    final ids =
+        commaIds.split(RegExp(r'[,,;\s]+')).where((s) => s.isNotEmpty).toList();
     if (ids.isEmpty) return 'ERROR: no skill ids provided';
     final sb = StringBuffer();
     for (final id in ids) {
@@ -115,8 +116,10 @@ class SkillManager {
   }
 
   /// Which skills are currently flagged "remember_enabled" — ordered by insert.
-  List<String> get rememberedIds =>
-      _remembered.entries.where((e) => e.value).map((e) => e.key).toList(growable: false);
+  List<String> get rememberedIds => _remembered.entries
+      .where((e) => e.value)
+      .map((e) => e.key)
+      .toList(growable: false);
 
   /// Enumerate all skills with their states, for the skill_list Agent tool.
   List<Map<String, dynamic>> listAll() => _available.values.map((s) {
@@ -194,17 +197,25 @@ class SkillManager {
   /// Load remembered list (returns ids re-registered for JSON skills + set
   /// remembered for every id that matches an available skill). Also returns
   /// per-item results in a String.
-  Future<String> restoreJsonSkills(Map<String, dynamic> snapshot, {
+  Future<String> restoreJsonSkills(
+    Map<String, dynamic> snapshot, {
     bool enableRemembered = false,
     bool Function(String id)? shouldRegisterJsonSkill,
   }) async {
     final sb = StringBuffer();
-    final jsonSkills = snapshot['json_skill_specs'] as List<dynamic>? ?? const [];
+    final jsonSkills =
+        snapshot['json_skill_specs'] as List<dynamic>? ?? const [];
     var registered = 0, skipped = 0;
     for (final s in jsonSkills) {
-      if (s is! Map<String, dynamic>) { skipped++; continue; }
+      if (s is! Map<String, dynamic>) {
+        skipped++;
+        continue;
+      }
       final id = (s['id'] as String?).toString().trim();
-      if (id.isEmpty) { skipped++; continue; }
+      if (id.isEmpty) {
+        skipped++;
+        continue;
+      }
       if (shouldRegisterJsonSkill != null && !shouldRegisterJsonSkill(id)) {
         sb.writeln('[json:$id] SKIP (filter rejected)');
         skipped++;
@@ -221,10 +232,11 @@ class SkillManager {
     }
     sb.writeln('JSON skills: restored $registered, skipped $skipped');
 
-    final rememberIds = (snapshot['remember_enabled'] as List<dynamic>? ?? const [])
-        .map((e) => e.toString())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final rememberIds =
+        (snapshot['remember_enabled'] as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .where((e) => e.isNotEmpty)
+            .toList();
     var remOk = 0;
     for (final id in rememberIds) {
       if (isAvailable(id)) {
@@ -249,7 +261,8 @@ class SkillManager {
   }
 
   // Expose tool-ids-per-skill map to diagnostic tools (e.g. skill_tools_manifest)
-  Map<String, List<String>> get toolIdsBySkill => Map.unmodifiable(_toolIdsBySkill);
+  Map<String, List<String>> get toolIdsBySkill =>
+      Map.unmodifiable(_toolIdsBySkill);
 
   /// Enable a skill, including:
   /// - check deps are satisfied (fail fast with list of missing deps)
@@ -258,7 +271,8 @@ class SkillManager {
   /// - mark enabled + fire event
   Future<String> enable(String id) async {
     final skill = _available[id];
-    if (skill == null) return 'ERROR: skill not found: $id (call skill_list to see available)';
+    if (skill == null)
+      return 'ERROR: skill not found: $id (call skill_list to see available)';
     if (isEnabled(id)) {
       if (!skill.idempotent) {
         return 'ERROR: skill $id is non-idempotent and already enabled';
@@ -277,12 +291,15 @@ class SkillManager {
       registerAgentTool(tool);
       registered.add(tool.name);
     }
+
     try {
       await skill.onEnable(wrap);
     } catch (e, st) {
       // roll back any tools registered before the error
       for (final name in registered) {
-        try { unregisterAgentTool(name); } catch (_) {
+        try {
+          unregisterAgentTool(name);
+        } catch (_) {
           // 工具注销失败不影响主流程
         }
       }
@@ -306,7 +323,9 @@ class SkillManager {
     }
     final tools = _toolIdsBySkill.remove(id) ?? const [];
     for (final name in tools) {
-      try { unregisterAgentTool(name); } catch (_) {
+      try {
+        unregisterAgentTool(name);
+      } catch (_) {
         // 工具注销失败不影响主流程
       }
     }
@@ -386,9 +405,8 @@ class JsonSpecSkill extends Skill {
       final sid = (callMcp['server_id'] as String?).toString().trim();
       final tname = (callMcp['tool_name'] as String?).toString().trim();
       final overrides = callMcp['arguments'] as Map<String, dynamic>?;
-      final finalArgs = overrides == null
-          ? callArgs
-          : _applyTemplateMap(overrides, callArgs);
+      final finalArgs =
+          overrides == null ? callArgs : _applyTemplateMap(overrides, callArgs);
       final reg = JsonSpecResolvers.mcpRegistry;
       if (reg == null) {
         return const ToolResult.error(
@@ -396,7 +414,8 @@ class JsonSpecSkill extends Skill {
       }
       final client = reg.find(sid);
       if (client == null) {
-        return ToolResult.error('JsonSpecSkill.callMcp: MCP server_id=$sid not connected. First mcp_connect it.');
+        return ToolResult.error(
+            'JsonSpecSkill.callMcp: MCP server_id=$sid not connected. First mcp_connect it.');
       }
       final r = await client.callTool(tname, finalArgs);
       return r.isError ? ToolResult.error(r.content) : ToolResult.ok(r.content);
@@ -424,7 +443,8 @@ class JsonSpecSkill extends Skill {
     // 4) echo (identity) adapter
     final echo = toolSpec['echo'] as bool? ?? false;
     if (echo) {
-      return ToolResult.ok(const JsonEncoder.withIndent('  ').convert(callArgs));
+      return ToolResult.ok(
+          const JsonEncoder.withIndent('  ').convert(callArgs));
     }
     return const ToolResult.error(
         'JsonSpecSkill tool has no callMcp/callTool/template/echo adapter — nothing to do.');
@@ -435,8 +455,8 @@ class JsonSpecSkill extends Skill {
   static dynamic _applyTemplate(dynamic value, Map<String, dynamic> args) {
     if (value is String) {
       if (!value.contains('{args.')) return value;
-      return value.replaceAllMapped(
-          RegExp(r'\{args\.([a-zA-Z_][\w.]*)\}'), (m) {
+      return value.replaceAllMapped(RegExp(r'\{args\.([a-zA-Z_][\w.]*)\}'),
+          (m) {
         final path = m.group(1)!;
         final parts = path.split('.');
         dynamic cur = args;
@@ -468,10 +488,9 @@ class JsonSpecSkill extends Skill {
   @override
   String get id => (spec['id'] as String?).toString().trim();
   @override
-  String get name =>
-      (spec['name'] as String?)?.toString().isEmpty != false
-          ? id
-          : spec['name'].toString();
+  String get name => (spec['name'] as String?)?.toString().isEmpty != false
+      ? id
+      : spec['name'].toString();
   @override
   String get version =>
       (spec['version'] as String?)?.toString().isNotEmpty == true
@@ -514,8 +533,10 @@ class AndroidRpaSkill extends Skill {
   });
 
   final AndroidAutomationService? androidService;
-  final Future<String> Function(String screenshotPath, String prompt)? visionAnalyze;
-  final Future<ToolResult> Function(String toolName, Map<String, dynamic> args)? executeCallback;
+  final Future<String> Function(String screenshotPath, String prompt)?
+      visionAnalyze;
+  final Future<ToolResult> Function(String toolName, Map<String, dynamic> args)?
+      executeCallback;
   final AgentMemoryBackend? memoryBackend;
 
   @override
@@ -555,7 +576,8 @@ class BuiltinMathTimeSkill extends Skill {
   @override
   String get name => 'Built-in Calculator / DateTime / Text Statistics';
   @override
-  String get description => '3 个基础工具：计算器（任意数学表达式）、当前时间（按任意时区格式化）、文本统计（字数/行数/字符数）。日常算术/时间类问题直接可启用。';
+  String get description =>
+      '3 个基础工具：计算器（任意数学表达式）、当前时间（按任意时区格式化）、文本统计（字数/行数/字符数）。日常算术/时间类问题直接可启用。';
 
   @override
   Future<void> onEnable(void Function(Tool) registerTool) async {
@@ -583,7 +605,8 @@ class McpGatewaySkill extends Skill {
   @override
   String get name => 'MCP Gateway (connect external MCP servers)';
   @override
-  String get description => '连接任意 MCP (Model Context Protocol) Server，动态引入外部工具能力。支持 HTTP JSON-RPC 远程端点 和 本地子进程 stdio 模式两种 transport。模型根据任务需求自主判断要连哪个 Server、何时断开。';
+  String get description =>
+      '连接任意 MCP (Model Context Protocol) Server，动态引入外部工具能力。支持 HTTP JSON-RPC 远程端点 和 本地子进程 stdio 模式两种 transport。模型根据任务需求自主判断要连哪个 Server、何时断开。';
 
   @override
   Future<void> onEnable(void Function(Tool) registerTool) async {
@@ -600,30 +623,49 @@ List<Tool> createMcpTools(McpRegistry registry) {
   // mcp_connect: HTTP endpoint
   out.add(Tool(
     name: 'mcp_connect_http',
-    description: '【MCP 连接】连接一个远程 HTTP(S) MCP Server，完成 initialize 握手后自动 tools/list 发现工具并返回清单。⚠ 代码层不做任何白名单/黑名单 — 你 (LLM) 自主判断该 URL 是否可信、是否符合用户意图。成功后可用 mcp_list_tools 看清单、mcp_call 调具体工具；用完记得 mcp_disconnect 释放资源。',
+    description:
+        '【MCP 连接】连接一个远程 HTTP(S) MCP Server，完成 initialize 握手后自动 tools/list 发现工具并返回清单。⚠ 代码层不做任何白名单/黑名单 — 你 (LLM) 自主判断该 URL 是否可信、是否符合用户意图。成功后可用 mcp_list_tools 看清单、mcp_call 调具体工具；用完记得 mcp_disconnect 释放资源。',
     schema: const {
       'type': 'object',
       'properties': {
-        'server_id': {'type': 'string', 'description': '给这个连接起个唯一 id，后续 mcp_disconnect/mcp_list_tools/mcp_call 都用它来引用。比如 "github-mcp"、"filesystem-local"。重复 id 会先自动断开旧连接。'},
-        'url': {'type': 'string', 'description': 'MCP Server 的 HTTP(S) 基地址。实际 JSON-RPC POST 会发送到 <url>/mcp。支持 http://localhost:<port> 本地调试。'},
-        'headers': {'type': 'object', 'description': '可选。附加的 HTTP 请求头，例如 {"Authorization":"Bearer xxx"}、{"x-api-key":"yyy"}。留空=不传。'},
-        'timeout_sec': {'type': 'integer', 'description': '可选。单次 HTTP 调用超时秒数 (1~300)。默认 30。'},
+        'server_id': {
+          'type': 'string',
+          'description':
+              '给这个连接起个唯一 id，后续 mcp_disconnect/mcp_list_tools/mcp_call 都用它来引用。比如 "github-mcp"、"filesystem-local"。重复 id 会先自动断开旧连接。'
+        },
+        'url': {
+          'type': 'string',
+          'description':
+              'MCP Server 的 HTTP(S) 基地址。实际 JSON-RPC POST 会发送到 <url>/mcp。支持 http://localhost:<port> 本地调试。'
+        },
+        'headers': {
+          'type': 'object',
+          'description':
+              '可选。附加的 HTTP 请求头，例如 {"Authorization":"Bearer xxx"}、{"x-api-key":"yyy"}。留空=不传。'
+        },
+        'timeout_sec': {
+          'type': 'integer',
+          'description': '可选。单次 HTTP 调用超时秒数 (1~300)。默认 30。'
+        },
       },
       'required': ['server_id', 'url'],
     },
     handler: (args) async {
       final sid = (args['server_id'] as String?).toString().trim();
       final url = (args['url'] as String?).toString().trim();
-      if (sid.isEmpty || url.isEmpty) return const ToolResult.error('server_id 和 url 不能为空');
+      if (sid.isEmpty || url.isEmpty)
+        return const ToolResult.error('server_id 和 url 不能为空');
       final headersRaw = args['headers'] as Map<String, dynamic>? ?? const {};
-      final headers = headersRaw.map((k, v) => MapEntry(k.toString(), v.toString()));
+      final headers =
+          headersRaw.map((k, v) => MapEntry(k.toString(), v.toString()));
       final timeoutSec = (args['timeout_sec'] as int? ?? 30).clamp(1, 300);
       // Disconnect old if exists
       if (registry.find(sid) != null) {
         await registry.unregister(sid);
       }
       try {
-        final transport = HttpMcpTransport(url, headers: headers, timeout: Duration(seconds: timeoutSec));
+        final transport = HttpMcpTransport(url,
+            headers: headers, timeout: Duration(seconds: timeoutSec));
         final client = McpClient(transport, serverId: sid);
         final info = await client.initialize();
         if (info.containsKey('error')) {
@@ -632,8 +674,10 @@ List<Tool> createMcpTools(McpRegistry registry) {
         }
         final tools = await client.listTools();
         registry.register(client);
-        final infoStr = info.entries.map((e) => '${e.key}: ${e.value}').join('\n');
-        return ToolResult.ok('OK: MCP connected id=$sid\nserver_info:\n$infoStr\n\ndiscovered tools (${tools.length}):\n${tools.map((t) => '- ${t.name}  ${t.description.substring(0, t.description.length > 80 ? 80 : t.description.length)}').join('\n')}');
+        final infoStr =
+            info.entries.map((e) => '${e.key}: ${e.value}').join('\n');
+        return ToolResult.ok(
+            'OK: MCP connected id=$sid\nserver_info:\n$infoStr\n\ndiscovered tools (${tools.length}):\n${tools.map((t) => '- ${t.name}  ${t.description.substring(0, t.description.length > 80 ? 80 : t.description.length)}').join('\n')}');
       } catch (e, st) {
         return ToolResult.error('mcp_connect_http failed: $e\n$st');
       }
@@ -643,14 +687,27 @@ List<Tool> createMcpTools(McpRegistry registry) {
   // mcp_connect: stdio
   out.add(Tool(
     name: 'mcp_connect_stdio',
-    description: '【MCP 连接 · 本地】启动一个本地可执行文件作为 MCP Server，通过 stdin/stdout 交换 JSON-RPC 2.0。适用于随 App 打包的本地 MCP、或手机上已有可执行的 MCP server。⚠ 和 HTTP 模式一样：不做白名单，你自己判断 executable+args 是否合法。',
+    description:
+        '【MCP 连接 · 本地】启动一个本地可执行文件作为 MCP Server，通过 stdin/stdout 交换 JSON-RPC 2.0。适用于随 App 打包的本地 MCP、或手机上已有可执行的 MCP server。⚠ 和 HTTP 模式一样：不做白名单，你自己判断 executable+args 是否合法。',
     schema: const {
       'type': 'object',
       'properties': {
         'server_id': {'type': 'string', 'description': '连接 id（后续引用用）'},
-        'executable': {'type': 'string', 'description': '可执行文件路径，如 "python3"、"/data/local/tmp/mcp-server"、"node"。'},
-        'args': {'type': 'array', 'items': {'type': 'string'}, 'description': '命令行参数数组，如 ["-m","mcp_server.filesystem","/sdcard"]。留空=无参数。'},
-        'env': {'type': 'object', 'description': '可选。附加环境变量，如 {PATH: /data/local/bin/\$PATH}。'},
+        'executable': {
+          'type': 'string',
+          'description':
+              '可执行文件路径，如 "python3"、"/data/local/tmp/mcp-server"、"node"。'
+        },
+        'args': {
+          'type': 'array',
+          'items': {'type': 'string'},
+          'description':
+              '命令行参数数组，如 ["-m","mcp_server.filesystem","/sdcard"]。留空=无参数。'
+        },
+        'env': {
+          'type': 'object',
+          'description': '可选。附加环境变量，如 {PATH: /data/local/bin/\$PATH}。'
+        },
         'cwd': {'type': 'string', 'description': '可选。工作目录。'},
       },
       'required': ['server_id', 'executable'],
@@ -658,8 +715,11 @@ List<Tool> createMcpTools(McpRegistry registry) {
     handler: (args) async {
       final sid = (args['server_id'] as String?).toString().trim();
       final exe = (args['executable'] as String?).toString().trim();
-      if (sid.isEmpty || exe.isEmpty) return const ToolResult.error('server_id 和 executable 不能为空');
-      final argsList = (args['args'] as List<dynamic>? ?? const []).map((e) => e.toString()).toList();
+      if (sid.isEmpty || exe.isEmpty)
+        return const ToolResult.error('server_id 和 executable 不能为空');
+      final argsList = (args['args'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .toList();
       final envRaw = args['env'] as Map<String, dynamic>? ?? const {};
       final env = envRaw.map((k, v) => MapEntry(k.toString(), v.toString()));
       final cwd = args['cwd'] as String?;
@@ -667,7 +727,8 @@ List<Tool> createMcpTools(McpRegistry registry) {
         await registry.unregister(sid);
       }
       try {
-        final transport = await StdioMcpTransport.spawn(exe, argsList, environment: env, workingDirectory: cwd);
+        final transport = await StdioMcpTransport.spawn(exe, argsList,
+            environment: env, workingDirectory: cwd);
         final client = McpClient(transport, serverId: sid);
         final info = await client.initialize();
         if (info.containsKey('error')) {
@@ -676,8 +737,10 @@ List<Tool> createMcpTools(McpRegistry registry) {
         }
         final tools = await client.listTools();
         registry.register(client);
-        final infoStr = info.entries.map((e) => '${e.key}: ${e.value}').join('\n');
-        return ToolResult.ok('OK: MCP stdio connected id=$sid\nserver_info:\n$infoStr\n\ndiscovered tools (${tools.length}):\n${tools.map((t) => '- ${t.name}  ${t.description.substring(0, t.description.length > 80 ? 80 : t.description.length)}').join('\n')}');
+        final infoStr =
+            info.entries.map((e) => '${e.key}: ${e.value}').join('\n');
+        return ToolResult.ok(
+            'OK: MCP stdio connected id=$sid\nserver_info:\n$infoStr\n\ndiscovered tools (${tools.length}):\n${tools.map((t) => '- ${t.name}  ${t.description.substring(0, t.description.length > 80 ? 80 : t.description.length)}').join('\n')}');
       } catch (e, st) {
         return ToolResult.error('mcp_connect_stdio failed: $e\n$st');
       }
@@ -690,14 +753,17 @@ List<Tool> createMcpTools(McpRegistry registry) {
     description: '列出当前已连接的所有 MCP Server，包括每个 server 下发现的工具数量清单。',
     schema: const {'type': 'object', 'properties': {}},
     handler: (_) async {
-      if (registry.allClients.isEmpty) return const ToolResult.ok('(没有已连接的 MCP server)');
+      if (registry.allClients.isEmpty)
+        return const ToolResult.ok('(没有已连接的 MCP server)');
       final sb = StringBuffer();
       for (final e in registry.allClients.entries) {
-        sb.writeln('=== server_id=${e.key}  initialized=${e.value.isInitialized} ===');
+        sb.writeln(
+            '=== server_id=${e.key}  initialized=${e.value.isInitialized} ===');
         try {
           final tools = await e.value.listTools();
           for (final t in tools) {
-            sb.writeln('  - ${t.name}: ${t.description.substring(0, t.description.length > 120 ? 120 : t.description.length)}');
+            sb.writeln(
+                '  - ${t.name}: ${t.description.substring(0, t.description.length > 120 ? 120 : t.description.length)}');
           }
         } catch (e2) {
           sb.writeln('  (tools/list failed: $e2)');
@@ -711,22 +777,34 @@ List<Tool> createMcpTools(McpRegistry registry) {
   // mcp_call
   out.add(Tool(
     name: 'mcp_call',
-    description: '调用某个已连接 MCP Server 的具体工具。参数中指定 server_id + tool_name + arguments。MCP spec 要求 arguments 必须是 JSON object；我们透传不做校验，所有校验由 server 返回。',
+    description:
+        '调用某个已连接 MCP Server 的具体工具。参数中指定 server_id + tool_name + arguments。MCP spec 要求 arguments 必须是 JSON object；我们透传不做校验，所有校验由 server 返回。',
     schema: const {
       'type': 'object',
       'properties': {
-        'server_id': {'type': 'string', 'description': '已连接的 MCP server id (由 mcp_connect_* 创建)。'},
-        'tool_name': {'type': 'string', 'description': '要调用的工具名，由 mcp_list_connected 或 mcp_connect_* 的返回给出。'},
-        'arguments': {'type': 'object', 'description': '传给该工具的参数对象，完全按 MCP server 要求填写。'},
+        'server_id': {
+          'type': 'string',
+          'description': '已连接的 MCP server id (由 mcp_connect_* 创建)。'
+        },
+        'tool_name': {
+          'type': 'string',
+          'description': '要调用的工具名，由 mcp_list_connected 或 mcp_connect_* 的返回给出。'
+        },
+        'arguments': {
+          'type': 'object',
+          'description': '传给该工具的参数对象，完全按 MCP server 要求填写。'
+        },
       },
       'required': ['server_id', 'tool_name', 'arguments'],
     },
     handler: (args) async {
       final sid = (args['server_id'] as String?).toString().trim();
       final name = (args['tool_name'] as String?).toString().trim();
-      final arguments = args['arguments'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+      final arguments = args['arguments'] as Map<String, dynamic>? ??
+          const <String, dynamic>{};
       final client = registry.find(sid);
-      if (client == null) return ToolResult.error('未找到 server_id=$sid 的连接，先 mcp_connect');
+      if (client == null)
+        return ToolResult.error('未找到 server_id=$sid 的连接，先 mcp_connect');
       if (name.isEmpty) return const ToolResult.error('tool_name 不能为空');
       final r = await client.callTool(name, arguments);
       return r.isError ? ToolResult.error(r.content) : ToolResult.ok(r.content);
@@ -736,10 +814,13 @@ List<Tool> createMcpTools(McpRegistry registry) {
   // mcp_disconnect
   out.add(Tool(
     name: 'mcp_disconnect',
-    description: '断开某个 MCP 连接并释放资源（HTTP client close / stdio process kill）。断开后 mcp_call 将无法再用。',
+    description:
+        '断开某个 MCP 连接并释放资源（HTTP client close / stdio process kill）。断开后 mcp_call 将无法再用。',
     schema: const {
       'type': 'object',
-      'properties': {'server_id': {'type': 'string', 'description': '要断开的连接 id'}},
+      'properties': {
+        'server_id': {'type': 'string', 'description': '要断开的连接 id'}
+      },
       'required': ['server_id'],
     },
     handler: (args) async {

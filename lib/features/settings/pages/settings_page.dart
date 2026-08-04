@@ -113,42 +113,52 @@ class _SettingsPageState extends State<SettingsPage> {
         _slider(
           label: 'temperature',
           value: _sampling.temperature,
-          min: 0, max: 2, divisions: 20,
+          min: 0,
+          max: 2,
+          divisions: 20,
           format: (v) => v.toStringAsFixed(2),
-          onChanged: (v) => setState(() =>
-              _sampling = _sampling.copyWith(temperature: v)),
+          onChanged: (v) =>
+              setState(() => _sampling = _sampling.copyWith(temperature: v)),
         ),
         _slider(
           label: 'top_k',
           value: _sampling.topK.toDouble(),
-          min: 1, max: 100, divisions: 99,
+          min: 1,
+          max: 100,
+          divisions: 99,
           format: (v) => v.toInt().toString(),
-          onChanged: (v) => setState(() =>
-              _sampling = _sampling.copyWith(topK: v.toInt())),
+          onChanged: (v) =>
+              setState(() => _sampling = _sampling.copyWith(topK: v.toInt())),
         ),
         _slider(
           label: 'top_p',
           value: _sampling.topP,
-          min: 0.1, max: 1, divisions: 18,
+          min: 0.1,
+          max: 1,
+          divisions: 18,
           format: (v) => v.toStringAsFixed(2),
-          onChanged: (v) => setState(() =>
-              _sampling = _sampling.copyWith(topP: v)),
+          onChanged: (v) =>
+              setState(() => _sampling = _sampling.copyWith(topP: v)),
         ),
         _slider(
           label: 'max_new_tokens',
           value: _sampling.maxNewTokens.toDouble(),
-          min: 64, max: 4096, divisions: 63,
+          min: 64,
+          max: 4096,
+          divisions: 63,
           format: (v) => v.toInt().toString(),
-          onChanged: (v) => setState(() =>
-              _sampling = _sampling.copyWith(maxNewTokens: v.toInt())),
+          onChanged: (v) => setState(
+              () => _sampling = _sampling.copyWith(maxNewTokens: v.toInt())),
         ),
         _slider(
           label: 'repetition_penalty',
           value: _sampling.repetitionPenalty,
-          min: 1, max: 2, divisions: 20,
+          min: 1,
+          max: 2,
+          divisions: 20,
           format: (v) => v.toStringAsFixed(2),
-          onChanged: (v) => setState(() =>
-              _sampling = _sampling.copyWith(repetitionPenalty: v)),
+          onChanged: (v) => setState(
+              () => _sampling = _sampling.copyWith(repetitionPenalty: v)),
         ),
         const SizedBox(height: 16),
         _sectionTitle('System Prompt'),
@@ -213,11 +223,13 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
       const SizedBox(height: 8),
-      _textField(_cloudProviderCtrl, 'Provider (openai/deepseek/qwen/doubao/groq/ollama/anthropic/custom)'),
+      _textField(_cloudProviderCtrl,
+          'Provider (openai/deepseek/qwen/doubao/groq/ollama/anthropic/custom)'),
       _textField(_cloudBaseUrlCtrl, 'Base URL（留空用默认，可自定义代理）'),
       _textField(_cloudApiKeyCtrl, 'API Key（Ollama 可填任意值）', obscure: true),
       _textField(_cloudModelCtrl, '模型 ID (model id)'),
-      _textField(_cloudSystemPromptCtrl, '云端 System Prompt（可选，留空用全局）', maxLines: 3),
+      _textField(_cloudSystemPromptCtrl, '云端 System Prompt（可选，留空用全局）',
+          maxLines: 3),
       const SizedBox(height: 8),
       Row(children: [
         OutlinedButton.icon(
@@ -227,7 +239,9 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         const SizedBox(width: 12),
         if (_cloudTestStatus != null)
-          Expanded(child: Text(_cloudTestStatus!, style: const TextStyle(fontSize: 12))),
+          Expanded(
+              child: Text(_cloudTestStatus!,
+                  style: const TextStyle(fontSize: 12))),
       ]),
     ];
   }
@@ -262,8 +276,7 @@ class _SettingsPageState extends State<SettingsPage> {
   _CloudPreset _presetFor(String p) {
     switch (p) {
       case 'openai':
-        return const _CloudPreset(
-            'https://api.openai.com/v1', 'gpt-4o-mini');
+        return const _CloudPreset('https://api.openai.com/v1', 'gpt-4o-mini');
       case 'deepseek':
         return const _CloudPreset(
             'https://api.deepseek.com/v1', 'deepseek-chat');
@@ -279,7 +292,8 @@ class _SettingsPageState extends State<SettingsPage> {
       case 'ollama':
         return const _CloudPreset('http://localhost:11434/v1', 'qwen2.5:7b');
       case 'anthropic':
-        return const _CloudPreset('https://api.anthropic.com', 'claude-3-5-sonnet-latest');
+        return const _CloudPreset(
+            'https://api.anthropic.com', 'claude-3-5-sonnet-latest');
       case 'custom':
       default:
         return const _CloudPreset('', '');
@@ -356,16 +370,22 @@ class _SettingsPageState extends State<SettingsPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(children: [
-        SizedBox(width: 140, child: Text(label, style: const TextStyle(fontSize: 13))),
+        SizedBox(
+            width: 140,
+            child: Text(label, style: const TextStyle(fontSize: 13))),
         Expanded(
           child: Slider(
             value: value.clamp(min, max),
-            min: min, max: max, divisions: divisions,
+            min: min,
+            max: max,
+            divisions: divisions,
             label: format(value),
             onChanged: onChanged,
           ),
         ),
-        SizedBox(width: 48, child: Text(format(value), style: const TextStyle(fontSize: 12))),
+        SizedBox(
+            width: 48,
+            child: Text(format(value), style: const TextStyle(fontSize: 12))),
       ]),
     );
   }

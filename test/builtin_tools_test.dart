@@ -39,7 +39,10 @@ void main() {
       expect(result.isError, isFalse);
       final uuid = result.output;
       // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
-      expect(uuid, matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')));
+      expect(
+          uuid,
+          matches(RegExp(
+              r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')));
     });
   });
 
@@ -74,13 +77,15 @@ void main() {
     final tool = urlCodecTool();
 
     test('encodes URL', () async {
-      final result = await tool.handler({'action': 'encode', 'text': 'hello world'});
+      final result =
+          await tool.handler({'action': 'encode', 'text': 'hello world'});
       expect(result.isError, isFalse);
       expect(result.output, 'hello+world');
     });
 
     test('decodes URL', () async {
-      final result = await tool.handler({'action': 'decode', 'text': 'hello+world'});
+      final result =
+          await tool.handler({'action': 'decode', 'text': 'hello+world'});
       expect(result.isError, isFalse);
       expect(result.output, 'hello world');
     });
@@ -96,7 +101,8 @@ void main() {
     });
 
     test('computes SHA256 hash', () async {
-      final result = await tool.handler({'text': 'hello', 'algorithm': 'sha256'});
+      final result =
+          await tool.handler({'text': 'hello', 'algorithm': 'sha256'});
       expect(result.isError, isFalse);
     });
 
@@ -110,19 +116,22 @@ void main() {
     final tool = colorConverterTool();
 
     test('converts hex to rgb', () async {
-      final result = await tool.handler({'value': '#FF8800', 'from': 'hex', 'to': 'rgb'});
+      final result =
+          await tool.handler({'value': '#FF8800', 'from': 'hex', 'to': 'rgb'});
       expect(result.isError, isFalse);
       expect(result.output, contains('rgb'));
     });
 
     test('converts rgb to hex', () async {
-      final result = await tool.handler({'value': 'rgb(255,136,0)', 'from': 'rgb', 'to': 'hex'});
+      final result = await tool
+          .handler({'value': 'rgb(255,136,0)', 'from': 'rgb', 'to': 'hex'});
       expect(result.isError, isFalse);
       expect(result.output, contains('#'));
     });
 
     test('invalid value returns error', () async {
-      final result = await tool.handler({'value': 'invalid', 'from': 'hex', 'to': 'rgb'});
+      final result =
+          await tool.handler({'value': 'invalid', 'from': 'hex', 'to': 'rgb'});
       expect(result.isError, isTrue);
     });
   });
@@ -192,7 +201,8 @@ void main() {
     });
 
     test('empty text returns error', () async {
-      final result = await tool.handler({'direction': 'csv_to_json', 'text': ''});
+      final result =
+          await tool.handler({'direction': 'csv_to_json', 'text': ''});
       expect(result.isError, isTrue);
     });
   });
@@ -220,13 +230,15 @@ void main() {
     final tool = stringCaseTool();
 
     test('converts to camelCase', () async {
-      final result = await tool.handler({'text': 'hello world', 'target_case': 'camel'});
+      final result =
+          await tool.handler({'text': 'hello world', 'target_case': 'camel'});
       expect(result.isError, isFalse);
       expect(result.output, contains('helloWorld'));
     });
 
     test('converts to snake_case', () async {
-      final result = await tool.handler({'text': 'hello world', 'target_case': 'snake'});
+      final result =
+          await tool.handler({'text': 'hello world', 'target_case': 'snake'});
       expect(result.isError, isFalse);
       expect(result.output, contains('hello_world'));
     });
@@ -242,7 +254,8 @@ void main() {
     });
 
     test('hex decode', () async {
-      final result = await tool.handler({'mode': 'hex_decode', 'text': '41 42 43'});
+      final result =
+          await tool.handler({'mode': 'hex_decode', 'text': '41 42 43'});
       expect(result.isError, isFalse);
       expect(result.output, 'ABC');
     });
@@ -298,13 +311,15 @@ void main() {
     final tool = regexTesterTool();
 
     test('finds matches', () async {
-      final result = await tool.handler({'pattern': '\\d+', 'text': 'abc123def456'});
+      final result =
+          await tool.handler({'pattern': '\\d+', 'text': 'abc123def456'});
       expect(result.isError, isFalse);
       expect(result.output, contains('2 个匹配'));
     });
 
     test('performs replacement', () async {
-      final result = await tool.handler({'pattern': '\\d+', 'text': 'abc123', 'replacement': 'X'});
+      final result = await tool
+          .handler({'pattern': '\\d+', 'text': 'abc123', 'replacement': 'X'});
       expect(result.isError, isFalse);
       expect(result.output, contains('abcX'));
     });

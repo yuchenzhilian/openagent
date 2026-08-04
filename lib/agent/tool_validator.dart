@@ -38,7 +38,8 @@ class ToolValidator {
     }
 
     final requiredFields = schema['required'];
-    final requiredList = (requiredFields is List) ? requiredFields.cast<String>() : <String>[];
+    final requiredList =
+        (requiredFields is List) ? requiredFields.cast<String>() : <String>[];
 
     // 1. Check required fields.
     for (final field in requiredList) {
@@ -72,7 +73,8 @@ class ToolValidator {
         if (!enumValues.contains(value)) {
           return ValidationResult(
             isValid: false,
-            errorMessage: '参数 "$key" 的值 "$value" 无效。有效值: ${enumValues.join(", ")}',
+            errorMessage:
+                '参数 "$key" 的值 "$value" 无效。有效值: ${enumValues.join(", ")}',
           );
         }
       }

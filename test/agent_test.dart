@@ -209,7 +209,8 @@ void main() {
     });
 
     test('formats nested JSON', () async {
-      final result = await tool.handler({'json': '{"user":{"name":"Alice","age":30}}'});
+      final result =
+          await tool.handler({'json': '{"user":{"name":"Alice","age":30}}'});
       expect(result.isError, isFalse);
       expect(result.output, contains('"user"'));
       expect(result.output, contains('"Alice"'));
@@ -238,15 +239,37 @@ void main() {
     test('returns all built-in tools', () {
       final tools = builtinTools();
       expect(tools.length, greaterThanOrEqualTo(25));
-      expect(tools.map((t) => t.name).toList(),
-          containsAll(['calculator', 'datetime', 'text_counter', 'unit_converter',
-                       'json_formatter', 'web_search', 'http_fetch', 'html_to_text',
-                       'random_number', 'uuid', 'base64_codec', 'color_converter',
-                       'timer', 'weather', 'ip_info', 'text_template',
-                       'agent_analyze_and_plan', 'url_codec', 'regex_tester',
-                       'string_case', 'encode_decode', 'hash', 'text_stats_advanced',
-                       'csv_json', 'markdown_table', 'password_generator',
-                       'date_calculator']));
+      expect(
+          tools.map((t) => t.name).toList(),
+          containsAll([
+            'calculator',
+            'datetime',
+            'text_counter',
+            'unit_converter',
+            'json_formatter',
+            'web_search',
+            'http_fetch',
+            'html_to_text',
+            'random_number',
+            'uuid',
+            'base64_codec',
+            'color_converter',
+            'timer',
+            'weather',
+            'ip_info',
+            'text_template',
+            'agent_analyze_and_plan',
+            'url_codec',
+            'regex_tester',
+            'string_case',
+            'encode_decode',
+            'hash',
+            'text_stats_advanced',
+            'csv_json',
+            'markdown_table',
+            'password_generator',
+            'date_calculator'
+          ]));
     });
   });
 }

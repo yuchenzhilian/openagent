@@ -28,7 +28,8 @@ import '../mcp/mcp_client.dart';
 import 'skills.dart';
 
 /// skill_state_save + skill_state_load
-List<Tool> createSkillPersistenceTools(SkillManager skillManager, String statePath) {
+List<Tool> createSkillPersistenceTools(
+    SkillManager skillManager, String statePath) {
   File file() => File(statePath);
   final out = <Tool>[];
 
@@ -39,8 +40,15 @@ List<Tool> createSkillPersistenceTools(SkillManager skillManager, String statePa
     schema: const {
       'type': 'object',
       'properties': {
-        'path': {'type': 'string', 'description': '可选。写入路径；留空=默认路径 baseDir/skill_state.json'},
-        'include_remembered': {'type': 'boolean', 'description': '可选，默认 true：是否把 remember_enabled=true 的 id 列表存盘。false=只存 JSON skill 本体。'},
+        'path': {
+          'type': 'string',
+          'description': '可选。写入路径；留空=默认路径 baseDir/skill_state.json'
+        },
+        'include_remembered': {
+          'type': 'boolean',
+          'description':
+              '可选，默认 true：是否把 remember_enabled=true 的 id 列表存盘。false=只存 JSON skill 本体。'
+        },
       },
     },
     handler: (args) async {
@@ -61,7 +69,8 @@ List<Tool> createSkillPersistenceTools(SkillManager skillManager, String statePa
         await f.writeAsString(str, flush: true);
         final n = (payload['json_skill_specs'] as List).length;
         final rem = (payload['remember_enabled'] as List?)?.length ?? 0;
-        return ToolResult.ok('OK: skill_state_save path=$p\n  • json skills saved : $n\n  • remember_enabled : $rem\n\nFull JSON:\n$str');
+        return ToolResult.ok(
+            'OK: skill_state_save path=$p\n  • json skills saved : $n\n  • remember_enabled : $rem\n\nFull JSON:\n$str');
       } catch (e, st) {
         return ToolResult.error('skill_state_save failed: $e\n$st');
       }
@@ -76,7 +85,11 @@ List<Tool> createSkillPersistenceTools(SkillManager skillManager, String statePa
       'type': 'object',
       'properties': {
         'path': {'type': 'string', 'description': '可选。读取路径；留空=默认。'},
-        'enable_remembered': {'type': 'boolean', 'description': '可选，默认 true：加载后是否按 dependencies 顺序自动 enable 所有 remember_enabled=true 的 skill。注意：如果它们依赖了 mcp_gateway 之类的 skill，会先 enable dependency 再 enable 自己。'},
+        'enable_remembered': {
+          'type': 'boolean',
+          'description':
+              '可选，默认 true：加载后是否按 dependencies 顺序自动 enable 所有 remember_enabled=true 的 skill。注意：如果它们依赖了 mcp_gateway 之类的 skill，会先 enable dependency 再 enable 自己。'
+        },
       },
     },
     handler: (args) async {
@@ -84,12 +97,15 @@ List<Tool> createSkillPersistenceTools(SkillManager skillManager, String statePa
           ? args['path'].toString()
           : statePath;
       final f = file();
-      if (!f.existsSync()) return ToolResult.error('skill_state file not found: $p');
+      if (!f.existsSync())
+        return ToolResult.error('skill_state file not found: $p');
       try {
         final snap = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
         final enable = args['enable_remembered'] != false;
-        final report = await skillManager.restoreJsonSkills(snap, enableRemembered: enable);
-        return ToolResult.ok('skill_state_load from $p (enable_remembered=$enable):\n\n$report');
+        final report = await skillManager.restoreJsonSkills(snap,
+            enableRemembered: enable);
+        return ToolResult.ok(
+            'skill_state_load from $p (enable_remembered=$enable):\n\n$report');
       } catch (e, st) {
         return ToolResult.error('skill_state_load failed: $e\n$st');
       }
@@ -100,7 +116,8 @@ List<Tool> createSkillPersistenceTools(SkillManager skillManager, String statePa
     name: 'skill_state_path',
     description: '打印 skill_state_save / skill_state_load 默认文件路径。',
     schema: const {'type': 'object', 'properties': {}},
-    handler: (_) async => ToolResult.ok('default_skill_state_path = $statePath\nFile exists = ${file().existsSync()}'),
+    handler: (_) async => ToolResult.ok(
+        'default_skill_state_path = $statePath\nFile exists = ${file().existsSync()}'),
   ));
 
   return out;
@@ -108,32 +125,40 @@ List<Tool> createSkillPersistenceTools(SkillManager skillManager, String statePa
 
 /// skill_remember_enabled — flip the flag.
 List<Tool> createSkillRememberTools(SkillManager skillManager) => [
-  Tool(
-    name: 'skill_remember_enabled',
-    description:
-        '给指定 skill id 打上『记住，下次会话 session_bootstrap 时我要你默认启用』的标记。注意：\n'
-        '  • 标记是持久化的 (会写入 skill_state_save)，但只有你调用 skill_state_save 后才真正落盘；之后 session_bootstrap / skill_state_load(enable_remembered=true) 会按拓扑顺序自动启用它们。\n'
-        '  • 传 remember=false 可取消标记。\n'
-        '  • 支持 a,b,c 批量（英文逗号分隔）。\n'
-        '这不是代码层的『自动启用』（违反我们的自主决策原则），而是你 (LLM) 显式告诉未来的你『这几个一般有用，下次先打开』——代码层只是尊重并执行你的历史决定。',
-    schema: const {
-      'type': 'object',
-      'properties': {
-        'skill_id': {'type': 'string', 'description': '单个或批量 skill id（逗号分隔）。'},
-        'remember': {'type': 'boolean', 'description': 'true=打标记住；false=取消标记。默认 true。'},
-      },
-      'required': ['skill_id'],
-    },
-    handler: (args) async {
-      final ids = (args['skill_id'] as String?)?.toString().trim() ?? '';
-      final remember = args['remember'] != false;
-      return ToolResult.ok(skillManager.setRemembered(ids, remember: remember));
-    },
-  ),
-];
+      Tool(
+        name: 'skill_remember_enabled',
+        description:
+            '给指定 skill id 打上『记住，下次会话 session_bootstrap 时我要你默认启用』的标记。注意：\n'
+            '  • 标记是持久化的 (会写入 skill_state_save)，但只有你调用 skill_state_save 后才真正落盘；之后 session_bootstrap / skill_state_load(enable_remembered=true) 会按拓扑顺序自动启用它们。\n'
+            '  • 传 remember=false 可取消标记。\n'
+            '  • 支持 a,b,c 批量（英文逗号分隔）。\n'
+            '这不是代码层的『自动启用』（违反我们的自主决策原则），而是你 (LLM) 显式告诉未来的你『这几个一般有用，下次先打开』——代码层只是尊重并执行你的历史决定。',
+        schema: const {
+          'type': 'object',
+          'properties': {
+            'skill_id': {
+              'type': 'string',
+              'description': '单个或批量 skill id（逗号分隔）。'
+            },
+            'remember': {
+              'type': 'boolean',
+              'description': 'true=打标记住；false=取消标记。默认 true。'
+            },
+          },
+          'required': ['skill_id'],
+        },
+        handler: (args) async {
+          final ids = (args['skill_id'] as String?)?.toString().trim() ?? '';
+          final remember = args['remember'] != false;
+          return ToolResult.ok(
+              skillManager.setRemembered(ids, remember: remember));
+        },
+      ),
+    ];
 
 /// skill_tools_manifest — diagnostic tool.
-List<Tool> createSkillToolsManifestTools(SkillManager skillManager, AgentRuntime runtime) {
+List<Tool> createSkillToolsManifestTools(
+    SkillManager skillManager, AgentRuntime runtime) {
   // We need to enumerate the currently-registered TOOLS. AgentRuntime doesn't
   // expose a list, so we go through SkillManager.toolIdsBySkill (for skill-
   // registered tools) + we can't easily tell about legacy pre-registered
@@ -160,27 +185,37 @@ List<Tool> createSkillToolsManifestTools(SkillManager skillManager, AgentRuntime
       schema: const {
         'type': 'object',
         'properties': {
-          'schema_hint': {'type': 'boolean', 'description': '可选：是否在每个工具后面附 JSON schema 的超简短摘要（required+props 前 3 个）。默认 true。'},
-          'max_desc_len': {'type': 'integer', 'description': '可选：每个工具描述截断到多少字符。默认 120。0=不截断。'},
+          'schema_hint': {
+            'type': 'boolean',
+            'description':
+                '可选：是否在每个工具后面附 JSON schema 的超简短摘要（required+props 前 3 个）。默认 true。'
+          },
+          'max_desc_len': {
+            'type': 'integer',
+            'description': '可选：每个工具描述截断到多少字符。默认 120。0=不截断。'
+          },
         },
       },
       handler: (args) async {
         final sb = StringBuffer();
         final bySkill = skillManager.toolIdsBySkill;
         if (bySkill.isEmpty) {
-          sb.writeln('(no skill has enabled any tools yet; run skill_enable <id> first, or open legacy auto-registered tools list below)');
+          sb.writeln(
+              '(no skill has enabled any tools yet; run skill_enable <id> first, or open legacy auto-registered tools list below)');
         } else {
           for (final e in bySkill.entries) {
             final skillId = e.key;
             final tools = e.value;
-            final skillObj = skillManager.listAll().cast<Map<String, dynamic>?>().firstWhere(
-              (m) => m!['id'] == skillId,
-              orElse: () => null,
-            );
+            final skillObj =
+                skillManager.listAll().cast<Map<String, dynamic>?>().firstWhere(
+                      (m) => m!['id'] == skillId,
+                      orElse: () => null,
+                    );
             sb.writeln('╔══════════════════════════════════════════════════');
             sb.writeln('║ Skill id : $skillId');
             sb.writeln('║ name     : ${skillObj?['name']}');
-            sb.writeln('║ enabled  : ${skillObj?['enabled']}   remember_enabled=${skillObj?['remember_enabled']}');
+            sb.writeln(
+                '║ enabled  : ${skillObj?['enabled']}   remember_enabled=${skillObj?['remember_enabled']}');
             sb.writeln('║ tool #   : ${tools.length}');
             sb.writeln('╠──────────────────────────────────────────────────');
             for (final tname in tools) {
@@ -189,23 +224,28 @@ List<Tool> createSkillToolsManifestTools(SkillManager skillManager, AgentRuntime
             sb.writeln('╚══════════════════════════════════════════════════\n');
           }
         }
-        sb.writeln('--- Legacy always-on tools (auto-registered every run, not owned by any Skill) ---');
-        sb.writeln('通常包含：calculator / datetime / text_statistics / knowledge_search');
+        sb.writeln(
+            '--- Legacy always-on tools (auto-registered every run, not owned by any Skill) ---');
+        sb.writeln(
+            '通常包含：calculator / datetime / text_statistics / knowledge_search');
         sb.writeln('以及用户 UI 开关打开时整包注入的 android_rpa 60+ 工具（legacy 兼容路径）。');
-        sb.writeln('如果你想确认某个 legacy 工具的描述/schema：可以直接调它传 schema 错误参数看看工具的 400 报错，或查源码 builtin_tools.dart / android_tools.dart。');
+        sb.writeln(
+            '如果你想确认某个 legacy 工具的描述/schema：可以直接调它传 schema 错误参数看看工具的 400 报错，或查源码 builtin_tools.dart / android_tools.dart。');
         return ToolResult.ok(sb.toString());
       },
     ),
     Tool(
       name: 'skills_manifest',
-      description: '【诊断 · 技能清单】等价于 skill_list，但把 remember_enabled + registeredTools 两列默认展开展示，一眼看清现在的 skill 状态。',
+      description:
+          '【诊断 · 技能清单】等价于 skill_list，但把 remember_enabled + registeredTools 两列默认展开展示，一眼看清现在的 skill 状态。',
       schema: const {'type': 'object', 'properties': {}},
       handler: (_) async {
         final all = skillManager.listAll();
         if (all.isEmpty) return const ToolResult.ok('(no skills)');
         final sb = StringBuffer();
         for (final s in all) {
-          sb.write('[${s['enabled'] == true ? '✓ ENABLED' : ' available'}] id=${s['id']}  v${s['version']}  remember=${s['remember_enabled']}  tools=${s['registeredTools']}  deps=${(s['dependencies'] as List).join(',')}');
+          sb.write(
+              '[${s['enabled'] == true ? '✓ ENABLED' : ' available'}] id=${s['id']}  v${s['version']}  remember=${s['remember_enabled']}  tools=${s['registeredTools']}  deps=${(s['dependencies'] as List).join(',')}');
           sb.writeln();
           sb.write('  name: ${s['name']}');
           sb.writeln();
@@ -231,8 +271,7 @@ List<Tool> createSessionBootstrapTools({
   // aggregate bootstrap entry.
   out.add(Tool(
     name: 'session_bootstrap',
-    description:
-        '【会话启动 · 一键恢复】把「我上次说想记住的 MCP/Skills/KV 前缀」都按顺序恢复：\n'
+    description: '【会话启动 · 一键恢复】把「我上次说想记住的 MCP/Skills/KV 前缀」都按顺序恢复：\n'
         '1) skill_state_load（重新注册 JSON skills + 按拓扑序 enable 所有 remember_enabled 的 skills）\n'
         '2) mcp_state_load（重新连接之前存盘的 MCP servers；如果某 server 已经连着就跳过）\n'
         '3) 可选：agent_memory list_keys，让你重新扫一眼自己存了哪些记忆 key（默认前缀 user: / task: / prefs:）\n'
@@ -240,17 +279,29 @@ List<Tool> createSessionBootstrapTools({
     schema: const {
       'type': 'object',
       'properties': {
-        'restore_mcp': {'type': 'boolean', 'description': '默认 true：跑 mcp_state_load。false=跳过（如果你这次不想花时间重连 MCP）。'},
-        'restore_skills': {'type': 'boolean', 'description': '默认 true：跑 skill_state_load + enable_remembered。'},
-        'enable_remembered': {'type': 'boolean', 'description': '默认 true：restore_skills=true 时是否把 remember_enabled=true 的 skills 按依赖序自动启用。false=只重新打标，不启用。'},
+        'restore_mcp': {
+          'type': 'boolean',
+          'description': '默认 true：跑 mcp_state_load。false=跳过（如果你这次不想花时间重连 MCP）。'
+        },
+        'restore_skills': {
+          'type': 'boolean',
+          'description': '默认 true：跑 skill_state_load + enable_remembered。'
+        },
+        'enable_remembered': {
+          'type': 'boolean',
+          'description':
+              '默认 true：restore_skills=true 时是否把 remember_enabled=true 的 skills 按依赖序自动启用。false=只重新打标，不启用。'
+        },
         'scan_memory_prefixes': {
           'type': 'boolean',
-          'description': '默认 true：扫 agent_memory 里的 3 类前缀，把它们的数量 / 前 2 个 key 列出来给你看，方便你回忆上次存了什么。',
+          'description':
+              '默认 true：扫 agent_memory 里的 3 类前缀，把它们的数量 / 前 2 个 key 列出来给你看，方便你回忆上次存了什么。',
         },
         'memory_prefixes': {
           'type': 'array',
           'items': {'type': 'string'},
-          'description': '可选。自定义要扫的 key 前缀。默认 ["user:","task:","prefs:","learned_ui:"]。',
+          'description':
+              '可选。自定义要扫的 key 前缀。默认 ["user:","task:","prefs:","learned_ui:"]。',
         },
       },
     },
@@ -266,13 +317,15 @@ List<Tool> createSessionBootstrapTools({
       final scanMem = args['scan_memory_prefixes'] != false;
 
       if (restoreSkills) {
-        sb.writeln('── step 1: skill_state_load (enable_remembered=$enableRem) ──');
+        sb.writeln(
+            '── step 1: skill_state_load (enable_remembered=$enableRem) ──');
         final f = File(skillStatePath);
         if (!f.existsSync()) {
           sb.writeln('SKIP: skill_state file not found: $skillStatePath');
         } else {
           try {
-            final snap = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
+            final snap =
+                jsonDecode(await f.readAsString()) as Map<String, dynamic>;
             sb.writeln(await skillManager.restoreJsonSkills(
               snap,
               enableRemembered: enableRem,
@@ -294,7 +347,8 @@ List<Tool> createSessionBootstrapTools({
             // Re-use createMcpPersistenceTools 注册的 handler? Easier to copy
             // the minimal logic since tools here aren't registered yet for
             // callback access — just replay via the same code path.
-            final json = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
+            final json =
+                jsonDecode(await f.readAsString()) as Map<String, dynamic>;
             final servers = json['servers'] as List<dynamic>? ?? const [];
             var n = 0, ok = 0;
             for (final s in servers) {
@@ -313,19 +367,27 @@ List<Tool> createSessionBootstrapTools({
                 if (kind == 'http') {
                   final url = (tp['url'] as String?).toString().trim();
                   if (url.isEmpty) throw StateError('http url missing');
-                  final hRaw = tp['headers'] as Map<String, dynamic>? ?? const {};
-                  final headers = hRaw.map((k, v) => MapEntry(k.toString(), v.toString()));
+                  final hRaw =
+                      tp['headers'] as Map<String, dynamic>? ?? const {};
+                  final headers =
+                      hRaw.map((k, v) => MapEntry(k.toString(), v.toString()));
                   final ts = (tp['timeout_sec'] as int?) ?? 30;
-                  final transport = HttpMcpTransport(url, headers: headers, timeout: Duration(seconds: ts.clamp(1, 300)));
+                  final transport = HttpMcpTransport(url,
+                      headers: headers,
+                      timeout: Duration(seconds: ts.clamp(1, 300)));
                   client = McpClient(transport, serverId: sid);
                 } else if (kind == 'stdio') {
                   final exe = (tp['executable'] as String?).toString().trim();
                   if (exe.isEmpty) throw StateError('stdio executable missing');
-                  final args2 = (tp['args'] as List<dynamic>? ?? const []).map((e) => e.toString()).toList();
+                  final args2 = (tp['args'] as List<dynamic>? ?? const [])
+                      .map((e) => e.toString())
+                      .toList();
                   final envRaw = tp['env'] as Map<String, dynamic>? ?? const {};
-                  final env = envRaw.map((k, v) => MapEntry(k.toString(), v.toString()));
+                  final env = envRaw
+                      .map((k, v) => MapEntry(k.toString(), v.toString()));
                   final cwd = tp['cwd'] as String?;
-                  final transport = await StdioMcpTransport.spawn(exe, args2, environment: env, workingDirectory: cwd);
+                  final transport = await StdioMcpTransport.spawn(exe, args2,
+                      environment: env, workingDirectory: cwd);
                   client = McpClient(transport, serverId: sid);
                 } else {
                   sb.writeln('[$sid] SKIP unknown transport kind=$kind');
@@ -340,7 +402,8 @@ List<Tool> createSessionBootstrapTools({
                 final tools = await client.listTools();
                 mcpRegistry.register(client);
                 ok++;
-                sb.writeln('[$sid] OK: discovered ${tools.length} tools (${tools.map((e) => e.name).take(5).join(', ')}${tools.length > 5 ? '…' : ''})');
+                sb.writeln(
+                    '[$sid] OK: discovered ${tools.length} tools (${tools.map((e) => e.name).take(5).join(', ')}${tools.length > 5 ? '…' : ''})');
               } catch (e, st) {
                 sb.writeln('[$sid] FAIL: $e');
                 sb.writeln('    stack: $st');
@@ -360,14 +423,16 @@ List<Tool> createSessionBootstrapTools({
         if (mem == null) {
           sb.writeln('SKIP: no memoryBackend supplied to bootstrap tools.');
         } else {
-          final prefixes = (args['memory_prefixes'] as List<dynamic>? ?? const ['user:', 'task:', 'prefs:', 'learned_ui:'])
+          final prefixes = (args['memory_prefixes'] as List<dynamic>? ??
+                  const ['user:', 'task:', 'prefs:', 'learned_ui:'])
               .map((e) => e.toString())
               .toList();
           for (final p in prefixes) {
             final list = await mem.list(prefix: p, limit: 3);
             sb.writeln('  * prefix "$p" => ${list.length} keys (sample 3):');
             for (final x in list) {
-              sb.writeln('      - ${x.key}  (last_modified=${x.mtime.toIso8601String()}  value preview=${x.value.substring(0, x.value.length > 60 ? 60 : x.value.length).replaceAll('\n', ' ')})');
+              sb.writeln(
+                  '      - ${x.key}  (last_modified=${x.mtime.toIso8601String()}  value preview=${x.value.substring(0, x.value.length > 60 ? 60 : x.value.length).replaceAll('\n', ' ')})');
             }
           }
         }

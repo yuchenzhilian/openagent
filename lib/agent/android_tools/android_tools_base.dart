@@ -6,8 +6,7 @@ part of '../android_tools.dart';
 
 Tool _openAppTool(AndroidAutomationService s) => Tool(
       name: 'android_open_app',
-      description:
-          '打开 Android 设备上的某个应用（通过包名 package_name）。${_packageHint()}',
+      description: '打开 Android 设备上的某个应用（通过包名 package_name）。${_packageHint()}',
       schema: _props({
         'package_name': {
           'type': 'string',
@@ -32,8 +31,7 @@ Tool _openAppTool(AndroidAutomationService s) => Tool(
 
 Tool _clickByTextTool(AndroidAutomationService s) => Tool(
       name: 'android_click_by_text',
-      description:
-          '在当前屏幕上点击显示指定文字的按钮/链接/标签（标准 View 控件可用）。exact=true 表示完全匹配文字。',
+      description: '在当前屏幕上点击显示指定文字的按钮/链接/标签（标准 View 控件可用）。exact=true 表示完全匹配文字。',
       schema: _props({
         'text': {'type': 'string', 'description': '控件上显示的文字，如 发现、发送'},
         'exact': {
@@ -61,8 +59,7 @@ Tool _clickByTextTool(AndroidAutomationService s) => Tool(
 
 Tool _clickByIdTool(AndroidAutomationService s) => Tool(
       name: 'android_click_by_id',
-      description:
-          '按资源 ID (view_id) 精准点击控件，优先于按文字点击。可通过 dump_ui 获取 id。',
+      description: '按资源 ID (view_id) 精准点击控件，优先于按文字点击。可通过 dump_ui 获取 id。',
       schema: _props({
         'view_id': {
           'type': 'string',
@@ -199,12 +196,11 @@ Tool _pressKeyTool(AndroidAutomationService s) => Tool(
           _ => null,
         };
         if (key == null) {
-          return ToolResult.error('不支持的按键: $k。可选值: home back recent volume_up volume_down power enter del');
+          return ToolResult.error(
+              '不支持的按键: $k。可选值: home back recent volume_up volume_down power enter del');
         }
         final ok = await s.pressKey(key);
-        return ok
-            ? ToolResult.ok('已按：${k}')
-            : ToolResult.error('按键 ${k} 执行失败');
+        return ok ? ToolResult.ok('已按：${k}') : ToolResult.error('按键 ${k} 执行失败');
       },
     );
 
@@ -233,8 +229,7 @@ Tool _dumpUiTool(AndroidAutomationService s) => Tool(
 
 Tool _listPackagesTool(AndroidAutomationService s) => Tool(
       name: 'android_list_packages',
-      description:
-          '列出设备上已安装应用的全部包名，供 android_open_app 使用。输出可能较长，建议仅在需要找包名时调用。',
+      description: '列出设备上已安装应用的全部包名，供 android_open_app 使用。输出可能较长，建议仅在需要找包名时调用。',
       schema: _props({
         'contains': {
           'type': 'string',
@@ -251,8 +246,9 @@ Tool _listPackagesTool(AndroidAutomationService s) => Tool(
             ? list
             : list.where((p) => p.contains(filter.toLowerCase())).toList();
         final str = filtered.take(200).join('\n');
-        final totalShown =
-            filtered.length > 200 ? '\n（仅显示前 200 / ${filtered.length} 个，可用 contains 进一步过滤）' : '';
+        final totalShown = filtered.length > 200
+            ? '\n（仅显示前 200 / ${filtered.length} 个，可用 contains 进一步过滤）'
+            : '';
         return ToolResult.ok('$str$totalShown');
       },
     );
@@ -309,8 +305,7 @@ Tool _waitTool() => Tool(
 /// latency and page rendering speed.
 Tool _waitForTextTool(AndroidAutomationService s) => Tool(
       name: 'android_wait_for_text',
-      description:
-          '轮询无障碍 UI 树，直到屏幕出现指定文字（timeout 超时返回失败）。'
+      description: '轮询无障碍 UI 树，直到屏幕出现指定文字（timeout 超时返回失败）。'
           '比固定等待秒数 android_wait 更稳：用于「打开 App 后等登录按钮出来再点」、'
           '「点了发送后等「发送成功」出现」、跳转新页面确认加载完这类场景。'
           '超时后返回失败，由 Agent 决定是否换 dump_ui 分析或延长超时重试。',
@@ -341,8 +336,7 @@ Tool _waitForTextTool(AndroidAutomationService s) => Tool(
         }
         final timeout =
             ((args['timeout_seconds'] as num?)?.toDouble() ?? 10.0).toInt();
-        final poll =
-            ((args['poll_ms'] as num?)?.toDouble() ?? 500.0).toInt();
+        final poll = ((args['poll_ms'] as num?)?.toDouble() ?? 500.0).toInt();
         final exact = args['exact'] == true;
         final safePoll = poll < 50 ? 50 : poll;
         final ok = await s.waitForText(
@@ -356,8 +350,7 @@ Tool _waitForTextTool(AndroidAutomationService s) => Tool(
           return ToolResult.ok(
               '已在屏幕上检测到文字「$text」（超时${timeout}s，约 $scansApprox 次扫描）。可进行下一步操作。');
         }
-        return ToolResult.error(
-            '等待「$text」出现失败：${timeout}秒内没在 UI 树中找到。'
+        return ToolResult.error('等待「$text」出现失败：${timeout}秒内没在 UI 树中找到。'
             '建议：1) android_dump_ui 重看一下真实界面文字是否变化；'
             '2) 把 timeout_seconds 调大（如 15/20）；3) 检查大小写或改用非 exact 包含匹配。');
       },
@@ -365,8 +358,7 @@ Tool _waitForTextTool(AndroidAutomationService s) => Tool(
 
 Tool _installApkTool(AndroidAutomationService s) => Tool(
       name: 'android_install_apk',
-      description:
-          '静默安装 APK 文件（需要 Shizuku 或 Root 权限；否则会弹出系统安装器需用户确认）',
+      description: '静默安装 APK 文件（需要 Shizuku 或 Root 权限；否则会弹出系统安装器需用户确认）',
       schema: _props({
         'apk_path': {'type': 'string', 'description': 'APK 文件的绝对路径'},
       }, required: [
@@ -380,7 +372,8 @@ Tool _installApkTool(AndroidAutomationService s) => Tool(
         final ok = await s.installApk(p);
         return ok
             ? ToolResult.ok('APK 安装成功：$p')
-            : ToolResult.error('静默安装失败（无 Shizuku 权限？已改由系统安装器显示安装确认界面，用户点确认后可完成）');
+            : ToolResult.error(
+                '静默安装失败（无 Shizuku 权限？已改由系统安装器显示安装确认界面，用户点确认后可完成）');
       },
     );
 
@@ -404,8 +397,7 @@ Tool _getTopAppTool(AndroidAutomationService s) => Tool(
 
 Tool _getPermissionStatusTool(AndroidAutomationService s) => Tool(
       name: 'android_get_permission_status',
-      description:
-          '查询当前 Android 自动化后端状态（无障碍 / Shizuku / 截图 / 应用使用统计）。'
+      description: '查询当前 Android 自动化后端状态（无障碍 / Shizuku / 截图 / 应用使用统计）。'
           '若某个操作一直失败，先调用该工具确认对应权限是否已授权。',
       schema: _props({}),
       handler: (_) async {
@@ -439,14 +431,16 @@ Tool _gshellTool(AndroidAutomationService s) => Tool(
       schema: _props({
         'command': {
           'type': 'string',
-          'description': '要执行的 shell 命令，如 "pm list packages -3" 或 "dumpsys battery"',
+          'description':
+              '要执行的 shell 命令，如 "pm list packages -3" 或 "dumpsys battery"',
         },
       }, required: [
         'command'
       ]),
       handler: (args) async {
         final cmd = args['command'] as String?;
-        if (cmd == null || cmd.isEmpty) return const ToolResult.error('缺少 command');
+        if (cmd == null || cmd.isEmpty)
+          return const ToolResult.error('缺少 command');
         final r = await s.gshell(cmd);
         final preview = r.stdout.length > kUiDumpPreviewMax
             ? '${r.stdout.substring(0, kUiDumpPreviewMax)}\n…(stdout 截断，共 ${r.stdout.length} 字符)'
@@ -454,7 +448,8 @@ Tool _gshellTool(AndroidAutomationService s) => Tool(
         final body = StringBuffer('命令：`$cmd`\n');
         body.writeln('退出码：${r.exitCode} (${r.ok ? "成功" : "失败"})');
         if (r.stderr.isNotEmpty) {
-          body.writeln('stderr:\n```\n${r.stderr.substring(0, r.stderr.length > kUiDumpPreviewShort ? kUiDumpPreviewShort : r.stderr.length)}\n```');
+          body.writeln(
+              'stderr:\n```\n${r.stderr.substring(0, r.stderr.length > kUiDumpPreviewShort ? kUiDumpPreviewShort : r.stderr.length)}\n```');
         }
         if (preview.isNotEmpty) body.writeln('stdout:\n```\n$preview\n```');
         return ToolResult.ok(body.toString());
@@ -480,8 +475,7 @@ Tool _visionAnalyzeTool(
         },
         'question': {
           'type': 'string',
-          'description':
-              '要对截图问的问题。例：请描述这张截图里所有可点击的按钮，'
+          'description': '要对截图问的问题。例：请描述这张截图里所有可点击的按钮，'
               '并估算每个按钮的中心坐标 (x,y)（屏幕宽 1080 高 2400 左上角为 0,0）。'
               '如要操作游戏：描述所有关卡入口 / 开始按钮 / 确认按钮的坐标。',
         },
@@ -492,8 +486,10 @@ Tool _visionAnalyzeTool(
       handler: (args) async {
         final p = args['image_path'] as String?;
         final q = args['question'] as String?;
-        if (p == null || p.isEmpty) return const ToolResult.error('缺少 image_path');
-        if (q == null || q.isEmpty) return const ToolResult.error('缺少 question');
+        if (p == null || p.isEmpty)
+          return const ToolResult.error('缺少 image_path');
+        if (q == null || q.isEmpty)
+          return const ToolResult.error('缺少 question');
         try {
           final answer = await analyze(p, q);
           return ToolResult.ok(answer);

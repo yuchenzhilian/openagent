@@ -8,7 +8,6 @@
 ///
 /// Classification is cheap (~1ms) and runs entirely on-device.
 
-
 /// Intent categories.
 enum IntentCategory {
   /// Simple math calculation — route directly to calculator tool.
@@ -51,7 +50,8 @@ class IntentClassifier {
   /// Classify the user's input text.
   IntentResult classify(String input) {
     if (input.isEmpty) {
-      return const IntentResult(category: IntentCategory.generalChat, confidence: 'high');
+      return const IntentResult(
+          category: IntentCategory.generalChat, confidence: 'high');
     }
 
     final trimmed = input.trim().toLowerCase();
@@ -109,16 +109,17 @@ class IntentClassifier {
     }
 
     // Default: general chat.
-    return const IntentResult(category: IntentCategory.generalChat, confidence: 'high');
+    return const IntentResult(
+        category: IntentCategory.generalChat, confidence: 'high');
   }
 
   /// Check if the input is a math expression.
   bool _isMathExpression(String input) {
     // Detect patterns like: "2+2", "3*5", "sqrt(16)", "what is 2+2"
     final mathPatterns = [
-      RegExp(r'^[\d\s+\-*/().%^,]+$'),           // pure math expression
+      RegExp(r'^[\d\s+\-*/().%^,]+$'), // pure math expression
       RegExp(r'(calculate|compute|solve|what is|whats)\s+\d'),
-      RegExp(r'\d+\s*[\+\-\*/]\s*\d+'),           // arithmetic operators
+      RegExp(r'\d+\s*[\+\-\*/]\s*\d+'), // arithmetic operators
       RegExp(r'(sqrt|pow|abs|sin|cos|tan|log)\(.*\)'),
     ];
     return mathPatterns.any((p) => p.hasMatch(input));
@@ -162,7 +163,7 @@ class IntentClassifier {
       RegExp(r'(search|find|look up|google|news|weather|forecast)'),
       RegExp(r'(搜索|查找|查询|天气|新闻|最新)'),
       RegExp(r'(stock|price|股价|价格|汇率|exchange rate)'),
-      RegExp(r'^https?://'),  // URL pasted
+      RegExp(r'^https?://'), // URL pasted
     ];
     return webPatterns.any((p) => p.hasMatch(input));
   }

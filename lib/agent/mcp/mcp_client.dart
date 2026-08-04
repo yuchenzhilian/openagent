@@ -50,7 +50,8 @@ abstract class McpTransport {
 
 /// HTTP(S) transport — POSTs JSON-RPC 2.0 payloads to [baseUrl].
 class HttpMcpTransport implements McpTransport {
-  HttpMcpTransport(String baseUrl, {this.headers = const {}, this.timeout = const Duration(seconds: 30)})
+  HttpMcpTransport(String baseUrl,
+      {this.headers = const {}, this.timeout = const Duration(seconds: 30)})
       : url = baseUrl,
         baseUrl = baseUrl;
 
@@ -74,7 +75,8 @@ class HttpMcpTransport implements McpTransport {
       'id': id,
       ...request,
     };
-    final uri = Uri.parse(baseUrl.endsWith('/') ? '${baseUrl}mcp' : '$baseUrl/mcp');
+    final uri =
+        Uri.parse(baseUrl.endsWith('/') ? '${baseUrl}mcp' : '$baseUrl/mcp');
     final req = await _client.postUrl(uri).timeout(timeout);
     headers.forEach((k, v) => req.headers.set(k, v));
     req.headers.set('Content-Type', 'application/json');
@@ -248,7 +250,9 @@ class McpClient {
 
   /// Perform MCP initialize handshake. Required before other calls.
   /// Returns server info (name / version / capabilities) as raw map.
-  Future<Map<String, dynamic>> initialize({String clientName = 'openagent', String protocolVersion = '2024-11-05'}) async {
+  Future<Map<String, dynamic>> initialize(
+      {String clientName = 'openagent',
+      String protocolVersion = '2024-11-05'}) async {
     final init = await transport.sendJsonRpc({
       'method': 'initialize',
       'params': {
@@ -273,23 +277,29 @@ class McpClient {
 
   /// tools/list — returns list of exposed tools.
   Future<List<McpToolInfo>> listTools() async {
-    final resp = await transport.sendJsonRpc({'method': 'tools/list', 'params': <String, dynamic>{}});
+    final resp = await transport
+        .sendJsonRpc({'method': 'tools/list', 'params': <String, dynamic>{}});
     final err = resp['error'];
     if (err != null) return [];
     final result = resp['result'] as Map<String, dynamic>? ?? const {};
     final tools = result['tools'] as List<dynamic>? ?? const [];
-    return tools.map((t) {
-      final m = t as Map<String, dynamic>;
-      return McpToolInfo(
-        name: (m['name'] as String?) ?? '',
-        description: (m['description'] as String?) ?? '',
-        inputSchema: (m['inputSchema'] as Map<String, dynamic>?) ?? const {},
-      );
-    }).where((t) => t.name.isNotEmpty).toList(growable: false);
+    return tools
+        .map((t) {
+          final m = t as Map<String, dynamic>;
+          return McpToolInfo(
+            name: (m['name'] as String?) ?? '',
+            description: (m['description'] as String?) ?? '',
+            inputSchema:
+                (m['inputSchema'] as Map<String, dynamic>?) ?? const {},
+          );
+        })
+        .where((t) => t.name.isNotEmpty)
+        .toList(growable: false);
   }
 
   /// tools/call — execute a tool.
-  Future<McpCallResult> callTool(String toolName, Map<String, dynamic> arguments) async {
+  Future<McpCallResult> callTool(
+      String toolName, Map<String, dynamic> arguments) async {
     final resp = await transport.sendJsonRpc({
       'method': 'tools/call',
       'params': {'name': toolName, 'arguments': arguments},
@@ -304,8 +314,10 @@ class McpClient {
       if (c is Map) {
         final t = c['type'] as String?;
         if (t == 'text') return c['text']?.toString() ?? '';
-        if (t == 'image') return '[image: ${(c['data'] as String?)?.substring(0, 20)}…]';
-        if (t == 'resource') return c['text']?.toString() ?? c['uri']?.toString() ?? '';
+        if (t == 'image')
+          return '[image: ${(c['data'] as String?)?.substring(0, 20)}…]';
+        if (t == 'resource')
+          return c['text']?.toString() ?? c['uri']?.toString() ?? '';
       }
       return c.toString();
     }).join('\n');

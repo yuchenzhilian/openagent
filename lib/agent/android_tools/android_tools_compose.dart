@@ -48,18 +48,22 @@ Tool _composeWechatSendMessage(AndroidAutomationService s) => Tool(
         if (!ok1) return ToolResult.error('步骤失败:\n${report()}\n微信未安装或启动失败');
 
         // 2. wait for WeChat home (allow 启动广告)
-        final ok2 = await s.waitForText('微信', timeoutSec: 18, pollMs: 600, exact: false) ||
+        final ok2 = await s.waitForText('微信',
+                timeoutSec: 18, pollMs: 600, exact: false) ||
             await s.waitForText('通讯录', timeoutSec: 5, pollMs: 500, exact: true);
         steps.add('等待主界面: ${ok2 ? 'OK' : '超时(可能有广告/需人工)'}');
         if (!ok2) {
-          return ToolResult.error('步骤失败:\n${report()}\n20秒内未进入微信首页，可能有启动广告，请人工处理后重试');
+          return ToolResult.error(
+              '步骤失败:\n${report()}\n20秒内未进入微信首页，可能有启动广告，请人工处理后重试');
         }
 
         // 3. click top search (新版: 顶部"搜索"文字/描述；旧版: 放大镜按钮)
         final ok3 = await s.clickByText('搜索', exact: false) ||
             await s.clickByText('搜索指定内容', exact: false);
         steps.add('点搜索: ${ok3 ? 'OK' : '未找到搜索入口'}');
-        if (!ok3) return ToolResult.error('步骤失败:\n${report()}\n无法定位搜索框，请 dump_ui 确认界面结构');
+        if (!ok3)
+          return ToolResult.error(
+              '步骤失败:\n${report()}\n无法定位搜索框，请 dump_ui 确认界面结构');
 
         // 4. input contact name in search
         final ok4 = await s.inputText(contact);
@@ -75,8 +79,10 @@ Tool _composeWechatSendMessage(AndroidAutomationService s) => Tool(
         }
 
         // 6. wait chat page (see 发消息 placeholder or 语音通话)
-        final ok6 = await s.waitForText('发消息', timeoutSec: 10, pollMs: 600, exact: false) ||
-            await s.waitForText('语音通话', timeoutSec: 5, pollMs: 500, exact: false);
+        final ok6 = await s.waitForText('发消息',
+                timeoutSec: 10, pollMs: 600, exact: false) ||
+            await s.waitForText('语音通话',
+                timeoutSec: 5, pollMs: 500, exact: false);
         steps.add('进入聊天页: ${ok6 ? 'OK' : '(已在聊天 / 或结构变化)'}');
 
         // focus chat input
@@ -100,8 +106,7 @@ Tool _composeWechatSendMessage(AndroidAutomationService s) => Tool(
 /// ——— Douyin 刷推荐 + 点赞当前视频 ———
 Tool _composeDouyinLikeCurrent(AndroidAutomationService s) => Tool(
       name: 'android_douyin_like_current_video',
-      description:
-          '【高层·一步完成】打开抖音 → 等推荐流加载 → 给当前正在播放的推荐视频点❤点赞（右侧爱心图标）。'
+      description: '【高层·一步完成】打开抖音 → 等推荐流加载 → 给当前正在播放的推荐视频点❤点赞（右侧爱心图标）。'
           '⚠ 优先使用本工具，不要分步。',
       schema: _props({}),
       handler: (_) async {
@@ -113,8 +118,10 @@ Tool _composeDouyinLikeCurrent(AndroidAutomationService s) => Tool(
         if (!ok1) return ToolResult.error('步骤失败:\n${report()}\n抖音未安装');
 
         // splash + feed load (抖音冷启动可能有 5s 广告)
-        final ok2 = await s.waitForText('首页', timeoutSec: 20, pollMs: 800, exact: false) ||
-            await s.waitForText('推荐', timeoutSec: 10, pollMs: 800, exact: false);
+        final ok2 = await s.waitForText('首页',
+                timeoutSec: 20, pollMs: 800, exact: false) ||
+            await s.waitForText('推荐',
+                timeoutSec: 10, pollMs: 800, exact: false);
         steps.add('等待推荐流加载: ${ok2 ? 'OK' : '可能在广告页(继续尝试)'}');
 
         // 点赞: 右侧爱心 (content-desc 通常是 未点赞/点赞/喜欢 之类的中文 — clickByText 自动匹配 text + contentDescription)
@@ -147,8 +154,7 @@ Tool _composeDouyinLikeCurrent(AndroidAutomationService s) => Tool(
 /// ——— Xiaohongshu 搜索关键词 ———
 Tool _composeXiaohongshuSearch(AndroidAutomationService s) => Tool(
       name: 'android_xhs_search',
-      description:
-          '【高层·一步完成】打开小红书 → 点放大镜搜索 → 输入 keyword → 搜索，返回笔记列表页。'
+      description: '【高层·一步完成】打开小红书 → 点放大镜搜索 → 输入 keyword → 搜索，返回笔记列表页。'
           '⚠ 优先使用本高层工具，不要拆成 5 个小步骤。',
       schema: _props({
         'keyword': {
@@ -171,8 +177,10 @@ Tool _composeXiaohongshuSearch(AndroidAutomationService s) => Tool(
         if (!ok1) return ToolResult.error('步骤失败:\n${report()}\n小红书未安装');
 
         // wait home (allow splash ads)
-        final ok2 = await s.waitForText('首页', timeoutSec: 20, pollMs: 800, exact: false) ||
-            await s.waitForText('发现', timeoutSec: 10, pollMs: 800, exact: false);
+        final ok2 = await s.waitForText('首页',
+                timeoutSec: 20, pollMs: 800, exact: false) ||
+            await s.waitForText('发现',
+                timeoutSec: 10, pollMs: 800, exact: false);
         steps.add('等待首页: ${ok2 ? 'OK' : '(可能仍在广告/加载, 继续尝试)'}');
 
         // Search entry: 放大镜 icon / top search bar placeholder
@@ -248,7 +256,8 @@ Tool _composeQqSendMessage(AndroidAutomationService s) => Tool(
         if (!ok1) return ToolResult.error('步骤失败:\n${r()}\nQQ 未安装或启动失败');
 
         // QQ 主界面判断：首页通常有"消息/联系人/动态"
-        final ok2 = await s.waitForText('消息', timeoutSec: 20, pollMs: 700, exact: true) ||
+        final ok2 = await s.waitForText('消息',
+                timeoutSec: 20, pollMs: 700, exact: true) ||
             await s.waitForText('联系人', timeoutSec: 5, pollMs: 500, exact: true);
         steps.add('等待QQ主界面: ${ok2 ? 'OK' : '(未检测到, 继续尝试搜索)'}');
 
@@ -265,7 +274,9 @@ Tool _composeQqSendMessage(AndroidAutomationService s) => Tool(
             final ly = (res[1] * 0.065).round();
             final ok = await s.clickCoords(lx, ly);
             steps.add('按经验坐标点搜索 (${lx}x$ly): ${ok ? 'OK' : '失败'}');
-            if (!ok) return ToolResult.error('步骤失败:\n${r()}\n无法进入 QQ 搜索页，需 dump_ui 人工判断');
+            if (!ok)
+              return ToolResult.error(
+                  '步骤失败:\n${r()}\n无法进入 QQ 搜索页，需 dump_ui 人工判断');
           }
         }
 
@@ -281,7 +292,8 @@ Tool _composeQqSendMessage(AndroidAutomationService s) => Tool(
         }
 
         // QQ 聊天页：通常有"发送" placeholder 或 语音通话 按钮
-        await s.waitForText('发送', timeoutSec: 10, pollMs: 600, exact: false)
+        await s
+            .waitForText('发送', timeoutSec: 10, pollMs: 600, exact: false)
             .then((_) => null); // best-effort, don't fail
         // focus chat input
         await s.clickByText('输入消息', exact: false); // placeholder hint desc
@@ -304,8 +316,7 @@ Tool _composeQqSendMessage(AndroidAutomationService s) => Tool(
 /// 推荐流是垂直排列，向上划 80%h → 20%h = 拉到下一条视频（类似人手向上滑屏幕）。
 Tool _composeDouyinNextVideo(AndroidAutomationService s) => Tool(
       name: 'android_douyin_next_video',
-      description:
-          '【高层·一步完成】在抖音推荐流 / 关注流页面向上滑动，切换到下一条视频。'
+      description: '【高层·一步完成】在抖音推荐流 / 关注流页面向上滑动，切换到下一条视频。'
           '⚠ 想连续刷视频直接循环调用本工具，不要自己写 swipe 坐标。',
       schema: _props({
         'count': {
@@ -323,12 +334,13 @@ Tool _composeDouyinNextVideo(AndroidAutomationService s) => Tool(
         final h = res[1];
         final cx = (w * 0.50).round(); // 屏幕中线上的任意一列都行（避开侧边栏按钮）
         final yStart = (h * 0.80).round(); // 从下 80% 处起
-        final yEnd = (h * 0.20).round();   // 拉到上 20% 处
+        final yEnd = (h * 0.20).round(); // 拉到上 20% 处
         var success = 0;
         for (var i = 0; i < count; i++) {
           final ok = await s.swipe(cx, yStart, cx, yEnd, durationMs: 380);
           if (ok) success++;
-          await Future<void>.delayed(const Duration(milliseconds: 550)); // 等下一条播起来
+          await Future<void>.delayed(
+              const Duration(milliseconds: 550)); // 等下一条播起来
         }
         return ToolResult.ok('划了 $count 条，成功 $success 条'
             '（屏幕内 ${cx}x$yStart → ${cx}x$yEnd, duration 380ms）');
@@ -338,8 +350,7 @@ Tool _composeDouyinNextVideo(AndroidAutomationService s) => Tool(
 /// ——— 抖音：评论当前视频 ———
 Tool _composeDouyinCommentCurrent(AndroidAutomationService s) => Tool(
       name: 'android_douyin_comment_current_video',
-      description:
-          '【高层·一步完成】给当前正在播放的抖音视频写一条评论并发送：点开评论面板 → 聚焦输入框 → 写内容 → 发送。'
+      description: '【高层·一步完成】给当前正在播放的抖音视频写一条评论并发送：点开评论面板 → 聚焦输入框 → 写内容 → 发送。'
           '⚠ 优先用本高层工具，不要拆原子步骤。',
       schema: _props({
         'comment': {
@@ -421,8 +432,7 @@ Tool _composeDouyinCommentCurrent(AndroidAutomationService s) => Tool(
 /// 小红书双列瀑布流，第一个笔记一般在左上 ~25%x 35%y 处；点进去 → 点❤️ → 返回列表。
 Tool _composeXiaohongshuLikeFirstNote(AndroidAutomationService s) => Tool(
       name: 'android_xhs_like_first_note',
-      description:
-          '【高层·一步完成】在小红书发现页/搜索结果页，点第一个可见的笔记卡片 → 进入详情后点底部/顶栏❤️点赞 → 回列表。'
+      description: '【高层·一步完成】在小红书发现页/搜索结果页，点第一个可见的笔记卡片 → 进入详情后点底部/顶栏❤️点赞 → 回列表。'
           '⚠ 优先用本工具，不要拆成 click_coords 乱点。',
       schema: _props({}),
       handler: (_) async {
@@ -478,8 +488,7 @@ Tool _composeXiaohongshuLikeFirstNote(AndroidAutomationService s) => Tool(
 /// ——— B站搜索 ———
 Tool _composeBilibiliSearch(AndroidAutomationService s) => Tool(
       name: 'android_bilibili_search',
-      description:
-          '【高层·一步完成】打开哔哩哔哩 B站 → 顶部搜索关键词 → 出结果页。搜索动画/鬼畜/UP 主/番剧时直接调用。',
+      description: '【高层·一步完成】打开哔哩哔哩 B站 → 顶部搜索关键词 → 出结果页。搜索动画/鬼畜/UP 主/番剧时直接调用。',
       schema: _props({
         'keyword': {
           'type': 'string',
@@ -500,8 +509,10 @@ Tool _composeBilibiliSearch(AndroidAutomationService s) => Tool(
         steps.add('打开B站: ${ok1 ? 'OK' : '失败'}');
         if (!ok1) return ToolResult.error('步骤失败:\n${r()}\nB站未安装');
 
-        final ok2 = await s.waitForText('首页', timeoutSec: 20, pollMs: 800, exact: false) ||
-            await s.waitForText('推荐', timeoutSec: 10, pollMs: 800, exact: false);
+        final ok2 = await s.waitForText('首页',
+                timeoutSec: 20, pollMs: 800, exact: false) ||
+            await s.waitForText('推荐',
+                timeoutSec: 10, pollMs: 800, exact: false);
         steps.add('等待B站首页: ${ok2 ? 'OK' : '(未检测到, 继续尝试搜索)'}');
         await Future<void>.delayed(const Duration(milliseconds: 600));
 
@@ -544,8 +555,7 @@ Tool _composeBilibiliSearch(AndroidAutomationService s) => Tool(
 /// 真正的"挂机刷流"工具：1 次调用 顶 30~150 个原子步骤，省 95% 推理
 Tool _composeDouyinBatchSwipe(AndroidAutomationService s) => Tool(
       name: 'android_douyin_batch_swipe_like',
-      description:
-          '【高层·挂机批处理】一口气刷抖音 N 条推荐视频，每条自动点赞；可设置每隔 K 条自动留一条模板评论。'
+      description: '【高层·挂机批处理】一口气刷抖音 N 条推荐视频，每条自动点赞；可设置每隔 K 条自动留一条模板评论。'
           '⚠ 调用 1 次 = 内部自动循环 30~100 步，Agent 不要再在外面写 for 循环反复调 douyin_like + next_video。',
       schema: _props({
         'count': {
@@ -568,7 +578,8 @@ Tool _composeDouyinBatchSwipe(AndroidAutomationService s) => Tool(
       handler: (args) async {
         final total = ((args['count'] as num?)?.toInt() ?? 20).clamp(1, 200);
         final like = args['like_each'] != false; // default true
-        final every = ((args['comment_every'] as num?)?.toInt() ?? 0).clamp(0, 200);
+        final every =
+            ((args['comment_every'] as num?)?.toInt() ?? 0).clamp(0, 200);
         final tpl = (args['comment_template'] as String?) ?? '好棒 👍';
 
         final steps = <String>[];
@@ -645,7 +656,8 @@ Tool _composeDouyinBatchSwipe(AndroidAutomationService s) => Tool(
 
           // —— Step C: 非最后一条就划下一条 ——
           if (i < total) {
-            await s.swipe(centerX, swipeStart, centerX, swipeEnd, durationMs: 380);
+            await s.swipe(centerX, swipeStart, centerX, swipeEnd,
+                durationMs: 380);
             await Future<void>.delayed(const Duration(milliseconds: 500));
           }
         }
@@ -653,7 +665,8 @@ Tool _composeDouyinBatchSwipe(AndroidAutomationService s) => Tool(
         final summary = StringBuffer('✅ 抖音批处理完成:\n');
         summary.writeln('  刷完 $done / $total 条');
         summary.writeln('  点赞成功: $liked');
-        if (every > 0) summary.writeln('  评论成功: $commented（模板:「$tpl」 隔 $every 条 1 次）');
+        if (every > 0)
+          summary.writeln('  评论成功: $commented（模板:「$tpl」 隔 $every 条 1 次）');
         summary.writeln(r());
         return ToolResult.ok(summary.toString());
       },
@@ -685,7 +698,8 @@ Tool _composeWechatMomentsLikeBatch(AndroidAutomationService s) => Tool(
         final ok1 = await s.openApp('com.tencent.mm');
         steps.add('打开微信: ${ok1 ? 'OK' : '失败'}');
         if (!ok1) return ToolResult.error('微信启动失败');
-        final ok2 = await s.waitForText('微信', timeoutSec: 18, pollMs: 700, exact: false) ||
+        final ok2 = await s.waitForText('微信',
+                timeoutSec: 18, pollMs: 700, exact: false) ||
             await s.waitForText('通讯录', timeoutSec: 5, pollMs: 500, exact: true);
         steps.add('微信主界面: ${ok2 ? 'OK' : '超时继续尝试'}');
 
@@ -709,7 +723,8 @@ Tool _composeWechatMomentsLikeBatch(AndroidAutomationService s) => Tool(
         if (!okM) {
           final res = await s.screenResolution();
           if (res != null && res.length == 2) {
-            okM = await s.clickCoords((res[0] * 0.40).round(), (res[1] * 0.20).round());
+            okM = await s.clickCoords(
+                (res[0] * 0.40).round(), (res[1] * 0.20).round());
             steps.add('点朋友圈入口坐标: ${okM ? 'OK' : '失败'}');
           }
         } else {
@@ -726,7 +741,9 @@ Tool _composeWechatMomentsLikeBatch(AndroidAutomationService s) => Tool(
         if (fromTop) {
           // 回到顶部的最快方式：按 BACK 出朋友圈再进会回到自己名片；直接快速上划 2 次比较稳
           for (var i = 0; i < 2; i++) {
-            await s.swipe((w * 0.5).round(), (h * 0.25).round(), (w * 0.5).round(), (h * 0.80).round(), durationMs: 280);
+            await s.swipe((w * 0.5).round(), (h * 0.25).round(),
+                (w * 0.5).round(), (h * 0.80).round(),
+                durationMs: 280);
             await Future<void>.delayed(const Duration(milliseconds: 250));
           }
           steps.add('回到朋友圈顶部 (2 次上划)');
@@ -739,7 +756,7 @@ Tool _composeWechatMomentsLikeBatch(AndroidAutomationService s) => Tool(
         var liked = 0;
         final dotsX = (w * 0.93).round();
         var currentDotsY = (h * 0.42).round(); // 第一条的右下角一般在 42%
-        final menuY = (h * 0.55).round();       // 弹出菜单内「赞」的位置（菜单位于屏幕中下部）
+        final menuY = (h * 0.55).round(); // 弹出菜单内「赞」的位置（菜单位于屏幕中下部）
         // 点赞按钮在微信弹出菜单中通常第一行，contentDescription="赞"
         for (var i = 0; i < n; i++) {
           // (A) 点这一条的 "⋯" 图标 (右下角)
@@ -760,7 +777,9 @@ Tool _composeWechatMomentsLikeBatch(AndroidAutomationService s) => Tool(
 
           // (C) 向下滚动显示下一条（如果不是最后一条就再往下滚一条动态高度）
           if (i < n - 1) {
-            await s.swipe((w * 0.5).round(), (h * 0.80).round(), (w * 0.5).round(), (h * 0.30).round(), durationMs: 420);
+            await s.swipe((w * 0.5).round(), (h * 0.80).round(),
+                (w * 0.5).round(), (h * 0.30).round(),
+                durationMs: 420);
             currentDotsY = (h * 0.50).round(); // 下一条的 ... 图标位置大概固定在屏幕中部（因为刚滚过）
             await Future<void>.delayed(const Duration(milliseconds: 450));
           }
@@ -810,7 +829,8 @@ Tool _composeBilibiliThreeInOne(AndroidAutomationService s) => Tool(
         }
         if (openFirst) {
           // 点首页推荐流第一个视频卡片（通常在左上 25%x, 30%y）
-          final ok = await s.clickCoords((w * 0.30).round(), (h * 0.35).round());
+          final ok =
+              await s.clickCoords((w * 0.30).round(), (h * 0.35).round());
           steps.add('点推荐流第一个视频: ${ok ? 'OK' : '失败'}');
           await Future<void>.delayed(const Duration(milliseconds: 1400));
         }
@@ -820,7 +840,7 @@ Tool _composeBilibiliThreeInOne(AndroidAutomationService s) => Tool(
         final barY = (h * 0.94).round();
         final likeX = (w * 0.28).round();
         final coinX = (w * 0.42).round();
-        final favX  = (w * 0.56).round();
+        final favX = (w * 0.56).round();
 
         var okLike = await s.clickByText('赞', exact: true) ||
             await s.clickByText('点赞', exact: false) ||
@@ -873,8 +893,7 @@ Tool _composeBilibiliThreeInOne(AndroidAutomationService s) => Tool(
 /// ——— 微信：发一条「纯文字朋友圈」 (长按右上角相机 📷 进入纯文字模式) ———
 Tool _composeWechatPostTextMoments(AndroidAutomationService s) => Tool(
       name: 'android_wechat_post_text_moments',
-      description:
-          '【高层·一步完成】打开微信 → 发现 → 朋友圈 → 长按右上角相机 (发纯文字) → 写文字 → 发表。'
+      description: '【高层·一步完成】打开微信 → 发现 → 朋友圈 → 长按右上角相机 (发纯文字) → 写文字 → 发表。'
           '⚠ 用户说"发个朋友圈说…"时直接用本工具，不要自己选发图片模式。',
       schema: _props({
         'text': {
@@ -905,7 +924,8 @@ Tool _composeWechatPostTextMoments(AndroidAutomationService s) => Tool(
         if (!tab) {
           final res = await s.screenResolution();
           if (res != null && res.length == 2) {
-            tab = await s.clickCoords((res[0] * 0.70).round(), (res[1] * 0.96).round());
+            tab = await s.clickCoords(
+                (res[0] * 0.70).round(), (res[1] * 0.96).round());
           }
         }
         steps.add('发现Tab: ${tab ? 'OK' : '坐标Fallback尝试'}');
@@ -916,7 +936,8 @@ Tool _composeWechatPostTextMoments(AndroidAutomationService s) => Tool(
         if (!okM) {
           final res = await s.screenResolution();
           if (res != null && res.length == 2) {
-            okM = await s.clickCoords((res[0] * 0.40).round(), (res[1] * 0.20).round());
+            okM = await s.clickCoords(
+                (res[0] * 0.40).round(), (res[1] * 0.20).round());
           }
         }
         steps.add('进入朋友圈: ${okM ? 'OK' : '坐标Fallback尝试'}');
@@ -929,11 +950,13 @@ Tool _composeWechatPostTextMoments(AndroidAutomationService s) => Tool(
         final res = await s.screenResolution();
         final w = res?[0] ?? 1080;
         final h = res?[1] ?? 2400;
-        final camX = (w * 0.93).round();  // 右上角相机
+        final camX = (w * 0.93).round(); // 右上角相机
         final camY = (h * 0.075).round(); // 状态栏下 ~ 7.5%
         // pressKey 没有长按概念，用 swipe 0距离 模拟长按：start=end, duration = 1100ms
-        final longPress = await s.swipe(camX, camY, camX, camY, durationMs: 1100);
-        steps.add('长按相机📷 (${camX}x$camY, 1.1s): ${longPress ? 'OK' : '手势完成继续'}');
+        final longPress =
+            await s.swipe(camX, camY, camX, camY, durationMs: 1100);
+        steps.add(
+            '长按相机📷 (${camX}x$camY, 1.1s): ${longPress ? 'OK' : '手势完成继续'}');
         await Future<void>.delayed(const Duration(milliseconds: 1200));
 
         // 写文字 (粘贴板 fallback 会自动工作)
@@ -948,17 +971,15 @@ Tool _composeWechatPostTextMoments(AndroidAutomationService s) => Tool(
         steps.add('发表: ${pub ? 'OK' : '失败'}');
         await Future<void>.delayed(const Duration(milliseconds: 900));
 
-        return ToolResult.ok(pub
-            ? '✅ 朋友圈纯文字已发表\n${r()}'
-            : '⚠ 步骤执行完，未点到发表按钮（可能已自动发布）\n${r()}');
+        return ToolResult.ok(
+            pub ? '✅ 朋友圈纯文字已发表\n${r()}' : '⚠ 步骤执行完，未点到发表按钮（可能已自动发布）\n${r()}');
       },
     );
 
 /// ——— 小红书：搜索关键词 → 切用户Tab → 给第 N 个作者 点 +关注 ———
 Tool _composeXiaohongshuFollowUser(AndroidAutomationService s) => Tool(
       name: 'android_xhs_follow_search_user',
-      description:
-          '【高层·一步完成】小红书 搜索关键词 → 切到「用户」Tab → 给排名第 N 的账号 点+关注。'
+      description: '【高层·一步完成】小红书 搜索关键词 → 切到「用户」Tab → 给排名第 N 的账号 点+关注。'
           '⚠ 用户说"关注一下某某博主"时，先搜名字再用本工具。',
       schema: _props({
         'keyword': {
@@ -994,7 +1015,8 @@ Tool _composeXiaohongshuFollowUser(AndroidAutomationService s) => Tool(
         // 点击搜索图标 (小红书顶部右 1/3 有放大镜)
         var sOk = await s.clickByText('搜索', exact: false) ||
             await s.clickByText('小红书 搜索一下', exact: false);
-        if (!sOk) sOk = await s.clickCoords((w * 0.90).round(), (h * 0.07).round());
+        if (!sOk)
+          sOk = await s.clickCoords((w * 0.90).round(), (h * 0.07).round());
         steps.add('点搜索入口: ${sOk ? 'OK' : '坐标Fallback尝试'}');
         if (!sOk) return ToolResult.error('进不去搜索\n${r()}');
         await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -1028,7 +1050,8 @@ Tool _composeXiaohongshuFollowUser(AndroidAutomationService s) => Tool(
         // 点完后 再点一次 "关注/已关注" 控件位置 以防只是进入了详情页没点到按钮
         if (!f1) {
           // fallback：先点进用户主页再在主页右侧/右上角点关注
-          final toHome = await s.clickCoords((w * 0.30).round(), targetCardCenterY);
+          final toHome =
+              await s.clickCoords((w * 0.30).round(), targetCardCenterY);
           steps.add('点进用户主页: ${toHome ? 'OK' : '没点到'}');
           await Future<void>.delayed(const Duration(milliseconds: 900));
           final f2 = await s.clickByText('关注', exact: true) ||
@@ -1047,8 +1070,7 @@ Tool _composeXiaohongshuFollowUser(AndroidAutomationService s) => Tool(
 /// ——— 抖音：关注当前正在播放视频的作者 (右侧头像下方 + 号) ———
 Tool _composeDouyinFollowCurrentAuthor(AndroidAutomationService s) => Tool(
       name: 'android_douyin_follow_current_author',
-      description:
-          '【高层·一步完成】当前正在播放的那条抖音视频：关注创作者（头像下 ➕ 按钮 / 进作者详情页后点关注）。'
+      description: '【高层·一步完成】当前正在播放的那条抖音视频：关注创作者（头像下 ➕ 按钮 / 进作者详情页后点关注）。'
           '⚠ 用户说"关注这个UP"时直接调用。',
       schema: _props({
         'open_home_if_needed': {
@@ -1063,7 +1085,8 @@ Tool _composeDouyinFollowCurrentAuthor(AndroidAutomationService s) => Tool(
 
         final info = await s.getTopApp();
         if (info.package != 'com.ss.android.ugc.aweme') {
-          if (!openAuto) return ToolResult.error('当前不在抖音，且 open_home_if_needed=false');
+          if (!openAuto)
+            return ToolResult.error('当前不在抖音，且 open_home_if_needed=false');
           final o = await s.openApp('com.ss.android.ugc.aweme');
           steps.add('打开抖音: ${o ? 'OK' : '失败'}');
           if (!o) return ToolResult.error('启动失败');
@@ -1149,7 +1172,8 @@ Tool _composeSystemSetAlarm(AndroidAutomationService s) => Tool(
 
         // —— 时钟数字滚轮 picker (纯键盘 fallback 用 inputText 不太稳)
         //   Strategy: 用 gshell input text "HH:MM" 键盘方式 + 确定 / 用 setText Action
-        final timeStr = '${hh.toString().padLeft(2, '0')}:${mm.toString().padLeft(2, '0')}';
+        final timeStr =
+            '${hh.toString().padLeft(2, '0')}:${mm.toString().padLeft(2, '0')}';
         // 先尝试 在 聚焦的 Hour/Min 上 直接 setText 方式
         final okKb = await s.inputText(timeStr);
         steps.add('尝试用键盘方式填入 $timeStr: ${okKb ? 'OK' : '失败，改用坐标 picker'}');
@@ -1186,8 +1210,7 @@ Tool _composeSystemSetAlarm(AndroidAutomationService s) => Tool(
 /// ——— 系统能力：发送短信 (打开短信 App → 新建 → 收件人 + 内容 → 发送) ———
 Tool _composeSystemSendSms(AndroidAutomationService s) => Tool(
       name: 'android_system_send_sms',
-      description:
-          '【高层·一步完成】打开 Android 短信/MMS App → 新建短信 → 填写手机号 + 文字内容 → 点发送。'
+      description: '【高层·一步完成】打开 Android 短信/MMS App → 新建短信 → 填写手机号 + 文字内容 → 点发送。'
           '⚠ 本工具仅自动点 UI，实际短信是否发送会受运营商资费限制。',
       schema: _props({
         'phone_number': {
@@ -1205,14 +1228,16 @@ Tool _composeSystemSendSms(AndroidAutomationService s) => Tool(
       handler: (args) async {
         final to = args['phone_number'] as String? ?? '';
         final msg = args['message'] as String? ?? '';
-        if (to.isEmpty || msg.isEmpty) return const ToolResult.error('缺少 phone_number/message');
+        if (to.isEmpty || msg.isEmpty)
+          return const ToolResult.error('缺少 phone_number/message');
         final steps = <String>[];
         String r() => steps.map((l) => '  • $l').join('\n');
 
         // Strategy 1: Intent SENDTO 最稳 (直接 调起 写好收件人和正文 的 短信页)
         final toNoBlank = to.replaceAll(' ', '').replaceAll('-', '');
         // Using android.content.extra.TEXT is the conventional way
-        final shell2 = 'am start -a android.intent.action.SENDTO -d "smsto:$toNoBlank" '
+        final shell2 =
+            'am start -a android.intent.action.SENDTO -d "smsto:$toNoBlank" '
             '--es android.telephony.extra.SMS_BODY "${msg.replaceAll('\'', '')}" '
             '--activity-clear-top';
         await s.openApp('com.google.android.apps.messaging') ||
@@ -1235,11 +1260,13 @@ Tool _composeSystemSendSms(AndroidAutomationService s) => Tool(
           if (!send) {
             final res = await s.screenResolution();
             if (res != null && res.length == 2) {
-              await s.clickCoords((res[0] * 0.91).round(), (res[1] * 0.88).round());
+              await s.clickCoords(
+                  (res[0] * 0.91).round(), (res[1] * 0.88).round());
             }
           }
           await Future<void>.delayed(const Duration(milliseconds: 900));
-          return ToolResult.ok('✅ 发送短信流程完成 (手机号 $to →${msg.substring(0, msg.length > 12 ? 12 : msg.length)}${msg.length > 12 ? '…' : ''})\n${r()}');
+          return ToolResult.ok(
+              '✅ 发送短信流程完成 (手机号 $to →${msg.substring(0, msg.length > 12 ? 12 : msg.length)}${msg.length > 12 ? '…' : ''})\n${r()}');
         }
 
         // Fallback：纯 UI 路径
@@ -1274,8 +1301,7 @@ Tool _composeSystemSendSms(AndroidAutomationService s) => Tool(
 /// ——— 抖音：搜索关键词 → 综合结果 (视频/用户) ———
 Tool _composeDouyinSearch(AndroidAutomationService s) => Tool(
       name: 'android_douyin_search',
-      description:
-          '【高层·一步完成】打开抖音 → 右上角🔎搜索图标 → 输入关键词 → 搜索 / 看综合结果。'
+      description: '【高层·一步完成】打开抖音 → 右上角🔎搜索图标 → 输入关键词 → 搜索 / 看综合结果。'
           '要搜挑战/音乐/视频/人名，直接用这个。',
       schema: _props({
         'keyword': {
@@ -1324,8 +1350,7 @@ Tool _composeDouyinSearch(AndroidAutomationService s) => Tool(
 /// ——— 微信：打开扫一扫 ———
 Tool _composeWechatScanQr(AndroidAutomationService s) => Tool(
       name: 'android_wechat_scan_qr',
-      description:
-          '【高层·一步完成】打开微信 → 右上角 + 号 → 扫一扫。'
+      description: '【高层·一步完成】打开微信 → 右上角 + 号 → 扫一扫。'
           '用户说「用微信扫码」「扫二维码付款」时直接调用。',
       schema: _props({
         'mode': {
@@ -1381,7 +1406,8 @@ Tool _composeSystemDial(AndroidAutomationService s) => Tool(
         String r() => steps.map((l) => '  • $l').join('\n');
 
         // L2+ Intent 直接拨号
-        final r1 = await s.gshell('am start -a android.intent.action.CALL -d "tel:$num" --activity-clear-top');
+        final r1 = await s.gshell(
+            'am start -a android.intent.action.CALL -d "tel:$num" --activity-clear-top');
         steps.add('Intent CALL: ok=${r1.ok} exit=${r1.exitCode}');
         if (r1.ok) {
           await Future<void>.delayed(const Duration(milliseconds: 900));
@@ -1391,7 +1417,8 @@ Tool _composeSystemDial(AndroidAutomationService s) => Tool(
         // L1 UI Fallback: 打开拨号盘，输号，点绿色电话图标
         await s.openApp('com.android.dialer') ||
             await s.openApp('com.samsung.android.dialer') ||
-            await s.openApp('com.miui.dialer') || true;
+            await s.openApp('com.miui.dialer') ||
+            true;
         steps.add('打开拨号器: OK');
         await Future<void>.delayed(const Duration(milliseconds: 900));
         await s.inputText(num);
@@ -1409,8 +1436,7 @@ Tool _composeSystemDial(AndroidAutomationService s) => Tool(
 /// ——— 系统相机：拍照 (打开相机 → 按快门键) ———
 Tool _composeSystemTakePhoto(AndroidAutomationService s) => Tool(
       name: 'android_system_take_photo',
-      description:
-          '【高层·一步完成】打开系统相机 App → 等待对焦完成 → 按底部快门键拍照。'
+      description: '【高层·一步完成】打开系统相机 App → 等待对焦完成 → 按底部快门键拍照。'
           '⚠ 只是按快门按钮；不做自动取景/人脸检测（如需可配合 VLM 识别）。',
       schema: _props({
         'count': {
@@ -1430,9 +1456,11 @@ Tool _composeSystemTakePhoto(AndroidAutomationService s) => Tool(
 
         await s.openApp('com.android.camera') ||
             await s.openApp('com.miui.camera') ||
-            await s.openApp('com.samsung.android.camera') || true;
+            await s.openApp('com.samsung.android.camera') ||
+            true;
         steps.add('打开系统相机: OK');
-        await Future<void>.delayed(const Duration(milliseconds: 1600)); // 相机启动冷启动慢
+        await Future<void>.delayed(
+            const Duration(milliseconds: 1600)); // 相机启动冷启动慢
 
         final res = await s.screenResolution();
         final w = res?[0] ?? 1080;
@@ -1476,10 +1504,10 @@ Tool _composeSystemTakePhoto(AndroidAutomationService s) => Tool(
 Tool _composeGameAutoVlmLoop(
   AndroidAutomationService s,
   Future<String> Function(String imagePath, String question) visionAnalyze,
-) => Tool(
+) =>
+    Tool(
       name: 'android_game_auto_vlm_loop',
-      description:
-          '【高层·游戏专用】操作游戏 / 无文字的 Canvas 界面（如战斗/抽卡/自动寻路/挂机刷体力）。'
+      description: '【高层·游戏专用】操作游戏 / 无文字的 Canvas 界面（如战斗/抽卡/自动寻路/挂机刷体力）。'
           '循环流程：截图 → 调本地 Omni VLM 让它分析：①说出下 1~5 个要点击的屏幕坐标(x,y 百分比或像素)+动作名 ②划屏方向 ③按哪个键。'
           'Agent 按 VLM 的建议真实执行 click/swipe/press，再 loop N 轮。'
           '⚠ 当用户说"帮我刷体力""自动打这关游戏"时用本工具，不要尝试用 click_by_text（游戏没有 View 文字）。',
@@ -1494,18 +1522,17 @@ Tool _composeGameAutoVlmLoop(
         },
         'prompt_suffix': {
           'type': 'string',
-          'description': '【默认模板+附加】告诉 VLM 本轮游戏目标，例如：「优先点击蓝色 开始战斗 按钮；如果看到 X 关闭弹窗先关；确认道具就点确定；没有按钮就往上滑半屏找下一页」',
+          'description':
+              '【默认模板+附加】告诉 VLM 本轮游戏目标，例如：「优先点击蓝色 开始战斗 按钮；如果看到 X 关闭弹窗先关；确认道具就点确定；没有按钮就往上滑半屏找下一页」',
         },
         'custom_vlm_prompt': {
           'type': 'string',
-          'description':
-              '【完全覆盖默认提问】非空时，用你写的整段话直接向 VLM 提问，替换掉代码层写死的输出格式要求。'
+          'description': '【完全覆盖默认提问】非空时，用你写的整段话直接向 VLM 提问，替换掉代码层写死的输出格式要求。'
               '你可以要求 VLM 返回任意你想要的格式（文字解释/中文/JSON/XML/逐条清单…），代码层不再硬编码输出格式。',
         },
         'skip_auto_execute': {
           'type': 'boolean',
-          'description':
-              'true=不自动执行任何 click/swipe/press，只把每一轮 VLM 的原始回答返回给你 (LLM)。'
+          'description': 'true=不自动执行任何 click/swipe/press，只把每一轮 VLM 的原始回答返回给你 (LLM)。'
               '这样你 (LLM) 可以看完 VLM 回答后自己决定调用哪个底层工具 (click_coords / swipe / custom_gesture / shell…)。'
               '默认 false=按默认 JSON 自动解析+执行。',
         },
@@ -1518,7 +1545,8 @@ Tool _composeGameAutoVlmLoop(
         final pkg = (args['game_package'] as String?) ?? '';
         final loops = ((args['loops'] as num?)?.toInt() ?? 5).clamp(1, 80);
         final goal = (args['prompt_suffix'] as String?) ?? '';
-        final delay = ((args['step_delay_ms'] as num?)?.toInt() ?? 900).clamp(200, 15000);
+        final delay =
+            ((args['step_delay_ms'] as num?)?.toInt() ?? 900).clamp(200, 15000);
         // H9-1 / H9-2: 开放决策参数
         final customPrompt = (args['custom_vlm_prompt'] as String?) ?? '';
         final skipAuto = args['skip_auto_execute'] as bool? ?? false;
@@ -1528,11 +1556,11 @@ Tool _composeGameAutoVlmLoop(
         final swipeCount = <int>[0];
         final vlmAnswers = <String>[];
         // ---- 失败恢复状态 ----
-        var staleCounter = 0;          // 连续相同动作计数
-        String? lastActionSummary;     // 上一轮动作摘要
-        const maxStale = 3;            // 连续多少轮相同动作后触发恢复
-        var recoveryMode = false;      // 是否处于恢复模式
-        const maxRecoveryActions = 3;  // 恢复模式最多尝试动作数
+        var staleCounter = 0; // 连续相同动作计数
+        String? lastActionSummary; // 上一轮动作摘要
+        const maxStale = 3; // 连续多少轮相同动作后触发恢复
+        var recoveryMode = false; // 是否处于恢复模式
+        const maxRecoveryActions = 3; // 恢复模式最多尝试动作数
         String r() => steps.map((l) => '  • $l').join('\n');
 
         // 可选：打开游戏 App
@@ -1540,14 +1568,16 @@ Tool _composeGameAutoVlmLoop(
           final o = await s.openApp(pkg);
           steps.add('打开游戏 $pkg: ${o ? 'OK' : '失败'}');
           if (!o) return ToolResult.error('启动游戏失败\n${r()}');
-          await Future<void>.delayed(const Duration(milliseconds: 2500)); // 冷启动游戏慢
+          await Future<void>.delayed(
+              const Duration(milliseconds: 2500)); // 冷启动游戏慢
         }
 
         final res = await s.screenResolution();
         final w = res?[0] ?? 1080;
         final h = res?[1] ?? 2400;
 
-        int toPx(num v, int maxPx) => v < 1 ? (v * maxPx).round() : v.toInt(); // 0~1 百分比 or 纯像素
+        int toPx(num v, int maxPx) =>
+            v < 1 ? (v * maxPx).round() : v.toInt(); // 0~1 百分比 or 纯像素
 
         for (var i = 1; i <= loops; i++) {
           // 1) 截当前屏幕
@@ -1562,13 +1592,17 @@ Tool _composeGameAutoVlmLoop(
           final q = customPrompt.isNotEmpty
               ? customPrompt
               : (() {
-                  final sb = StringBuffer('你是手机游戏/RPA 视觉决策器。我给你一张截图，分辨率是 ${w}x$h。\n');
+                  final sb =
+                      StringBuffer('你是手机游戏/RPA 视觉决策器。我给你一张截图，分辨率是 ${w}x$h。\n');
                   sb.writeln('【目标】${goal.isEmpty ? '分析并给出下一步操作建议' : goal}\n');
                   sb.writeln('【严格输出格式（只返回 JSON，不许其他文字）】：');
-                  sb.writeln('{"actions": [{"type": "click|swipe|press|back|home|wait", "x%":0.15, "y%":0.33, "x2%":0.15, "y2%":0.05, "key":"BACK", "ms":900}], "summary": "一句话为什么选这些动作"}');
+                  sb.writeln(
+                      '{"actions": [{"type": "click|swipe|press|back|home|wait", "x%":0.15, "y%":0.33, "x2%":0.15, "y2%":0.05, "key":"BACK", "ms":900}], "summary": "一句话为什么选这些动作"}');
                   sb.writeln('字段说明：type=click 时给 x% y% (0~1 浮点数表示宽高百分比)；');
-                  sb.writeln('  type=swipe 时给 x% y% (起点) + x2% y2% (终点) + ms (手势毫秒，默认 380)；');
-                  sb.writeln('  type=press 时给 key 名字：HOME/BACK/MENU/VOLUME_UP/VOLUME_DOWN/POWER/ENTER/DEL/SPACE；');
+                  sb.writeln(
+                      '  type=swipe 时给 x% y% (起点) + x2% y2% (终点) + ms (手势毫秒，默认 380)；');
+                  sb.writeln(
+                      '  type=press 时给 key 名字：HOME/BACK/MENU/VOLUME_UP/VOLUME_DOWN/POWER/ENTER/DEL/SPACE；');
                   sb.writeln('  type=wait 时给 ms (默认 1500)。');
                   sb.writeln('一次最多返回 3 个动作，按执行顺序排。禁止点击 < 3% 屏幕边缘 (防止误触状态栏)。');
                   return sb.toString();
@@ -1589,20 +1623,44 @@ Tool _composeGameAutoVlmLoop(
           // 3) 粗解析 JSON (容错：手搓正则解析 不要求完美 JSON，只要抓数字就行)
           try {
             // 先找 JSON 花括号整体
-            final match = RegExp(r'\{[\s\S]*\}', multiLine: false).firstMatch(answer);
+            final match =
+                RegExp(r'\{[\s\S]*\}', multiLine: false).firstMatch(answer);
             String json = (match?.group(0) ?? answer).trim();
             // 正则抠出 actions 数组每项内的 kv
-            final rxType = RegExp(r'"type"\s*:\s*"(click|swipe|press|back|home|wait)"', caseSensitive: false);
-            final rx = (String k) => RegExp('"$k"%?\\s*:\\s*(-?\\d+(?:\\.\\d+)?)');
-            final rxKey = RegExp(r'"key"\s*:\s*"([A-Z_]+)"', caseSensitive: false);
+            final rxType = RegExp(
+                r'"type"\s*:\s*"(click|swipe|press|back|home|wait)"',
+                caseSensitive: false);
+            final rx =
+                (String k) => RegExp('"$k"%?\\s*:\\s*(-?\\d+(?:\\.\\d+)?)');
+            final rxKey =
+                RegExp(r'"key"\s*:\s*"([A-Z_]+)"', caseSensitive: false);
 
-            final types = rxType.allMatches(json).map((m) => m.group(1)!.toLowerCase()).toList();
-            final xs = rx('x').allMatches(json).map((m) => double.tryParse(m.group(1)!) ?? 0.0).toList();
-            final ys = rx('y').allMatches(json).map((m) => double.tryParse(m.group(1)!) ?? 0.0).toList();
-            final x2s = rx('x2').allMatches(json).map((m) => double.tryParse(m.group(1)!) ?? 0.0).toList();
-            final y2s = rx('y2').allMatches(json).map((m) => double.tryParse(m.group(1)!) ?? 0.0).toList();
-            final mss = rx('ms').allMatches(json).map((m) => int.tryParse(m.group(1)!) ?? 0).toList();
-            final keys = rxKey.allMatches(json).map((m) => m.group(1)!).toList();
+            final types = rxType
+                .allMatches(json)
+                .map((m) => m.group(1)!.toLowerCase())
+                .toList();
+            final xs = rx('x')
+                .allMatches(json)
+                .map((m) => double.tryParse(m.group(1)!) ?? 0.0)
+                .toList();
+            final ys = rx('y')
+                .allMatches(json)
+                .map((m) => double.tryParse(m.group(1)!) ?? 0.0)
+                .toList();
+            final x2s = rx('x2')
+                .allMatches(json)
+                .map((m) => double.tryParse(m.group(1)!) ?? 0.0)
+                .toList();
+            final y2s = rx('y2')
+                .allMatches(json)
+                .map((m) => double.tryParse(m.group(1)!) ?? 0.0)
+                .toList();
+            final mss = rx('ms')
+                .allMatches(json)
+                .map((m) => int.tryParse(m.group(1)!) ?? 0)
+                .toList();
+            final keys =
+                rxKey.allMatches(json).map((m) => m.group(1)!).toList();
 
             final total = types.length;
             for (var k = 0; k < total.clamp(0, 3); k++) {
@@ -1612,21 +1670,32 @@ Tool _composeGameAutoVlmLoop(
                   if (k < xs.length && k < ys.length) {
                     final px = toPx(xs[k], w);
                     final py = toPx(ys[k], h);
-                    if (px >= w * 0.03 && px <= w * 0.97 && py >= h * 0.05 && py <= h * 0.97) {
+                    if (px >= w * 0.03 &&
+                        px <= w * 0.97 &&
+                        py >= h * 0.05 &&
+                        py <= h * 0.97) {
                       final ok = await s.clickCoords(px, py);
                       if (ok) clickCount[0]++;
-                      steps.add('  click (${xs[k].toStringAsFixed(2)},${ys[k].toStringAsFixed(2)})→${px}x$py: ${ok ? 'OK' : 'fail'}');
+                      steps.add(
+                          '  click (${xs[k].toStringAsFixed(2)},${ys[k].toStringAsFixed(2)})→${px}x$py: ${ok ? 'OK' : 'fail'}');
                     } else {
-                      steps.add('  skip click @边缘 (${xs[k].toStringAsFixed(2)},${ys[k].toStringAsFixed(2)})');
+                      steps.add(
+                          '  skip click @边缘 (${xs[k].toStringAsFixed(2)},${ys[k].toStringAsFixed(2)})');
                     }
                   }
                   break;
                 case 'swipe':
-                  if (k < xs.length && k < ys.length && k < x2s.length && k < y2s.length) {
+                  if (k < xs.length &&
+                      k < ys.length &&
+                      k < x2s.length &&
+                      k < y2s.length) {
                     final dur = (k < mss.length && mss[k] > 0) ? mss[k] : 380;
-                    await s.swipe(toPx(xs[k], w), toPx(ys[k], h), toPx(x2s[k], w), toPx(y2s[k], h), durationMs: dur);
+                    await s.swipe(toPx(xs[k], w), toPx(ys[k], h),
+                        toPx(x2s[k], w), toPx(y2s[k], h),
+                        durationMs: dur);
                     swipeCount[0]++;
-                    steps.add('  swipe (${xs[k].toStringAsFixed(2)},${ys[k].toStringAsFixed(2)})→(${x2s[k].toStringAsFixed(2)},${y2s[k].toStringAsFixed(2)}) dur=${dur}ms');
+                    steps.add(
+                        '  swipe (${xs[k].toStringAsFixed(2)},${ys[k].toStringAsFixed(2)})→(${x2s[k].toStringAsFixed(2)},${y2s[k].toStringAsFixed(2)}) dur=${dur}ms');
                   }
                   break;
                 case 'press':
@@ -1634,25 +1703,47 @@ Tool _composeGameAutoVlmLoop(
                     final keyName = keys[k].toUpperCase();
                     AndroidKey? kk;
                     switch (keyName) {
-                      case 'BACK': kk = AndroidKey.back; break;
-                      case 'HOME': kk = AndroidKey.home; break;
-                      case 'VOLUME_UP': kk = AndroidKey.volumeUp; break;
-                      case 'VOLUME_DOWN': kk = AndroidKey.volumeDown; break;
-                      case 'ENTER': case 'DELETE': case 'DEL': kk = AndroidKey.enter; break;
-                      case 'POWER': kk = AndroidKey.power; break;
+                      case 'BACK':
+                        kk = AndroidKey.back;
+                        break;
+                      case 'HOME':
+                        kk = AndroidKey.home;
+                        break;
+                      case 'VOLUME_UP':
+                        kk = AndroidKey.volumeUp;
+                        break;
+                      case 'VOLUME_DOWN':
+                        kk = AndroidKey.volumeDown;
+                        break;
+                      case 'ENTER':
+                      case 'DELETE':
+                      case 'DEL':
+                        kk = AndroidKey.enter;
+                        break;
+                      case 'POWER':
+                        kk = AndroidKey.power;
+                        break;
                     }
-                    if (kk != null) { await s.pressKey(kk); steps.add('  pressKey $keyName: sent'); }
-                    else steps.add('  pressKey $keyName: 不支持');
+                    if (kk != null) {
+                      await s.pressKey(kk);
+                      steps.add('  pressKey $keyName: sent');
+                    } else
+                      steps.add('  pressKey $keyName: 不支持');
                   }
                   break;
                 case 'back':
-                  await s.pressKey(AndroidKey.back); steps.add('  back: sent'); break;
+                  await s.pressKey(AndroidKey.back);
+                  steps.add('  back: sent');
+                  break;
                 case 'home':
-                  await s.pressKey(AndroidKey.home); steps.add('  home: sent'); break;
+                  await s.pressKey(AndroidKey.home);
+                  steps.add('  home: sent');
+                  break;
                 case 'wait':
                   final wms = (k < mss.length && mss[k] > 0) ? mss[k] : 1500;
                   await Future<void>.delayed(Duration(milliseconds: wms));
-                  steps.add('  wait ${wms}ms'); break;
+                  steps.add('  wait ${wms}ms');
+                  break;
               }
               await Future<void>.delayed(Duration(milliseconds: delay));
             }
@@ -1718,8 +1809,10 @@ Tool _composeGameAutoVlmLoop(
         final sb = StringBuffer(skipAuto
             ? '✅ 游戏 VLM 截图+开放问答完成 (skip_auto_execute=true, 未执行任何动作)\n'
             : '✅ 游戏 VLM 自动驾驶结束\n');
-        sb.writeln('  轮次执行 $loops 次，累计: 点击=${clickCount[0]}, 滑屏=${swipeCount[0]}');
-        if (customPrompt.isNotEmpty) sb.writeln('  ⚙ custom_vlm_prompt 已启用 (LLM 自主覆盖提问模板)');
+        sb.writeln(
+            '  轮次执行 $loops 次，累计: 点击=${clickCount[0]}, 滑屏=${swipeCount[0]}');
+        if (customPrompt.isNotEmpty)
+          sb.writeln('  ⚙ custom_vlm_prompt 已启用 (LLM 自主覆盖提问模板)');
         sb.writeln(r());
         if (vlmAnswers.isNotEmpty) {
           sb.writeln('\n===== 每轮 VLM 原始回答（供 LLM 自主分析）=====');
@@ -1732,13 +1825,13 @@ Tool _composeGameAutoVlmLoop(
 /// ——— 支付宝：扫一扫 ———
 Tool _composeAlipayScan(AndroidAutomationService s) => Tool(
       name: 'android_alipay_scan',
-      description:
-          '【高层·一步完成】打开支付宝 → 顶部扫一扫 (扫码/收钱码)。'
+      description: '【高层·一步完成】打开支付宝 → 顶部扫一扫 (扫码/收钱码)。'
           '用户说"用支付宝付款扫码""扫个商家码支付"时直接调用。',
       schema: _props({
         'mode': {
           'type': 'integer',
-          'description': '0=扫一扫(默认), 1=付款码, 2=收款码。本工具=0(扫一扫); mode=1/2 请用 android_alipay_show_payment_code',
+          'description':
+              '0=扫一扫(默认), 1=付款码, 2=收款码。本工具=0(扫一扫); mode=1/2 请用 android_alipay_show_payment_code',
         },
       }),
       handler: (args) async {
@@ -1751,7 +1844,8 @@ Tool _composeAlipayScan(AndroidAutomationService s) => Tool(
 
         // 支付宝冷启动较慢 (安全校验)
         await s.waitForText('首页', timeoutSec: 20, pollMs: 900, exact: false) ||
-            await s.waitForText('扫一扫', timeoutSec: 20, pollMs: 900, exact: false);
+            await s.waitForText('扫一扫',
+                timeoutSec: 20, pollMs: 900, exact: false);
         await Future<void>.delayed(const Duration(milliseconds: 500));
 
         final res = await s.screenResolution();
@@ -1760,7 +1854,8 @@ Tool _composeAlipayScan(AndroidAutomationService s) => Tool(
         // 扫一扫入口在首页左上 20%x 32%y 附近(4 宫格第一个图标) 或 顶部搜索栏左侧
         var sOk = await s.clickByText('扫一扫', exact: true) ||
             await s.clickByText('扫 一 扫', exact: false);
-        if (!sOk) sOk = await s.clickCoords((w * 0.18).round(), (h * 0.32).round());
+        if (!sOk)
+          sOk = await s.clickCoords((w * 0.18).round(), (h * 0.32).round());
         steps.add('点扫一扫: ${sOk ? 'OK' : '坐标尝试 (18%x,32%y)'}');
         await Future<void>.delayed(const Duration(milliseconds: 1400));
         return ToolResult.ok('✅ 支付宝扫一扫已打开\n${r()}');
@@ -1770,8 +1865,7 @@ Tool _composeAlipayScan(AndroidAutomationService s) => Tool(
 /// ——— 支付宝：出示付款码 / 收款码 ———
 Tool _composeAlipayShowCode(AndroidAutomationService s) => Tool(
       name: 'android_alipay_show_payment_code',
-      description:
-          '【高层·一步完成】打开支付宝 → 点「付款/收钱」，出示给商家扫描的条形码+二维码 或 个人收款码。'
+      description: '【高层·一步完成】打开支付宝 → 点「付款/收钱」，出示给商家扫描的条形码+二维码 或 个人收款码。'
           'mode=1 付款码（商家扫你扣钱）；mode=2 收款码（别人扫你给你转账）。',
       schema: _props({
         'mode': {
@@ -1789,7 +1883,8 @@ Tool _composeAlipayShowCode(AndroidAutomationService s) => Tool(
         if (!ok) return ToolResult.error('启动失败\n${r()}');
 
         await s.waitForText('首页', timeoutSec: 22, pollMs: 900, exact: false) ||
-            await s.waitForText('付款', timeoutSec: 20, pollMs: 900, exact: false);
+            await s.waitForText('付款',
+                timeoutSec: 20, pollMs: 900, exact: false);
         await Future<void>.delayed(const Duration(milliseconds: 500));
 
         final res = await s.screenResolution();
@@ -1800,8 +1895,10 @@ Tool _composeAlipayShowCode(AndroidAutomationService s) => Tool(
         final colX = mode == 1 ? 0.38 : 0.58;
         var cOk = await s.clickByText(label, exact: true) ||
             await s.clickByText('$label码', exact: false);
-        if (!cOk) cOk = await s.clickCoords((w * colX).round(), (h * 0.32).round());
-        steps.add('点「$label」(第${mode==1?'二':'三'}宫格 $colX): ${cOk ? 'OK' : '坐标尝试'}');
+        if (!cOk)
+          cOk = await s.clickCoords((w * colX).round(), (h * 0.32).round());
+        steps.add(
+            '点「$label」(第${mode == 1 ? '二' : '三'}宫格 $colX): ${cOk ? 'OK' : '坐标尝试'}');
         await Future<void>.delayed(const Duration(milliseconds: 1400));
 
         // 部分版本点完会弹安全校验：默认点「知道了 / 确定」让码显示出来
@@ -1818,8 +1915,7 @@ Tool _composeAlipayShowCode(AndroidAutomationService s) => Tool(
 /// ——— 小红书：发帖（图文笔记） ———
 Tool _composeXiaohongshuPostNote(AndroidAutomationService s) => Tool(
       name: 'android_xhs_post_note',
-      description:
-          '【高层·一步完成】在小红书发一篇图文笔记（图文/纯文字/图片）。'
+      description: '【高层·一步完成】在小红书发一篇图文笔记（图文/纯文字/图片）。'
           '流程：打开小红书 → 点击底部➕ → 选相册图片 → 点下一步 → 编辑文字 → 发布。'
           '⚠ 需要已授予相册权限；优先用本工具，不要自己拆 clicks。',
       schema: _props({
@@ -1835,7 +1931,9 @@ Tool _composeXiaohongshuPostNote(AndroidAutomationService s) => Tool(
           'type': 'string',
           'description': '可选：相册中的图片路径，为空则只发文字笔记',
         },
-      }, required: ['content']),
+      }, required: [
+        'content'
+      ]),
       handler: (args) async {
         final title = (args['title'] as String?) ?? '';
         final content = args['content'] as String? ?? '';
@@ -1924,8 +2022,7 @@ Tool _composeXiaohongshuPostNote(AndroidAutomationService s) => Tool(
 /// ——— 小红书：私信 ———
 Tool _composeXiaohongshuSendMessage(AndroidAutomationService s) => Tool(
       name: 'android_xhs_send_message',
-      description:
-          '【高层·一步完成】在小红书给指定用户发送私信。'
+      description: '【高层·一步完成】在小红书给指定用户发送私信。'
           '流程：打开小红书 → 点消息 → 搜索用户 → 点进对话 → 输入文字 → 发送。',
       schema: _props({
         'username': {
@@ -1936,7 +2033,10 @@ Tool _composeXiaohongshuSendMessage(AndroidAutomationService s) => Tool(
           'type': 'string',
           'description': '要发送的消息内容',
         },
-      }, required: ['username', 'message']),
+      }, required: [
+        'username',
+        'message'
+      ]),
       handler: (args) async {
         final username = args['username'] as String? ?? '';
         final message = args['message'] as String? ?? '';
@@ -1959,7 +2059,8 @@ Tool _composeXiaohongshuSendMessage(AndroidAutomationService s) => Tool(
         if (!msg) {
           final res = await s.screenResolution();
           if (res != null && res.length == 2) {
-            msg = await s.clickCoords((res[0] * 0.85).round(), (res[1] * 0.96).round());
+            msg = await s.clickCoords(
+                (res[0] * 0.85).round(), (res[1] * 0.96).round());
           }
         }
         steps.add('点消息: ${msg ? 'OK' : '失败'}');
@@ -1992,8 +2093,7 @@ Tool _composeXiaohongshuSendMessage(AndroidAutomationService s) => Tool(
 /// ——— 抖音：发作品（视频/图片） ———
 Tool _composeDouyinPostVideo(AndroidAutomationService s) => Tool(
       name: 'android_douyin_post_video',
-      description:
-          '【高层·一步完成】在抖音发布作品（视频或图片）。'
+      description: '【高层·一步完成】在抖音发布作品（视频或图片）。'
           '流程：打开抖音 → 点底部➕ → 选相册视频/图片 → 点下一步 → 编辑描述 → 发布。',
       schema: _props({
         'description': {
@@ -2005,7 +2105,9 @@ Tool _composeDouyinPostVideo(AndroidAutomationService s) => Tool(
           'enum': ['video', 'image'],
           'description': '发布类型：video（视频）或 image（图片）',
         },
-      }, required: ['description']),
+      }, required: [
+        'description'
+      ]),
       handler: (args) async {
         final desc = args['description'] as String? ?? '';
         final mediaType = (args['media_type'] as String?) ?? 'image';
@@ -2030,7 +2132,8 @@ Tool _composeDouyinPostVideo(AndroidAutomationService s) => Tool(
         if (!plus) {
           final res = await s.screenResolution();
           if (res != null && res.length == 2) {
-            plus = await s.clickCoords((res[0] * 0.5).round(), (res[1] * 0.92).round());
+            plus = await s.clickCoords(
+                (res[0] * 0.5).round(), (res[1] * 0.92).round());
           }
         }
         steps.add('点➕ 发作品: ${plus ? 'OK' : '失败'}');
@@ -2080,8 +2183,7 @@ Tool _composeDouyinPostVideo(AndroidAutomationService s) => Tool(
 /// ——— 微信：发图片朋友圈 ———
 Tool _composeWechatPostImageMoments(AndroidAutomationService s) => Tool(
       name: 'android_wechat_post_image_moments',
-      description:
-          '【高层·一步完成】在微信朋友圈发图片。'
+      description: '【高层·一步完成】在微信朋友圈发图片。'
           '流程：打开微信 → 点发现 → 朋友圈 → 长按相机按钮 → 选图片 → 输入文字 → 发表。',
       schema: _props({
         'text': {
@@ -2092,7 +2194,9 @@ Tool _composeWechatPostImageMoments(AndroidAutomationService s) => Tool(
           'type': 'integer',
           'description': '选几张图片（默认1张，最多9张）',
         },
-      }, required: ['text']),
+      }, required: [
+        'text'
+      ]),
       handler: (args) async {
         final text = args['text'] as String? ?? '';
         final count = ((args['image_count'] as num?)?.toInt() ?? 1).clamp(1, 9);
@@ -2124,7 +2228,8 @@ Tool _composeWechatPostImageMoments(AndroidAutomationService s) => Tool(
           camFound = await s.longClickByText('相机', exact: false);
           if (!camFound) {
             // 右上角坐标
-            camFound = await s.longClickCoords((res[0] * 0.93).round(), (res[1] * 0.02).round());
+            camFound = await s.longClickCoords(
+                (res[0] * 0.93).round(), (res[1] * 0.02).round());
           }
         }
         steps.add('长按相机按钮: ${camFound ? 'OK' : '失败'}');

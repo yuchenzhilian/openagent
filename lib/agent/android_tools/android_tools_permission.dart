@@ -7,8 +7,7 @@ part of '../android_tools.dart';
 /// H16-1: 整体权限快照
 Tool _checkPermissionsTool(AndroidAutomationService s) => Tool(
       name: 'android_check_permissions',
-      description:
-          '【开放自检】一次性返回所有权限的 GRANTED/DENIED 状态。',
+      description: '【开放自检】一次性返回所有权限的 GRANTED/DENIED 状态。',
       schema: _props({
         'permissions': {
           'type': 'array',
@@ -30,29 +29,30 @@ Tool _checkPermissionsTool(AndroidAutomationService s) => Tool(
 /// H16-2: 申请运行时权限
 Tool _requestPermissionsTool(AndroidAutomationService s) => Tool(
       name: 'android_request_permissions',
-      description:
-          '【开放操作】向系统申请一组 Android 运行时权限。',
+      description: '【开放操作】向系统申请一组 Android 运行时权限。',
       schema: _props({
         'permissions': {
           'type': 'array',
           'items': {'type': 'string'},
-          'description':
-              '【必填】想要申请的完整权限名数组。',
+          'description': '【必填】想要申请的完整权限名数组。',
         },
         'open_settings_if_needed': {
           'type': 'boolean',
-          'description':
-              '当原生权限 dialog 不可用时是否自动跳应用详情页。默认 true。',
+          'description': '当原生权限 dialog 不可用时是否自动跳应用详情页。默认 true。',
         },
       }, required: [
         'permissions'
       ]),
       handler: (args) async {
         final raw = args['permissions'] as List<dynamic>? ?? const [];
-        final list = raw.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList(growable: false);
+        final list = raw
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList(growable: false);
         if (list.isEmpty) return const ToolResult.error('permissions 不能为空数组');
         final openSettings = args['open_settings_if_needed'] as bool? ?? true;
-        final r = await s.requestRuntimePermissions(list, openSettingsIfNeeded: openSettings);
+        final r = await s.requestRuntimePermissions(list,
+            openSettingsIfNeeded: openSettings);
         return r.ok
             ? ToolResult.ok(r.stdout)
             : ToolResult.error(r.stderr.isEmpty ? r.stdout : r.stderr);
@@ -72,7 +72,9 @@ Tool _notificationDismissTool(AndroidAutomationService s) => Tool(
           'type': 'string',
           'description': '通知 key',
         },
-      }, required: ['key']),
+      }, required: [
+        'key'
+      ]),
       handler: (args) async {
         final key = args['key'] as String? ?? '';
         if (key.isEmpty) return const ToolResult.error('参数 key 不能为空');
@@ -95,12 +97,15 @@ Tool _notificationSnoozeTool(AndroidAutomationService s) => Tool(
           'type': 'integer',
           'description': '延迟秒数（默认 300 = 5分钟）',
         },
-      }, required: ['key']),
+      }, required: [
+        'key'
+      ]),
       handler: (args) async {
         final key = args['key'] as String? ?? '';
         final dur = (args['duration_seconds'] as num?)?.toInt() ?? 300;
         if (key.isEmpty) return const ToolResult.error('参数 key 不能为空');
-        final r = await s.gshell('cmd notification snooze --duration $dur "$key" 2>/dev/null');
+        final r = await s.gshell(
+            'cmd notification snooze --duration $dur "$key" 2>/dev/null');
         return r.ok
             ? ToolResult.ok('通知已 snooze ${dur}s: $key')
             : ToolResult.error('snooze 失败: ${r.stderr}');
@@ -120,13 +125,17 @@ Tool _notificationReplyTool(AndroidAutomationService s) => Tool(
           'type': 'string',
           'description': '回复内容',
         },
-      }, required: ['key', 'text']),
+      }, required: [
+        'key',
+        'text'
+      ]),
       handler: (args) async {
         final key = args['key'] as String? ?? '';
         final text = args['text'] as String? ?? '';
         if (key.isEmpty) return const ToolResult.error('参数 key 不能为空');
         if (text.isEmpty) return const ToolResult.error('参数 text 不能为空');
-        final r = await s.gshell('cmd notification reply "$key" "$text" 2>/dev/null');
+        final r =
+            await s.gshell('cmd notification reply "$key" "$text" 2>/dev/null');
         return r.ok
             ? ToolResult.ok('已回复通知 $key: "$text"')
             : ToolResult.error('回复失败: ${r.stderr}');
@@ -150,7 +159,10 @@ Tool _appOpsGetTool(AndroidAutomationService s) => Tool(
           'type': 'string',
           'description': '权限操作名',
         },
-      }, required: ['package_name', 'op']),
+      }, required: [
+        'package_name',
+        'op'
+      ]),
       handler: (args) async {
         final pkg = args['package_name'] as String? ?? '';
         final op = args['op'] as String? ?? '';
@@ -160,7 +172,8 @@ Tool _appOpsGetTool(AndroidAutomationService s) => Tool(
         if (r.ok && r.stdout.trim().isNotEmpty) {
           return ToolResult.ok('$pkg / $op:\n${r.stdout}');
         }
-        final r2 = await s.gshell('dumpsys appops | grep -A 2 "$pkg.*$op" 2>/dev/null | head -n 10');
+        final r2 = await s.gshell(
+            'dumpsys appops | grep -A 2 "$pkg.*$op" 2>/dev/null | head -n 10');
         if (r2.ok && r2.stdout.trim().isNotEmpty) {
           return ToolResult.ok('$pkg / $op:\n${r2.stdout}');
         }
@@ -186,7 +199,11 @@ Tool _appOpsSetTool(AndroidAutomationService s) => Tool(
           'enum': ['allow', 'deny', 'ignore', 'default'],
           'description': 'allow=允许, deny=拒绝, ignore=静默拒绝, default=系统默认',
         },
-      }, required: ['package_name', 'op', 'mode']),
+      }, required: [
+        'package_name',
+        'op',
+        'mode'
+      ]),
       handler: (args) async {
         final pkg = args['package_name'] as String? ?? '';
         final op = args['op'] as String? ?? '';
@@ -197,7 +214,8 @@ Tool _appOpsSetTool(AndroidAutomationService s) => Tool(
         if (r.ok) {
           return ToolResult.ok('✅ 已设置 $pkg / $op → $mode');
         }
-        final r2 = await s.gshell('cmd appops set --user 0 $pkg $op $mode 2>/dev/null');
+        final r2 = await s
+            .gshell('cmd appops set --user 0 $pkg $op $mode 2>/dev/null');
         if (r2.ok) {
           return ToolResult.ok('✅ 已设置 $pkg / $op → $mode (user 0)');
         }
@@ -222,19 +240,24 @@ Tool _floatOverlayTool(AndroidAutomationService s) => Tool(
           'type': 'string',
           'description': '可选：预设任务列表（JSON 数组）',
         },
-      }, required: ['action']),
+      }, required: [
+        'action'
+      ]),
       handler: (args) async {
         final action = args['action'] as String? ?? 'show';
         final tasks = args['preset_tasks'] as String?;
         if (action == 'hide') {
-          await s.gshell('am force-stop com.openagent.openagent/.automation.FloatOverlayService 2>/dev/null');
+          await s.gshell(
+              'am force-stop com.openagent.openagent/.automation.FloatOverlayService 2>/dev/null');
           return const ToolResult.ok('悬浮球已隐藏');
         }
         // Show the overlay
-        await s.gshell('am start -n com.openagent.openagent/.automation.FloatOverlayService --es action show 2>/dev/null');
+        await s.gshell(
+            'am start -n com.openagent.openagent/.automation.FloatOverlayService --es action show 2>/dev/null');
         final sb = StringBuffer('悬浮球已显示');
         if (tasks != null && tasks.isNotEmpty) {
-          await s.gshell('am start -n com.openagent.openagent/.automation.FloatOverlayService --es preset_tasks "$tasks" 2>/dev/null');
+          await s.gshell(
+              'am start -n com.openagent.openagent/.automation.FloatOverlayService --es preset_tasks "$tasks" 2>/dev/null');
           sb.writeln(' (预设任务已同步)');
         }
         return ToolResult.ok(sb.toString());
@@ -252,7 +275,8 @@ Tool _grantSecureSettingsTool(AndroidAutomationService s) => Tool(
       description: '通过 Shizuku 授予 WRITE_SECURE_SETTINGS 权限，使自动化能免确认修改系统设置。',
       schema: _props({}),
       handler: (args) async {
-        final r = await s.gshell('pm grant com.openagent.openagent android.permission.WRITE_SECURE_SETTINGS 2>/dev/null');
+        final r = await s.gshell(
+            'pm grant com.openagent.openagent android.permission.WRITE_SECURE_SETTINGS 2>/dev/null');
         return r.ok
             ? const ToolResult.ok('✅ WRITE_SECURE_SETTINGS 已授予（通过 Shizuku）')
             : ToolResult.error('授予失败: ${r.stderr}\n提示：需要 Shizuku 已授权且运行中');
@@ -269,7 +293,8 @@ Tool _autoGrantAccessibilityTool(AndroidAutomationService s) => Tool(
             'settings put secure enabled_accessibility_services '
             'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentAccessibilityService 2>/dev/null');
         if (r.ok) {
-          await s.gshell('settings put secure accessibility_enabled 1 2>/dev/null');
+          await s.gshell(
+              'settings put secure accessibility_enabled 1 2>/dev/null');
           return const ToolResult.ok('✅ 无障碍服务已自动启用（通过 Shizuku 写入设置）');
         }
         return ToolResult.error('自动授权失败: ${r.stderr}\n需要 Shizuku 已授权');
@@ -327,8 +352,7 @@ Tool _ocrScreenTool(AndroidAutomationService s) => Tool(
           return ToolResult.ok('📷 OCR 结果:\n${r2.stdout}');
         }
         // Last resort: try to extract text from the screenshot filename.
-        return ToolResult.ok(
-            '📷 截图已保存: $imgPath\n'
+        return ToolResult.ok('📷 截图已保存: $imgPath\n'
             'OCR 需要 Android 10+ 或安装 ML Kit Vision 插件。\n'
             '提示：可用 android_vision_analyze （VLM 多模态）直接分析截图内容。');
       },
@@ -351,7 +375,9 @@ Tool _longClickByTextTool(AndroidAutomationService s) => Tool(
           'type': 'boolean',
           'description': '是否完全匹配（默认 true）',
         },
-      }, required: ['text']),
+      }, required: [
+        'text'
+      ]),
       handler: (args) async {
         final text = args['text'] as String? ?? '';
         final exact = args['exact'] as bool? ?? true;
@@ -376,7 +402,9 @@ Tool _doubleClickByTextTool(AndroidAutomationService s) => Tool(
           'type': 'boolean',
           'description': '是否完全匹配（默认 true）',
         },
-      }, required: ['text']),
+      }, required: [
+        'text'
+      ]),
       handler: (args) async {
         final text = args['text'] as String? ?? '';
         final exact = args['exact'] as bool? ?? true;
@@ -413,7 +441,9 @@ Tool _scrollToTextTool(AndroidAutomationService s) => Tool(
           'enum': ['forward', 'backward'],
           'description': '滑动方向（默认 forward=向下）',
         },
-      }, required: ['text']),
+      }, required: [
+        'text'
+      ]),
       handler: (args) async {
         final text = args['text'] as String? ?? '';
         final maxSwipes = (args['max_swipes'] as num?)?.toInt() ?? 10;

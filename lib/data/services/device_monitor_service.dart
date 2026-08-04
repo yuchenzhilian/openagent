@@ -39,10 +39,12 @@ class DeviceState {
   bool get isLowPower => batteryPercent < 20 && !isCharging;
 
   /// Whether the device is overheating.
-  bool get isOverheating => thermalLevel == ThermalLevel.hot || thermalLevel == ThermalLevel.critical;
+  bool get isOverheating =>
+      thermalLevel == ThermalLevel.hot || thermalLevel == ThermalLevel.critical;
 
   /// Whether high-performance inference is appropriate.
-  bool get canUseHighPerformance => isCharging && !isOverheating && thermalLevel == ThermalLevel.normal;
+  bool get canUseHighPerformance =>
+      isCharging && !isOverheating && thermalLevel == ThermalLevel.normal;
 }
 
 /// Monitors device state at a configurable interval.
@@ -70,7 +72,8 @@ class DeviceMonitorService {
   void start() {
     _timer?.cancel();
     _sample(); // Immediate first sample.
-    _timer = Timer.periodic(Duration(seconds: sampleIntervalSec), (_) => _sample());
+    _timer =
+        Timer.periodic(Duration(seconds: sampleIntervalSec), (_) => _sample());
   }
 
   /// Stop periodic sampling.

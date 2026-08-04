@@ -51,7 +51,8 @@ void main() {
           'https://modelscope.cn/api/v1/models/MNN/Qwen2.5-Omni-7B-MNN/repo?Revision=master&FilePath=');
     });
 
-    test('converts DeepSeek-R1-1.5B-Qwen-MNN repo URL to download API base', () {
+    test('converts DeepSeek-R1-1.5B-Qwen-MNN repo URL to download API base',
+        () {
       const repoUrl =
           'https://modelscope.cn/models/MNN/DeepSeek-R1-1.5B-Qwen-MNN';
       final result = service.buildFileBaseUrl(repoUrl);
@@ -158,16 +159,18 @@ void main() {
       final result = ModelDownloadService.parseFileListResponse(data);
       // All 8 files are model artifacts (none in skip list).
       expect(result.length, 8);
-      expect(result.map((f) => f.name).toList(), containsAll([
-        'config.json',
-        'embeddings_int4.bin',
-        'export_args.json',
-        'llm.mnn',
-        'llm.mnn.json',
-        'llm.mnn.weight',
-        'llm_config.json',
-        'tokenizer.mtok',
-      ]));
+      expect(
+          result.map((f) => f.name).toList(),
+          containsAll([
+            'config.json',
+            'embeddings_int4.bin',
+            'export_args.json',
+            'llm.mnn',
+            'llm.mnn.json',
+            'llm.mnn.weight',
+            'llm_config.json',
+            'tokenizer.mtok',
+          ]));
     });
 
     test('filters out non-artifact files', () {
@@ -215,12 +218,16 @@ void main() {
       expect(ModelDownloadService.parseFileListResponse({}), isEmpty);
       expect(ModelDownloadService.parseFileListResponse({'Data': {}}), isEmpty);
       expect(
-          ModelDownloadService.parseFileListResponse({'Data': {'Files': null}}),
+          ModelDownloadService.parseFileListResponse({
+            'Data': {'Files': null}
+          }),
           isEmpty);
     });
 
     test('returns empty list for empty Files array', () {
-      final data = {'Data': {'Files': []}};
+      final data = {
+        'Data': {'Files': []}
+      };
       final result = ModelDownloadService.parseFileListResponse(data);
       expect(result, isEmpty);
     });
@@ -253,10 +260,14 @@ void main() {
       ('Qwen3-0.6B-MNN', 'https://modelscope.cn/models/MNN/Qwen3-0.6B-MNN'),
       ('Qwen3-1.7B-MNN', 'https://modelscope.cn/models/MNN/Qwen3-1.7B-MNN'),
       ('Qwen3-4B-MNN', 'https://modelscope.cn/models/MNN/Qwen3-4B-MNN'),
-      ('Qwen2.5-Omni-7B-MNN',
-          'https://modelscope.cn/models/MNN/Qwen2.5-Omni-7B-MNN'),
-      ('DeepSeek-R1-1.5B-Qwen-MNN',
-          'https://modelscope.cn/models/MNN/DeepSeek-R1-1.5B-Qwen-MNN'),
+      (
+        'Qwen2.5-Omni-7B-MNN',
+        'https://modelscope.cn/models/MNN/Qwen2.5-Omni-7B-MNN'
+      ),
+      (
+        'DeepSeek-R1-1.5B-Qwen-MNN',
+        'https://modelscope.cn/models/MNN/DeepSeek-R1-1.5B-Qwen-MNN'
+      ),
     ];
 
     for (final (name, url) in models) {
@@ -272,16 +283,14 @@ void main() {
           final files = ModelDownloadService.parseFileListResponse(resp.data);
           // Every MNN-LLM model must have at least config.json and
           // llm.mnn.weight to be usable.
-          expect(files, isNotEmpty,
-              reason: '$name returned empty file list');
+          expect(files, isNotEmpty, reason: '$name returned empty file list');
           final names = files.map((f) => f.name).toSet();
           expect(names, contains('config.json'),
               reason: '$name missing config.json');
           expect(names, contains('llm.mnn.weight'),
               reason: '$name missing llm.mnn.weight');
           // The weight file should have a non-zero size.
-          final weight =
-              files.firstWhere((f) => f.name == 'llm.mnn.weight');
+          final weight = files.firstWhere((f) => f.name == 'llm.mnn.weight');
           expect(weight.size, greaterThan(0),
               reason: '$name: llm.mnn.weight has size 0');
         } finally {

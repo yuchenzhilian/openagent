@@ -117,8 +117,7 @@ class _ModelMarketPageState extends State<ModelMarketPage> {
 
   void _snack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -160,15 +159,16 @@ class _ModelMarketPageState extends State<ModelMarketPage> {
             const SizedBox(width: 4),
             if (m.type == ModelType.omni)
               const Chip(
-                label: Text('多模态',
-                    style: TextStyle(fontSize: 11)),
+                label: Text('多模态', style: TextStyle(fontSize: 11)),
                 visualDensity: VisualDensity.compact,
               ),
           ]),
           const SizedBox(height: 4),
-          Text(m.description, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          Text(m.description,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
           const SizedBox(height: 6),
-          Text('${(m.sizeMb / 1024).toStringAsFixed(1)} GB · 需 ${m.ramMb ~/ 1024 + 1}GB 内存',
+          Text(
+              '${(m.sizeMb / 1024).toStringAsFixed(1)} GB · 需 ${m.ramMb ~/ 1024 + 1}GB 内存',
               style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
           if (isDownloading) ...[
             const SizedBox(height: 8),
@@ -207,7 +207,8 @@ class _ModelMarketPageState extends State<ModelMarketPage> {
               else ...[
                 FilledButton.icon(
                   onPressed: isActive ? null : () => _setActive(m),
-                  icon: Icon(isActive ? Icons.check : Icons.play_arrow, size: 18),
+                  icon:
+                      Icon(isActive ? Icons.check : Icons.play_arrow, size: 18),
                   label: Text(isActive ? '当前使用' : '使用'),
                 ),
                 const SizedBox(width: 8),

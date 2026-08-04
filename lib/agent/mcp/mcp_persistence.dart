@@ -21,17 +21,23 @@ import 'dart:io';
 import '../agent_runtime.dart';
 import '../mcp/mcp_client.dart';
 
-List<Tool> createMcpPersistenceTools(McpRegistry registry, String stateFilePath) {
+List<Tool> createMcpPersistenceTools(
+    McpRegistry registry, String stateFilePath) {
   final file = () => File(stateFilePath);
   final out = <Tool>[];
 
   out.add(Tool(
     name: 'mcp_state_save',
-    description: '【MCP 持久化 · 保存】把当前已连接的所有 MCP server 的连接参数（server_id + HTTP url/headers/timeout 或 stdio executable/args/env/cwd）写入一个本地 JSON 文件，下次新会话可用 mcp_state_load 重连。⚠ 不会保存 socket 句柄、也不保留已初始化之外的任何状态，load 时会重新跑 initialize + tools/list。⚠ 注意 stdio 模式下的可执行文件路径 + env/cwd 是原样落盘的，你自己判断是否包含敏感路径。',
+    description:
+        '【MCP 持久化 · 保存】把当前已连接的所有 MCP server 的连接参数（server_id + HTTP url/headers/timeout 或 stdio executable/args/env/cwd）写入一个本地 JSON 文件，下次新会话可用 mcp_state_load 重连。⚠ 不会保存 socket 句柄、也不保留已初始化之外的任何状态，load 时会重新跑 initialize + tools/list。⚠ 注意 stdio 模式下的可执行文件路径 + env/cwd 是原样落盘的，你自己判断是否包含敏感路径。',
     schema: const {
       'type': 'object',
       'properties': {
-        'path': {'type': 'string', 'description': '可选。保存的 JSON 文件绝对路径；留空=默认路径（由 app 初始化时指定，一般在 filesDir/mcp_state.json）。'},
+        'path': {
+          'type': 'string',
+          'description':
+              '可选。保存的 JSON 文件绝对路径；留空=默认路径（由 app 初始化时指定，一般在 filesDir/mcp_state.json）。'
+        },
       },
     },
     handler: (args) async {
@@ -67,11 +73,13 @@ List<Tool> createMcpPersistenceTools(McpRegistry registry, String stateFilePath)
             'transport': tp,
           });
         }
-        final out = JsonEncoder.withIndent('  ').convert({'version': 1, 'servers': servers});
+        final out = JsonEncoder.withIndent('  ')
+            .convert({'version': 1, 'servers': servers});
         final f = File(p);
         await f.parent.create(recursive: true);
         await f.writeAsString(out, flush: true);
-        return ToolResult.ok('OK: saved ${servers.length} MCP connections to $p\n\n$out');
+        return ToolResult.ok(
+            'OK: saved ${servers.length} MCP connections to $p\n\n$out');
       } catch (e, st) {
         return ToolResult.error('mcp_state_save failed: $e\n$st');
       }
@@ -80,13 +88,22 @@ List<Tool> createMcpPersistenceTools(McpRegistry registry, String stateFilePath)
 
   out.add(Tool(
     name: 'mcp_state_load',
-    description: '【MCP 持久化 · 加载】从本地 JSON 文件里重放全部 MCP 连接（先断开当前同名连接 → 重新 create transport → initialize 握手 → tools/list → 注册进 McpRegistry）。逐个服务器返回成功/失败。',
+    description:
+        '【MCP 持久化 · 加载】从本地 JSON 文件里重放全部 MCP 连接（先断开当前同名连接 → 重新 create transport → initialize 握手 → tools/list → 注册进 McpRegistry）。逐个服务器返回成功/失败。',
     schema: const {
       'type': 'object',
       'properties': {
         'path': {'type': 'string', 'description': '可选。读取的 JSON 文件路径；留空=默认路径。'},
-        'only': {'type': 'array', 'items': {'type': 'string'}, 'description': '可选。只加载指定 server_id 列表；留空=全部加载。'},
-        'disconnect_existing': {'type': 'boolean', 'description': '可选：true=遇到相同 server_id 先断开老的再重连（默认）；false=遇到重复 id 跳过老连接，使用当前已有的。'},
+        'only': {
+          'type': 'array',
+          'items': {'type': 'string'},
+          'description': '可选。只加载指定 server_id 列表；留空=全部加载。'
+        },
+        'disconnect_existing': {
+          'type': 'boolean',
+          'description':
+              '可选：true=遇到相同 server_id 先断开老的再重连（默认）；false=遇到重复 id 跳过老连接，使用当前已有的。'
+        },
       },
     },
     handler: (args) async {
@@ -94,11 +111,14 @@ List<Tool> createMcpPersistenceTools(McpRegistry registry, String stateFilePath)
           ? args['path'].toString()
           : stateFilePath);
       final onlyRaw = args['only'] as List<dynamic>?;
-      final only = onlyRaw == null ? null : Set<String>.from(onlyRaw.map((e) => e.toString()));
+      final only = onlyRaw == null
+          ? null
+          : Set<String>.from(onlyRaw.map((e) => e.toString()));
       final disconnectExisting = args['disconnect_existing'] != false;
       final f = file();
       if (!f.existsSync()) {
-        return ToolResult.error('MCP state file not found: $p\n(Hint: call mcp_state_save at the end of a run first)');
+        return ToolResult.error(
+            'MCP state file not found: $p\n(Hint: call mcp_state_save at the end of a run first)');
       }
       final sb = StringBuffer();
       try {
@@ -128,18 +148,25 @@ List<Tool> createMcpPersistenceTools(McpRegistry registry, String stateFilePath)
               final url = (tp['url'] as String?).toString().trim();
               if (url.isEmpty) throw StateError('http url missing');
               final hRaw = tp['headers'] as Map<String, dynamic>? ?? const {};
-              final headers = hRaw.map((k, v) => MapEntry(k.toString(), v.toString()));
+              final headers =
+                  hRaw.map((k, v) => MapEntry(k.toString(), v.toString()));
               final ts = (tp['timeout_sec'] as int?) ?? 30;
-              final transport = HttpMcpTransport(url, headers: headers, timeout: Duration(seconds: ts.clamp(1, 300)));
+              final transport = HttpMcpTransport(url,
+                  headers: headers,
+                  timeout: Duration(seconds: ts.clamp(1, 300)));
               client = McpClient(transport, serverId: sid);
             } else if (kind == 'stdio') {
               final exe = (tp['executable'] as String?).toString().trim();
               if (exe.isEmpty) throw StateError('stdio executable missing');
-              final args2 = (tp['args'] as List<dynamic>? ?? const []).map((e) => e.toString()).toList();
+              final args2 = (tp['args'] as List<dynamic>? ?? const [])
+                  .map((e) => e.toString())
+                  .toList();
               final envRaw = tp['env'] as Map<String, dynamic>? ?? const {};
-              final env = envRaw.map((k, v) => MapEntry(k.toString(), v.toString()));
+              final env =
+                  envRaw.map((k, v) => MapEntry(k.toString(), v.toString()));
               final cwd = tp['cwd'] as String?;
-              final transport = await StdioMcpTransport.spawn(exe, args2, environment: env, workingDirectory: cwd);
+              final transport = await StdioMcpTransport.spawn(exe, args2,
+                  environment: env, workingDirectory: cwd);
               client = McpClient(transport, serverId: sid);
             } else {
               sb.writeln('[$sid] SKIP unknown transport kind=$kind');
@@ -154,7 +181,8 @@ List<Tool> createMcpPersistenceTools(McpRegistry registry, String stateFilePath)
             final tools = await client.listTools();
             registry.register(client);
             ok++;
-            sb.writeln('[$sid] OK: discovered ${tools.length} tools (${tools.map((e) => e.name).take(5).join(', ')}${tools.length > 5 ? '…' : ''})');
+            sb.writeln(
+                '[$sid] OK: discovered ${tools.length} tools (${tools.map((e) => e.name).take(5).join(', ')}${tools.length > 5 ? '…' : ''})');
           } catch (e, st) {
             sb.writeln('[$sid] FAIL: $e');
             sb.writeln('    stack: $st');
@@ -163,16 +191,19 @@ List<Tool> createMcpPersistenceTools(McpRegistry registry, String stateFilePath)
         sb.writeln('\n总结：尝试 $n 个，成功 $ok 个，失败 ${n - ok} 个');
         return ToolResult.ok(sb.toString());
       } catch (e, st) {
-        return ToolResult.error('mcp_state_load failed: $e\n$st\n\nPartial log:\n$sb');
+        return ToolResult.error(
+            'mcp_state_load failed: $e\n$st\n\nPartial log:\n$sb');
       }
     },
   ));
 
   out.add(Tool(
     name: 'mcp_state_path',
-    description: '打印当前 mcp_state_save/mcp_state_load 使用的默认文件路径，方便你检查文件位置或传给 path 参数覆盖。',
+    description:
+        '打印当前 mcp_state_save/mcp_state_load 使用的默认文件路径，方便你检查文件位置或传给 path 参数覆盖。',
     schema: const {'type': 'object', 'properties': {}},
-    handler: (_) async => ToolResult.ok('default_mcp_state_path = $stateFilePath\nFile exists = ${file().existsSync()}'),
+    handler: (_) async => ToolResult.ok(
+        'default_mcp_state_path = $stateFilePath\nFile exists = ${file().existsSync()}'),
   ));
 
   return out;

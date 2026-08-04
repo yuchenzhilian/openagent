@@ -100,19 +100,28 @@ void main() {
 
     test('supports various schedule formats', () {
       final daily = ScheduleTask(
-        id: '1', name: 'Daily', instruction: '', schedule: 'daily:08:00',
+        id: '1',
+        name: 'Daily',
+        instruction: '',
+        schedule: 'daily:08:00',
         createdAt: DateTime(2026, 1, 1),
       );
       expect(daily.schedule, 'daily:08:00');
 
       final interval = ScheduleTask(
-        id: '2', name: 'Interval', instruction: '', schedule: 'interval:3600',
+        id: '2',
+        name: 'Interval',
+        instruction: '',
+        schedule: 'interval:3600',
         createdAt: DateTime(2026, 1, 1),
       );
       expect(interval.schedule, 'interval:3600');
 
       final cron = ScheduleTask(
-        id: '3', name: 'Cron', instruction: '', schedule: 'cron:0 8 * * *',
+        id: '3',
+        name: 'Cron',
+        instruction: '',
+        schedule: 'cron:0 8 * * *',
         createdAt: DateTime(2026, 1, 1),
       );
       expect(cron.schedule, 'cron:0 8 * * *');

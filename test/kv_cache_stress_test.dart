@@ -6,8 +6,11 @@ import 'package:openagent/agent/kv_cache/sliding_window.dart';
 void main() {
   group('H2OStrategy stress test', () {
     test('handles 1000 attention scores', () {
-      final strategy = H2OStrategy(config: const H2OConfig(
-        checkInterval: 1, maxHeavyHitters: 128, slidingWindowSize: 64,
+      final strategy = H2OStrategy(
+          config: const H2OConfig(
+        checkInterval: 1,
+        maxHeavyHitters: 128,
+        slidingWindowSize: 64,
       ));
       final scores = List<double>.generate(1000, (i) => (i % 10) / 10.0);
       final keep = strategy.selectTokensToKeep(scores, 1000);
@@ -16,8 +19,11 @@ void main() {
     });
 
     test('multiple rounds do not exceed max heavy hitters', () {
-      final strategy = H2OStrategy(config: const H2OConfig(
-        checkInterval: 3, maxHeavyHitters: 64, slidingWindowSize: 32,
+      final strategy = H2OStrategy(
+          config: const H2OConfig(
+        checkInterval: 3,
+        maxHeavyHitters: 64,
+        slidingWindowSize: 32,
       ));
       for (int round = 0; round < 10; round++) {
         final scores = List<double>.generate(200, (i) => (i % 5) / 5.0);
@@ -40,7 +46,8 @@ void main() {
       final cache = SlidingWindowCache(windowSize: 100, summaryCacheSize: 50);
       int totalSummaries = 0;
       for (int i = 0; i < 100; i++) {
-        cache.add('This is message number $i with some padding text to fill up the window. ');
+        cache.add(
+            'This is message number $i with some padding text to fill up the window. ');
         if (cache.summaries.length > totalSummaries) {
           totalSummaries = cache.summaries.length;
         }

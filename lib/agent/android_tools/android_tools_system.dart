@@ -24,7 +24,8 @@ Tool _composeSystemWifi(AndroidAutomationService s) => Tool(
 
         // 1) Shell 秒切 (Shizuku/Root 都支持 svc)
         final sh = await s.gshell('svc wifi ${on ? 'enable' : 'disable'}');
-        steps.add('svc wifi ${on ? 'enable' : 'disable'}: ok=${sh.ok}, exit=${sh.exitCode}');
+        steps.add(
+            'svc wifi ${on ? 'enable' : 'disable'}: ok=${sh.ok}, exit=${sh.exitCode}');
         if (sh.ok) {
           await Future<void>.delayed(const Duration(milliseconds: 700));
           return ToolResult.ok('✅ Wi-Fi ${on ? '已开启' : '已关闭'} (svc)\n${r()}');
@@ -42,7 +43,8 @@ Tool _composeSystemWifi(AndroidAutomationService s) => Tool(
         // 典型 Wi-Fi 开关在 右上 88%x 8%y (小米/HW)；或 34%x 20%y
         await s.clickCoords((w * 0.88).round(), (h * 0.08).round());
         await Future<void>.delayed(const Duration(milliseconds: 500));
-        return ToolResult.ok('⚠ 已尝试 UI 切换 Wi-Fi ${on ? '开' : '关'} (非 L2 可能需要手动确认)\n${r()}');
+        return ToolResult.ok(
+            '⚠ 已尝试 UI 切换 Wi-Fi ${on ? '开' : '关'} (非 L2 可能需要手动确认)\n${r()}');
       },
     );
 
@@ -86,8 +88,7 @@ Tool _composeSystemBluetooth(AndroidAutomationService s) => Tool(
 /// ——— 系统：调节媒体/通话/闹钟/铃声音量 (0-15 档) ———
 Tool _composeSystemSetVolume(AndroidAutomationService s) => Tool(
       name: 'android_system_set_volume',
-      description:
-          '【高层·系统设置】一次性设置 媒体/通话/铃声/闹钟 任一流的音量档位 (0 静音 ~ 15 最大)。'
+      description: '【高层·系统设置】一次性设置 媒体/通话/铃声/闹钟 任一流的音量档位 (0 静音 ~ 15 最大)。'
           '优先 shell `cmd media_session dispatch volume --set` 或 `media volume --stream N --set`；失败走按物理 VOLUME_UP/DOWN N 次模拟。',
       schema: _props({
         'level': {
@@ -108,27 +109,37 @@ Tool _composeSystemSetVolume(AndroidAutomationService s) => Tool(
         String r() => steps.map((l) => '  • $l').join('\n');
 
         // STREAM mapping: Android STREAM_VOICE_CALL=0, SYSTEM=1, RING=2, MUSIC=3, ALARM=4
-        final streamNo = const {'call': '0', 'ring': '2', 'music': '3', 'alarm': '4'}[stream] ?? '3';
+        final streamNo = const {
+              'call': '0',
+              'ring': '2',
+              'music': '3',
+              'alarm': '4'
+            }[stream] ??
+            '3';
 
         // 方案 A: `media volume` (部分国内 ROM 支持) → `cmd media_session dispatch set_volume`
-        final a1 = await s.gshell('media volume --stream $streamNo --set $level 2>&1');
+        final a1 =
+            await s.gshell('media volume --stream $streamNo --set $level 2>&1');
         if (a1.ok && (a1.exitCode == 0)) {
           steps.add('media volume s=$streamNo lvl=$level: OK');
         } else {
           // 方案 B: service call audio / cmd media_session dispatch 等 (兼容性依次尝试)
-          final a2 = await s.gshell('cmd media_session dispatch volume --stream $streamNo --set $level');
+          final a2 = await s.gshell(
+              'cmd media_session dispatch volume --stream $streamNo --set $level');
           if (!a2.ok) {
             // 方案 C: service call audio 3 (getMode) → 不同 ROM 码号不同，放弃 Shell
             steps.add('Shell 设置音量失败 (exit=${a2.exitCode})，改用 VOL 键模拟 0→$level');
             // 按 8 次 DOWN 先回静音 (保险一点)，再按 $level 次 UP
             for (var i = 0; i < 9; i++) await s.pressKey(AndroidKey.volumeDown);
-            for (var i = 0; i < level; i++) await s.pressKey(AndroidKey.volumeUp);
+            for (var i = 0; i < level; i++)
+              await s.pressKey(AndroidKey.volumeUp);
             steps.add('按键模拟: 先-9静音 + 再+$level UP → 目标=$level');
           } else {
             steps.add('cmd media_session dispatch set $streamNo/$level: OK');
           }
         }
-        return ToolResult.ok('✅ 音量设置 stream=$stream($streamNo) → $level\n${r()}');
+        return ToolResult.ok(
+            '✅ 音量设置 stream=$stream($streamNo) → $level\n${r()}');
       },
     );
 
@@ -201,7 +212,8 @@ Tool _composeWechatBroadcastMessage(AndroidAutomationService s) => Tool(
             if (wrote) {
               await Future<void>.delayed(const Duration(milliseconds: 400));
               // 点击第一个搜索结果 (左侧头像右边 30%x 区域)
-              final t = await s.clickCoords((w * 0.20).round(), (h * 0.32).round());
+              final t =
+                  await s.clickCoords((w * 0.20).round(), (h * 0.32).round());
               if (t) chosen++;
               steps.add('搜索+选择「$nm」: 选择=${t ? 'OK' : '未点到'}, 当前选中$chosen');
               await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -212,7 +224,8 @@ Tool _composeWechatBroadcastMessage(AndroidAutomationService s) => Tool(
 
         // Step 5: 下一步 → 写文字 → 发送
         if (names.isNotEmpty && chosen > 0) {
-          await s.clickByText('下一步', exact: true) || await s.clickCoords((w * 0.90).round(), (h * 0.95).round());
+          await s.clickByText('下一步', exact: true) ||
+              await s.clickCoords((w * 0.90).round(), (h * 0.95).round());
           await Future<void>.delayed(const Duration(milliseconds: 600));
           final iw = await s.inputText(msg);
           steps.add('写群发内容(${msg.length}字): ${iw ? 'OK' : '失败'}');
@@ -221,15 +234,15 @@ Tool _composeWechatBroadcastMessage(AndroidAutomationService s) => Tool(
             steps.add('发送: ${sent ? 'OK' : '发送失败'}');
           }
         }
-        return ToolResult.ok('✅ 微信群发助手流程完成 (尝试勾选 $chosen/${names.length} 人)\n${r()}');
+        return ToolResult.ok(
+            '✅ 微信群发助手流程完成 (尝试勾选 $chosen/${names.length} 人)\n${r()}');
       },
     );
 
 /// ——— B站视频播放页：发一条弹幕 ———
 Tool _composeBilibiliSendDanmaku(AndroidAutomationService s) => Tool(
       name: 'android_bilibili_send_danmaku',
-      description:
-          '【高层·B站社交】当前在播放的 B 站视频页：点击底部弹幕输入框 → 写弹幕 → 发送。'
+      description: '【高层·B站社交】当前在播放的 B 站视频页：点击底部弹幕输入框 → 写弹幕 → 发送。'
           '用户说"在这条视频刷个「下次一定」"时调用。',
       schema: _props({
         'text': {
@@ -278,8 +291,6 @@ Tool _composeBilibiliSendDanmaku(AndroidAutomationService s) => Tool(
       },
     );
 
-
-
 // ============================================================================
 // H15 — 系统原子补全 ×6
 // ============================================================================
@@ -287,8 +298,7 @@ Tool _composeBilibiliSendDanmaku(AndroidAutomationService s) => Tool(
 /// H15-1: 最近任务列表
 Tool _recentTasksTool(AndroidAutomationService s) => Tool(
       name: 'android_get_recent_tasks',
-      description:
-          '【开放信息】返回手机最近打开过的 N 个 App 任务 + 当前 ResumedActivity 栈顶。',
+      description: '【开放信息】返回手机最近打开过的 N 个 App 任务 + 当前 ResumedActivity 栈顶。',
       schema: _props({
         'limit': {
           'type': 'integer',
@@ -305,8 +315,7 @@ Tool _recentTasksTool(AndroidAutomationService s) => Tool(
 /// H15-2: 当前前台 Activity + Fragment 栈
 Tool _dumpFragmentsTool(AndroidAutomationService s) => Tool(
       name: 'android_dump_activity_fragments',
-      description:
-          '【开放细粒度信息】输出当前前台 Activity 的完整 FragmentManager 栈。',
+      description: '【开放细粒度信息】输出当前前台 Activity 的完整 FragmentManager 栈。',
       schema: _props({
         'limit_lines': {
           'type': 'integer',
@@ -314,7 +323,8 @@ Tool _dumpFragmentsTool(AndroidAutomationService s) => Tool(
         },
       }),
       handler: (args) async {
-        final limit = ((args['limit_lines'] as num?)?.toInt() ?? 160).clamp(20, 800);
+        final limit =
+            ((args['limit_lines'] as num?)?.toInt() ?? 160).clamp(20, 800);
         final out = await s.dumpActivityFragments(limitLines: limit);
         return ToolResult.ok(out);
       },
@@ -323,8 +333,7 @@ Tool _dumpFragmentsTool(AndroidAutomationService s) => Tool(
 /// H15-3: WiFi 扫描
 Tool _wifiScanTool(AndroidAutomationService s) => Tool(
       name: 'android_get_wifi_scan',
-      description:
-          '【开放信息】返回手机附近 WiFi 的扫描结果。',
+      description: '【开放信息】返回手机附近 WiFi 的扫描结果。',
       schema: _props({
         'limit': {
           'type': 'integer',
@@ -341,8 +350,7 @@ Tool _wifiScanTool(AndroidAutomationService s) => Tool(
 /// H15-4: 双卡详情
 Tool _simInfoTool(AndroidAutomationService s) => Tool(
       name: 'android_get_sim_info',
-      description:
-          '【开放信息】SIM卡/手机IMEI/IMSI信息。',
+      description: '【开放信息】SIM卡/手机IMEI/IMSI信息。',
       schema: _props({}),
       handler: (_) async {
         final out = await s.getSimInfo();
@@ -353,8 +361,7 @@ Tool _simInfoTool(AndroidAutomationService s) => Tool(
 /// H15-5: Toast 历史
 Tool _toastHistoryTool(AndroidAutomationService s) => Tool(
       name: 'android_get_toast_history',
-      description:
-          '【开放信息】尽力而为地返回最近 Toast 弹过的文字/包名/时长。',
+      description: '【开放信息】尽力而为地返回最近 Toast 弹过的文字/包名/时长。',
       schema: _props({
         'limit': {
           'type': 'integer',
@@ -371,8 +378,7 @@ Tool _toastHistoryTool(AndroidAutomationService s) => Tool(
 /// H15-6: 杀应用 / 冷启动
 Tool _killRestartTool(AndroidAutomationService s) => Tool(
       name: 'android_kill_or_restart_app',
-      description:
-          '【开放操作】彻底杀掉一个 App 的所有进程，然后可选地立刻冷启动它。',
+      description: '【开放操作】彻底杀掉一个 App 的所有进程，然后可选地立刻冷启动它。',
       schema: _props({
         'package_name': {
           'type': 'string',
@@ -380,7 +386,8 @@ Tool _killRestartTool(AndroidAutomationService s) => Tool(
         },
         'mode': {
           'type': 'string',
-          'description': '"kill_only"=只杀不启；"kill_and_restart"=先 force-stop 再干净启动 (默认)；"restart_only"=不杀直接 monkey 启动',
+          'description':
+              '"kill_only"=只杀不启；"kill_and_restart"=先 force-stop 再干净启动 (默认)；"restart_only"=不杀直接 monkey 启动',
         },
       }, required: [
         'package_name'
@@ -388,21 +395,24 @@ Tool _killRestartTool(AndroidAutomationService s) => Tool(
       handler: (args) async {
         final pkg = (args['package_name'] as String?)?.trim() ?? '';
         if (pkg.isEmpty) return const ToolResult.error('package_name 不能为空');
-        final mode = (args['mode'] as String?)?.trim().toLowerCase() ?? 'kill_and_restart';
+        final mode = (args['mode'] as String?)?.trim().toLowerCase() ??
+            'kill_and_restart';
         switch (mode) {
           case 'kill_only':
             {
               final r = await s.killAndRestartApp(pkg, killOnly: true);
               return r.ok
                   ? ToolResult.ok('✅ 已杀掉 $pkg\n${r.stdout}')
-                  : ToolResult.error('❌ 杀 $pkg 失败: ${r.stderr.isEmpty ? r.stdout : r.stderr}');
+                  : ToolResult.error(
+                      '❌ 杀 $pkg 失败: ${r.stderr.isEmpty ? r.stdout : r.stderr}');
             }
           case 'restart_only':
             {
               final r = await s.openAppWithResult(pkg);
               return r.ok
                   ? ToolResult.ok('✅ 已尝试启动 (不杀) $pkg\n${r.stdout}')
-                  : ToolResult.error('❌ 启动 $pkg 失败: ${r.stderr.isEmpty ? r.stdout : r.stderr}');
+                  : ToolResult.error(
+                      '❌ 启动 $pkg 失败: ${r.stderr.isEmpty ? r.stdout : r.stderr}');
             }
           case 'kill_and_restart':
           default:
@@ -410,7 +420,8 @@ Tool _killRestartTool(AndroidAutomationService s) => Tool(
               final r = await s.killAndRestartApp(pkg, killOnly: false);
               return r.ok
                   ? ToolResult.ok('✅ 已冷启动 $pkg (先杀再启)\n${r.stdout}')
-                  : ToolResult.error('❌ 冷启动 $pkg 失败 exit=${r.exitCode}: ${r.stderr.isEmpty ? r.stdout : r.stderr}');
+                  : ToolResult.error(
+                      '❌ 冷启动 $pkg 失败 exit=${r.exitCode}: ${r.stderr.isEmpty ? r.stdout : r.stderr}');
             }
         }
       },
@@ -423,8 +434,7 @@ Tool _killRestartTool(AndroidAutomationService s) => Tool(
 /// H17-1: 硬件信息全景
 Tool _hardwareInfoTool(AndroidAutomationService s) => Tool(
       name: 'android_get_hardware_info',
-      description:
-          '【开放信息】返回手机完整硬件+系统版本信息。',
+      description: '【开放信息】返回手机完整硬件+系统版本信息。',
       schema: _props({}),
       handler: (_) async {
         final out = await s.getHardwareInfo();
@@ -435,12 +445,12 @@ Tool _hardwareInfoTool(AndroidAutomationService s) => Tool(
 /// H17-2: 通话记录查询
 Tool _callLogTool(AndroidAutomationService s) => Tool(
       name: 'android_get_call_log',
-      description:
-          '【开放信息】读取最近 N 条通话记录。',
+      description: '【开放信息】读取最近 N 条通话记录。',
       schema: _props({
         'box': {
           'type': 'string',
-          'description': '"all"=所有通话 (默认)；"incoming"=只查来电；"outgoing"=只查去电；"missed"=只查未接',
+          'description':
+              '"all"=所有通话 (默认)；"incoming"=只查来电；"outgoing"=只查去电；"missed"=只查未接',
         },
         'limit': {
           'type': 'integer',
@@ -458,12 +468,12 @@ Tool _callLogTool(AndroidAutomationService s) => Tool(
 /// H17-3: 媒体库 / 相册
 Tool _mediaGalleryTool(AndroidAutomationService s) => Tool(
       name: 'android_query_media_gallery',
-      description:
-          '【开放信息】查询手机媒体库。',
+      description: '【开放信息】查询手机媒体库。',
       schema: _props({
         'bucket': {
           'type': 'string',
-          'description': '按相册名模糊匹配过滤，例 "DCIM" / "Camera" / "Screenshots" / "ALL" = 全部媒体。默认 "DCIM"',
+          'description':
+              '按相册名模糊匹配过滤，例 "DCIM" / "Camera" / "Screenshots" / "ALL" = 全部媒体。默认 "DCIM"',
         },
         'keyword': {
           'type': 'string',
@@ -483,7 +493,8 @@ Tool _mediaGalleryTool(AndroidAutomationService s) => Tool(
         final kw = args['keyword'] as String?;
         final limit = ((args['limit'] as num?)?.toInt() ?? 60).clamp(1, 500);
         final incV = args['include_videos'] as bool? ?? true;
-        final out = await s.queryMediaGallery(bucket: bucket, keyword: kw, limit: limit, includeVideos: incV);
+        final out = await s.queryMediaGallery(
+            bucket: bucket, keyword: kw, limit: limit, includeVideos: incV);
         return ToolResult.ok(out);
       },
     );
@@ -491,8 +502,7 @@ Tool _mediaGalleryTool(AndroidAutomationService s) => Tool(
 /// H17-4: 亮度调节 + 输入法切换
 Tool _displayAndInputTool(AndroidAutomationService s) => Tool(
       name: 'android_adjust_display_or_input',
-      description:
-          '【开放操作】① 调节屏幕亮度 ② 切换输入法 (IME)。',
+      description: '【开放操作】① 调节屏幕亮度 ② 切换输入法 (IME)。',
       schema: _props({
         'brightness': {
           'type': ['integer', 'string'],
@@ -511,10 +521,13 @@ Tool _displayAndInputTool(AndroidAutomationService s) => Tool(
         final sb = StringBuffer();
         if (args.containsKey('brightness') && args['brightness'] != null) {
           final bRaw = args['brightness'];
-          final openS = args['brightness_open_settings_if_denied'] as bool? ?? true;
-          final r = await s.setSystemBrightness(brightness: bRaw, openSettingsIfDenied: openS);
+          final openS =
+              args['brightness_open_settings_if_denied'] as bool? ?? true;
+          final r = await s.setSystemBrightness(
+              brightness: bRaw, openSettingsIfDenied: openS);
           sb.writeln('=== 亮度调节结果 ===');
-          sb.writeln('请求 brightness=$bRaw → ${r.ok ? "OK" : "FAILED exit=${r.exitCode}"}');
+          sb.writeln(
+              '请求 brightness=$bRaw → ${r.ok ? "OK" : "FAILED exit=${r.exitCode}"}');
           sb.writeln(r.stdout.isEmpty ? r.stderr : r.stdout);
           sb.writeln();
         }
@@ -534,8 +547,7 @@ Tool _displayAndInputTool(AndroidAutomationService s) => Tool(
 /// H17-5: 壁纸设置 + 系统分享
 Tool _wallpaperAndShareTool(AndroidAutomationService s) => Tool(
       name: 'android_wallpaper_or_share',
-      description:
-          '【开放操作】壁纸设置和系统分享合并成一个工具。',
+      description: '【开放操作】壁纸设置和系统分享合并成一个工具。',
       schema: _props({
         'set_wallpaper_path': {
           'type': 'string',
@@ -570,7 +582,9 @@ Tool _wallpaperAndShareTool(AndroidAutomationService s) => Tool(
         final sb = StringBuffer();
         final wpPath = (args['set_wallpaper_path'] as String?)?.trim() ?? '';
         if (wpPath.isNotEmpty) {
-          final which = (args['wallpaper_which'] as String?)?.trim().toLowerCase() ?? 'both';
+          final which =
+              (args['wallpaper_which'] as String?)?.trim().toLowerCase() ??
+                  'both';
           final r = await s.setWallpaper(wpPath, which: which);
           sb.writeln('=== 壁纸设置 (path=$wpPath, which=$which) ===');
           sb.writeln(r.ok ? '✅ OK' : '❌ FAIL exit=${r.exitCode}');
@@ -597,7 +611,8 @@ Tool _wallpaperAndShareTool(AndroidAutomationService s) => Tool(
           sb.writeln(r.stdout.isEmpty ? r.stderr : r.stdout);
         }
         if (sb.isEmpty) {
-          return const ToolResult.error('set_wallpaper_path 或 share_text/share_image_path 至少填一组');
+          return const ToolResult.error(
+              'set_wallpaper_path 或 share_text/share_image_path 至少填一组');
         }
         return ToolResult.ok(sb.toString());
       },

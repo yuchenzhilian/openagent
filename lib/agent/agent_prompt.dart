@@ -43,7 +43,8 @@ $kToolCallClose
 
   if (!hasAndroidTools) return basePrompt;
 
-  return basePrompt + '''
+  return basePrompt +
+      '''
 
 【Android 自动化专属规则（经验建议，你可根据实际情况灵活决策）】
 - 你是 Android 手机自动化助手。你的工具可以操作用户手机的任意应用。

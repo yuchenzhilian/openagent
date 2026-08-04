@@ -16,7 +16,8 @@ class ScheduleTask {
   final String name;
   final String description;
   final String instruction; // 任务描述/指令，发送给 Agent 执行
-  final String schedule; // 调度表达式: "daily:08:00" / "interval:3600" / "cron:0 8 * * *"
+  final String
+      schedule; // 调度表达式: "daily:08:00" / "interval:3600" / "cron:0 8 * * *"
   final bool enabled;
   final DateTime createdAt;
   final DateTime? lastRunAt;
@@ -82,8 +83,11 @@ class ScheduleTask {
         instruction: j['instruction'] as String? ?? '',
         schedule: j['schedule'] as String? ?? '',
         enabled: j['enabled'] as bool? ?? true,
-        createdAt: DateTime.tryParse(j['created_at'] as String? ?? '') ?? DateTime.now(),
-        lastRunAt: j['last_run_at'] != null ? DateTime.tryParse(j['last_run_at'] as String? ?? '') : null,
+        createdAt: DateTime.tryParse(j['created_at'] as String? ?? '') ??
+            DateTime.now(),
+        lastRunAt: j['last_run_at'] != null
+            ? DateTime.tryParse(j['last_run_at'] as String? ?? '')
+            : null,
         runCount: j['run_count'] as int? ?? 0,
         lastResult: j['last_result'] as String?,
       );
@@ -151,7 +155,8 @@ class ScheduleService {
   }
 
   /// 更新任务。
-  Future<ScheduleTask?> updateTask(String id, {required ScheduleTask Function(ScheduleTask) update}) async {
+  Future<ScheduleTask?> updateTask(String id,
+      {required ScheduleTask Function(ScheduleTask) update}) async {
     final idx = _tasks.indexWhere((t) => t.id == id);
     if (idx < 0) return null;
     _tasks[idx] = update(_tasks[idx]);
@@ -162,7 +167,8 @@ class ScheduleService {
 
   /// 启用/禁用任务。
   Future<bool> toggleTask(String id, bool enabled) async {
-    final task = await updateTask(id, update: (t) => t.copyWith(enabled: enabled));
+    final task =
+        await updateTask(id, update: (t) => t.copyWith(enabled: enabled));
     return task != null;
   }
 
@@ -175,7 +181,8 @@ class ScheduleService {
   /// 检查是否有任务需要触发。
   void _startChecker() {
     _checkTimer?.cancel();
-    _checkTimer = Timer.periodic(const Duration(seconds: 30), (_) => _checkTasks());
+    _checkTimer =
+        Timer.periodic(const Duration(seconds: 30), (_) => _checkTasks());
   }
 
   Future<void> _checkTasks() async {
@@ -269,7 +276,8 @@ class ScheduleService {
       if (!await dir.exists()) {
         await dir.create(recursive: true);
       }
-      await file.writeAsString(jsonEncode(_tasks.map((t) => t.toJson()).toList()));
+      await file
+          .writeAsString(jsonEncode(_tasks.map((t) => t.toJson()).toList()));
     } catch (e) {
       debugPrint('[ScheduleService] 保存失败: $e');
     }

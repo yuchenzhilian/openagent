@@ -47,7 +47,8 @@ String _packageHint() =>
 List<Tool> createAndroidAutomationTools({
   AndroidAutomationService? service,
   Future<String> Function(String imagePath, String question)? visionAnalyze,
-  Future<ToolResult> Function(String name, Map<String, dynamic> args)? executeCallback,
+  Future<ToolResult> Function(String name, Map<String, dynamic> args)?
+      executeCallback,
   AgentMemoryBackend? memoryBackend,
 }) {
   final s = service ?? AndroidAutomationService.instance;

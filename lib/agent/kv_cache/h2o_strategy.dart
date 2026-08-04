@@ -1,6 +1,5 @@
 /// H2O (Heavy Hitter Oracle) KV cache eviction strategy.
 
-
 class H2OConfig {
   final int checkInterval;
   final int maxHeavyHitters;
@@ -26,7 +25,8 @@ class H2OStrategy {
     final scored = <_IndexedScore>[];
     for (int i = 0; i < attentionScores.length && i < totalTokens; i++) {
       final score = attentionScores[i];
-      final recencyBonus = (i > totalTokens - _config.slidingWindowSize) ? 0.5 : 0.0;
+      final recencyBonus =
+          (i > totalTokens - _config.slidingWindowSize) ? 0.5 : 0.0;
       scored.add(_IndexedScore(i, score + recencyBonus));
     }
     scored.sort((a, b) => b.score.compareTo(a.score));
@@ -34,7 +34,9 @@ class H2OStrategy {
     for (int i = 0; i < _config.maxHeavyHitters && i < scored.length; i++) {
       keepSet.add(scored[i].index);
     }
-    for (int i = totalTokens - _config.slidingWindowSize; i < totalTokens; i++) {
+    for (int i = totalTokens - _config.slidingWindowSize;
+        i < totalTokens;
+        i++) {
       if (i >= 0) keepSet.add(i);
     }
     final sorted = keepSet.toList()..sort();
@@ -45,13 +47,18 @@ class H2OStrategy {
 
   List<int> _getCurrentKeepSet(int totalTokens) {
     final keepSet = <int>{..._heavyHitterIndices};
-    for (int i = totalTokens - _config.slidingWindowSize; i < totalTokens; i++) {
+    for (int i = totalTokens - _config.slidingWindowSize;
+        i < totalTokens;
+        i++) {
       if (i >= 0) keepSet.add(i);
     }
     return keepSet.toList()..sort();
   }
 
-  void reset() { _round = 0; _heavyHitterIndices.clear(); }
+  void reset() {
+    _round = 0;
+    _heavyHitterIndices.clear();
+  }
 }
 
 class _IndexedScore {

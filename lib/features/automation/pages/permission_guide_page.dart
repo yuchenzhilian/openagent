@@ -57,10 +57,10 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
           cfg.automation.accessibilityEnabled,
       shizukuGranted:
           runtimeStatus.shizukuGranted || cfg.automation.shizukuGranted,
-      screenshotGranted: runtimeStatus.screenshotGranted ||
-          cfg.automation.screenshotGranted,
-      usageStatsGranted: runtimeStatus.usageStatsGranted ||
-          cfg.automation.usageStatsGranted,
+      screenshotGranted:
+          runtimeStatus.screenshotGranted || cfg.automation.screenshotGranted,
+      usageStatsGranted:
+          runtimeStatus.usageStatsGranted || cfg.automation.usageStatsGranted,
       notificationListenerGranted: runtimeStatus.notificationListenerGranted ||
           cfg.automation.notificationListenerGranted,
     );
@@ -79,8 +79,7 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
     }
     // Persist merged status back so the Agent runtime can pick it up.
     if (merged != cfg.automation) {
-      await widget.storage
-          .saveAppConfig(cfg.copyWith(automation: merged));
+      await widget.storage.saveAppConfig(cfg.copyWith(automation: merged));
     }
   }
 
@@ -101,8 +100,7 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
               padding: const EdgeInsets.all(16),
               children: [
                 if (!supported)
-                  _warn(
-                      '当前平台不是 Android，自动化功能仅在 Android 真机上可用（可在模拟器或真机上运行）。'),
+                  _warn('当前平台不是 Android，自动化功能仅在 Android 真机上可用（可在模拟器或真机上运行）。'),
                 if (!_status.warningDismissed) ...[
                   _warningCard(),
                   const SizedBox(height: 16),
@@ -168,7 +166,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(children: [
-                          Icon(Icons.auto_fix_high, color: Colors.amber.shade800),
+                          Icon(Icons.auto_fix_high,
+                              color: Colors.amber.shade800),
                           const SizedBox(width: 8),
                           const Text('一键自动授权',
                               style: TextStyle(
@@ -199,16 +198,19 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                         _autoGrantButton(
                           '自动启用无障碍服务',
                           Icons.accessibility_new,
-                          _status.shizukuGranted && !_status.accessibilityEnabled,
+                          _status.shizukuGranted &&
+                              !_status.accessibilityEnabled,
                           () async {
                             final r = await _svc.gshell(
                                 'settings put secure enabled_accessibility_services '
                                 'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentAccessibilityService 2>/dev/null');
                             if (r.ok) {
-                              await _svc.gshell('settings put secure accessibility_enabled 1');
+                              await _svc.gshell(
+                                  'settings put secure accessibility_enabled 1');
                               if (!mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('✅ 无障碍服务已自动启用')));
+                                  const SnackBar(
+                                      content: Text('✅ 无障碍服务已自动启用')));
                               await _refresh();
                             }
                           },
@@ -217,7 +219,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                         _autoGrantButton(
                           '自动启用通知监听',
                           Icons.notifications,
-                          _status.shizukuGranted && !_status.notificationListenerGranted,
+                          _status.shizukuGranted &&
+                              !_status.notificationListenerGranted,
                           () async {
                             await _svc.gshell(
                                 'settings put secure enabled_notification_listeners '
@@ -227,7 +230,7 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                                 'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentNotificationListener 2>/dev/null');
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('✅ 通知监听已自动启用')));
+                                const SnackBar(content: Text('✅ 通知监听已自动启用')));
                             await _refresh();
                           },
                         ),
@@ -242,7 +245,9 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                             if (r.ok) {
                               if (!mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('✅ WRITE_SECURE_SETTINGS 已授予')));
+                                  const SnackBar(
+                                      content:
+                                          Text('✅ WRITE_SECURE_SETTINGS 已授予')));
                             }
                           },
                         ),
@@ -258,7 +263,9 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                                 'pm grant com.openagent.openagent android.permission.PACKAGE_USAGE_STATS 2>/dev/null');
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('✅ DUMP + PACKAGE_USAGE_STATS 已授予')));
+                                const SnackBar(
+                                    content: Text(
+                                        '✅ DUMP + PACKAGE_USAGE_STATS 已授予')));
                           },
                         ),
                       ],
@@ -282,8 +289,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                     const SizedBox(height: 6),
                     Text(
                       '  💡 授予后 Agent 可"先确认在对的 App 再操作"，避免误点到其他应用。',
-                      style: TextStyle(
-                          color: Colors.grey.shade600, fontSize: 12),
+                      style:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 12),
                     ),
                   ],
                 ),
@@ -361,7 +368,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
     final r1 = await _svc.gshell(
         'settings put secure enabled_accessibility_services '
         'com.openagent.openagent/com.openagent.openagent.automation.OpenAgentAccessibilityService 2>/dev/null');
-    await _svc.gshell('settings put secure accessibility_enabled 1 2>/dev/null');
+    await _svc
+        .gshell('settings put secure accessibility_enabled 1 2>/dev/null');
     results.add('无障碍: ${r1.ok ? "✅" : "❌"}');
 
     // 2) 通知监听
@@ -429,8 +437,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                   onPressed: () async {
                     final cfg = await widget.storage.loadAppConfig();
                     await widget.storage.saveAppConfig(cfg.copyWith(
-                        automation: cfg.automation
-                            .copyWith(warningDismissed: true)));
+                        automation:
+                            cfg.automation.copyWith(warningDismissed: true)));
                     await _refresh();
                   },
                   child: const Text('我已知晓风险，继续开启'),
@@ -491,8 +499,7 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
                                   style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600))),
-                          _statusChip(status,
-                              okLabel: '已开启', badLabel: '未开启'),
+                          _statusChip(status, okLabel: '已开启', badLabel: '未开启'),
                         ]),
                         const SizedBox(height: 6),
                         Text(description,
@@ -520,7 +527,8 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
         ),
       );
 
-  Widget _statusChip(bool ok, {required String okLabel, required String badLabel}) =>
+  Widget _statusChip(bool ok,
+          {required String okLabel, required String badLabel}) =>
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
@@ -584,76 +592,81 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
 
   /// Anti-detection tips card for high-risk apps detection.
   Widget _antiDetectionCard() => Card(
-    color: Colors.orange.shade50,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(Icons.security_outlined, color: Colors.orange.shade800),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text('防高风险应用检测',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.orange.shade900)),
-            ),
-          ]),
-          const SizedBox(height: 8),
-          Text(
-            '部分银行、支付类 App（如工行、建行、招商银行、支付宝等）会检测无障碍服务、'
-            'Root、Shizuku、USB 调试等"高风险"特征，可能拒绝运行或限制功能。',
-            style: TextStyle(height: 1.5, color: Colors.orange.shade900, fontSize: 13),
-          ),
-          const SizedBox(height: 10),
-          _antiDetectionTip(
-            icon: Icons.visibility_off,
-            title: '包名限制（已启用）',
-            desc: 'OpenAgent 已配置为仅监控社交/工具类 App（微信、抖音、小红书等），'
-                '银行/支付类 App 在前台时不会触发无障碍服务，降低被检测风险。',
-          ),
-          const SizedBox(height: 8),
-          _antiDetectionTip(
-            icon: Icons.bolt,
-            title: '优先使用 Shizuku',
-            desc: 'Shizuku 授权比无障碍服务更隐蔽，应用难以检测。'
-                '建议在银行/支付类 App 上操作时优先使用 L2 Shizuku 而非 L1 无障碍。',
-          ),
-          const SizedBox(height: 8),
-          _antiDetectionTip(
-            icon: Icons.toggle_off_outlined,
-            title: '临时关闭建议',
-            desc: '使用银行/支付 App 前，可在设置中临时关闭无障碍服务。'
-                '操作完成后重新开启即可。转账等敏感操作建议手动进行。',
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade100,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, size: 18, color: Colors.amber.shade800),
+        color: Colors.orange.shade50,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(Icons.security_outlined, color: Colors.orange.shade800),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    'Agent 内置了防检测规则：当系统检测到前台为银行/支付类 App 时，'
-                    '会自动切换为 Shizuku 操作模式或暂停自动化，确保安全。',
-                    style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4),
-                  ),
+                  child: Text('防高风险应用检测',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange.shade900)),
                 ),
-              ],
-            ),
+              ]),
+              const SizedBox(height: 8),
+              Text(
+                '部分银行、支付类 App（如工行、建行、招商银行、支付宝等）会检测无障碍服务、'
+                'Root、Shizuku、USB 调试等"高风险"特征，可能拒绝运行或限制功能。',
+                style: TextStyle(
+                    height: 1.5, color: Colors.orange.shade900, fontSize: 13),
+              ),
+              const SizedBox(height: 10),
+              _antiDetectionTip(
+                icon: Icons.visibility_off,
+                title: '包名限制（已启用）',
+                desc: 'OpenAgent 已配置为仅监控社交/工具类 App（微信、抖音、小红书等），'
+                    '银行/支付类 App 在前台时不会触发无障碍服务，降低被检测风险。',
+              ),
+              const SizedBox(height: 8),
+              _antiDetectionTip(
+                icon: Icons.bolt,
+                title: '优先使用 Shizuku',
+                desc: 'Shizuku 授权比无障碍服务更隐蔽，应用难以检测。'
+                    '建议在银行/支付类 App 上操作时优先使用 L2 Shizuku 而非 L1 无障碍。',
+              ),
+              const SizedBox(height: 8),
+              _antiDetectionTip(
+                icon: Icons.toggle_off_outlined,
+                title: '临时关闭建议',
+                desc: '使用银行/支付 App 前，可在设置中临时关闭无障碍服务。'
+                    '操作完成后重新开启即可。转账等敏感操作建议手动进行。',
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 18, color: Colors.amber.shade800),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Agent 内置了防检测规则：当系统检测到前台为银行/支付类 App 时，'
+                        '会自动切换为 Shizuku 操作模式或暂停自动化，确保安全。',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.amber.shade900,
+                            height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 
   Widget _antiDetectionTip({
     required IconData icon,
@@ -704,12 +717,11 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
     final path = await _svc.takeScreenshot();
     if (!mounted) return;
     if (path != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('截图成功 (Shizuku 路径)：$path')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('截图成功 (Shizuku 路径)：$path')));
       final cfg = await widget.storage.loadAppConfig();
       await widget.storage.saveAppConfig(cfg.copyWith(
-          automation:
-              cfg.automation.copyWith(screenshotGranted: true)));
+          automation: cfg.automation.copyWith(screenshotGranted: true)));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('需先在手机上手动允许截图权限（首次调用会弹出系统级录屏确认）')));

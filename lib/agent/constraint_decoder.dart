@@ -71,7 +71,8 @@ class ConstraintDecoder extends StreamTransformerBase<String, String> {
         final constrained = _constrainJson(jsonPart);
         yield constrained;
         yield kToolCallClose;
-        buffer = StringBuffer(current.substring(closeIdx + kToolCallClose.length));
+        buffer =
+            StringBuffer(current.substring(closeIdx + kToolCallClose.length));
         mode = _DecoderMode.free;
         continue;
       }
@@ -80,7 +81,8 @@ class ConstraintDecoder extends StreamTransformerBase<String, String> {
       final filtered = _filterChars(chunk);
       yield filtered;
       // Update buffer with filtered content.
-      buffer = StringBuffer(current.substring(0, current.length - chunk.length) + filtered);
+      buffer = StringBuffer(
+          current.substring(0, current.length - chunk.length) + filtered);
     }
 
     // Flush remaining buffer.
@@ -97,7 +99,8 @@ class ConstraintDecoder extends StreamTransformerBase<String, String> {
   /// Filters a chunk to only allow JSON-safe characters (in constrained mode).
   String _filterChars(String chunk) {
     return String.fromCharCodes(
-      chunk.runes.where((r) => _kJsonAllowedChars.contains(String.fromCharCode(r))),
+      chunk.runes
+          .where((r) => _kJsonAllowedChars.contains(String.fromCharCode(r))),
     );
   }
 
@@ -129,7 +132,8 @@ class ConstraintDecoder extends StreamTransformerBase<String, String> {
 /// Validates a tool-call JSON string and returns the parsed result.
 /// Returns `null` if the JSON is structurally invalid (even after
 /// constraint decoding).
-({String name, Map<String, dynamic> args})? validateAndParseToolCall(String jsonStr) {
+({String name, Map<String, dynamic> args})? validateAndParseToolCall(
+    String jsonStr) {
   // Apply the same constraints as the decoder for consistency.
   final decoder = ConstraintDecoder();
   final constrained = decoder._constrainJson(jsonStr);
