@@ -168,7 +168,7 @@ class _ModelMarketPageState extends State<ModelMarketPage> {
               style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
           const SizedBox(height: 6),
           Text(
-              '${(m.sizeMb / 1024).toStringAsFixed(1)} GB · 需 ${m.ramMb ~/ 1024 + 1}GB 内存',
+              '${((m.sizeMb ?? 0) / 1024).toStringAsFixed(1)} GB · 需 ${(m.ramMb ?? 0) ~/ 1024 + 1}GB 内存',
               style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
           if (isDownloading) ...[
             const SizedBox(height: 8),

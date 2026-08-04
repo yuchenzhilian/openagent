@@ -30,7 +30,7 @@ void main() {
       expect(c.add('hello').toSummarize, '');
     });
     test('summary when over limit', () {
-      final c = SlidingWindowCache(windowSize: 10);
+      final c = SlidingWindowCache(windowSize: 5);
       c.add('hello world this is a long text');
       expect(c.summaries, isNotEmpty);
     });

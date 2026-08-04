@@ -132,9 +132,9 @@ Tool urlCodecTool() => Tool(
         final text = args['text'] as String? ?? '';
         try {
           if (action == 'encode') {
-            return ToolResult.ok(Uri.encodeComponent(text));
+            return ToolResult.ok(Uri.encodeQueryComponent(text));
           } else {
-            return ToolResult.ok(Uri.decodeComponent(text));
+            return ToolResult.ok(Uri.decodeQueryComponent(text));
           }
         } catch (e) {
           return ToolResult.error('URL $action 失败: $e');

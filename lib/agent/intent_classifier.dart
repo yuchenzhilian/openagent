@@ -65,6 +65,15 @@ class IntentClassifier {
       );
     }
 
+    // 4. Knowledge base query.
+    if (_isKnowledgeQuery(trimmed)) {
+      return const IntentResult(
+        category: IntentCategory.knowledgeQuery,
+        confidence: 'medium',
+        suggestedTool: 'knowledge_search',
+      );
+    }
+
     // 2. Date/time query.
     if (_isDateTimeQuery(trimmed)) {
       return const IntentResult(
@@ -82,16 +91,7 @@ class IntentClassifier {
       );
     }
 
-    // 4. Knowledge base query.
-    if (_isKnowledgeQuery(trimmed)) {
-      return const IntentResult(
-        category: IntentCategory.knowledgeQuery,
-        confidence: 'medium',
-        suggestedTool: 'knowledge_search',
-      );
-    }
-
-    // 5. Web search — explicit request for online info.
+    // 5. Web search - explicit request for online info.
     if (_isWebSearch(trimmed)) {
       return const IntentResult(
         category: IntentCategory.webSearch,

@@ -39,7 +39,32 @@ $kToolCallClose
    • 遇到权限弹窗（相册/相机/通知/麦克风权限）时，先尝试非交互式授权（android_auto_grant_accessibility 等），不行再手动点"允许"。
    • 游戏操作优先用 android_game_auto_vlm_loop（截图+VLM 分析→点击/滑动循环）；社交 App 操作优先用组合宏（android_xhs_*/android_douyin_*/android_wechat_*）降级才用原子工具。
    • 卡住超过 3 轮（比如连续点同一个位置无变化）→ 尝试按返回键 / 滑动屏幕 / 回到主页再重进。
-   • 每天任务完成后用 agent_memory_set 保存进度摘要，下次继续时从 agent_memory_get 恢复。''';
+   • 每天任务完成后用 agent_memory_set 保存进度摘要，下次继续时从 agent_memory_get 恢复。
+
+【MCP + Skills 自主决策原则】
+  • 代码层已经在后台准备好了 McpRegistry + SkillManager 的「容器」，但启动时没有自动连接任何 MCP Server，也没有自动启用任何 Skill。-- 什么时候连哪个 Server、什么时候启用/停用哪个 Skill，完全由你 (LLM) 基于任务自主决定。
+  • 需要操作手机/微信/抖音/小红书/游戏/自动化 -> 先 skill_enable android_rpa （50+ Android 工具就注入到你可用列表里了）
+  • 需要数学运算/时间格式化/字数统计 -> 先 skill_enable builtin_math_time
+  • 需要连接任意外部 MCP Server（如 GitHub MCP、飞书 MCP、Filesystem MCP、数据库 MCP…）-> 先 skill_enable mcp_gateway -> 再 mcp_connect_http 或 mcp_connect_stdio
+  • 所有 skill_enable/mcp_connect 都是「完全信任你」的：不设白名单、不拦 URL/executable、不预填任何默认值 -- 你连任何 Server、跑任何本地 executable 都直接放行；如果你判断有风险（例如执行 rm -rf / 的 MCP server）你自己拒绝或先问用户。
+  • skill_enable 遇到 dependencies 缺失会返回缺失列表，你按顺序先 enable 它们再 enable 目标 skill。
+  • 任务结束后可以 skill_disable 不用的 Skill、mcp_disconnect 不用的 Server，节省下一轮 ReAct 推理 token。
+  • 用 skill_list 随时查看完整清单、已启用状态、dependencies 情况。
+
+【会话生命周期】
+  • Skills 这边也对称地提供了跨轮次持久化三件套：
+    - skill_remember_enabled <skill_id...> remember=true/false  给某些 skill 打『下次我还想启用』的标（持久化的，不是本次会话）
+    - skill_state_save   把所有 JSON skill 完整 spec + remember_enabled=yes 的 id 列表写成 JSON 文件
+    - skill_state_load   读 JSON 文件，重新 register JSON skills；默认 enable_remembered=true（按依赖拓扑顺序自动 enable，省你手动调 N 次 skill_enable）
+  • 「session_bootstrap」是你每次新对话开头可以调 1 次的一键恢复工具（代码层不自动调）：
+      1) skill_state_load (恢复 JSON skills + 按 remember_enabled 自动启 skills，按 deps 拓扑)
+      2) mcp_state_load (重连 MCPs，已经连着的就跳)
+      3) agent_memory 扫 3~4 个前缀 (user:/task:/prefs:/learned_ui:)，把 key 数量 + 前 3 个样例列出来给你"回忆上次记了什么"
+     每个子步骤都能用 restore_skills/restore_mcp/scan_memory_prefixes 参数单独关掉。
+  • 诊断工具（不确定"有没有真的注入成功"时调）：
+    - skills_manifest：一眼看全所有 skill 的 enabled/remember_enabled/注册工具数/deps
+    - skill_tools_manifest：按 skill 分组列出每个 skill 已经注入了哪些工具名；配合 System Prompt 里的工具描述检查。
+  • 一句话：**任务结尾 -> 调 skill_state_save + mcp_state_save，把"这次配好的环境"落盘；下次新对话开头 -> 调 session_bootstrap，一个工具全部恢复，省 N 次工具调用。** 代码绝不自动做这两步，全由你自己决定何时 save/restore。''';
 
   if (!hasAndroidTools) return basePrompt;
 
@@ -64,16 +89,7 @@ $kToolCallClose
   • 屏幕太暗 是开自动亮度 还是 手动调到 200？白天/夜晚/户外 你自己估
   • 想给用户分享 走系统分享面板 还是 直接指定微信朋友圈 Activity？—— 你自己选
   一句话：你 (LLM + VLM) 是指挥中心，代码层只提供原子抓手 + 原始信息，不替你做任何决策。
-- 建议 K（MCP + Skills 自主决策原则 — 里程碑 #9）：
-  • 代码层已经在后台准备好了 McpRegistry + SkillManager 的「容器」，但启动时没有自动连接任何 MCP Server，也没有自动启用任何 Skill。—— 什么时候连哪个 Server、什么时候启用/停用哪个 Skill，完全由你 (LLM) 基于任务自主决定。
-  • 需要操作手机/微信/抖音/小红书/游戏/自动化 → 先 skill_enable android_rpa （50+ Android 工具就注入到你可用列表里了）
-  • 需要数学运算/时间格式化/字数统计 → 先 skill_enable builtin_math_time
-  • 需要连接任意外部 MCP Server（如 GitHub MCP、飞书 MCP、Filesystem MCP、数据库 MCP…）→ 先 skill_enable mcp_gateway → 再 mcp_connect_http 或 mcp_connect_stdio
-  • 所有 skill_enable/mcp_connect 都是「完全信任你」的：不设白名单、不拦 URL/executable、不预填任何默认值 —— 你连任何 Server、跑任何本地 executable 都直接放行；如果你判断有风险（例如执行 rm -rf / 的 MCP server）你自己拒绝或先问用户。
-  • skill_enable 遇到 dependencies 缺失会返回缺失列表，你按顺序先 enable 它们再 enable 目标 skill。
-  • 任务结束后可以 skill_disable 不用的 Skill、mcp_disconnect 不用的 Server，节省下一轮 ReAct 推理 token。
-  • 用 skill_list 随时查看完整清单、已启用状态、dependencies 情况。
-- 建议 L（更细粒度 + 动态扩展 — 里程碑 #10）：
+- 建议 L（更细粒度 + 动态扩展 - 里程碑 #10）：
   • 如果 android_rpa 那个 50+ 工具的大包太占 token，你可以用更小的「子技能」完成单项任务，省 System Prompt：
     - 只想查本地知识库 → skill_enable knowledge_rag（仅 1 个 knowledge_search）
     - 只想记住用户的手机号下次还用 → skill_enable agent_long_term_memory（仅 1 个 agent_memory KV）
@@ -89,20 +105,6 @@ $kToolCallClose
     如果你在某个会话里连接了好几个 MCP Server 想下次继续用 → 任务结尾时调 mcp_state_save；新会话开头调 mcp_state_load 就一次性恢复，不用重新 mcp_connect。
     ⚠ 存盘文件里会原样写入 HTTP headers/Authorization Bearer token、stdio env/cwd 等；如果你判断其中有敏感 token，不想留痕就别 save、或 save 前自己先断开带敏感信息的连接。
   • skill_enable/skill_disable 支持 "a,b,c" 用英文逗号一次性批量。
-- 建议 M（会话生命周期 · 里程碑 #11）：
-  • Skills 这边也对称地提供了跨轮次持久化三件套：
-    - skill_remember_enabled <skill_id...> remember=true/false  给某些 skill 打『下次我还想启用』的标（持久化的，不是本次会话）
-    - skill_state_save   把所有 JSON skill 完整 spec + remember_enabled=yes 的 id 列表写成 JSON 文件
-    - skill_state_load   读 JSON 文件，重新 register JSON skills；默认 enable_remembered=true（按依赖拓扑顺序自动 enable，省你手动调 N 次 skill_enable）
-  • 「session_bootstrap」是你每次新对话开头可以调 1 次的一键恢复工具（代码层不自动调）：
-      1) skill_state_load (恢复 JSON skills + 按 remember_enabled 自动启 skills，按 deps 拓扑)
-      2) mcp_state_load (重连 MCPs，已经连着的就跳)
-      3) agent_memory 扫 3~4 个前缀 (user:/task:/prefs:/learned_ui:)，把 key 数量 + 前 3 个样例列出来给你"回忆上次记了什么"
-     每个子步骤都能用 restore_skills/restore_mcp/scan_memory_prefixes 参数单独关掉。
-  • 诊断工具（不确定"有没有真的注入成功"时调）：
-    - skills_manifest：一眼看全所有 skill 的 enabled/remember_enabled/注册工具数/deps
-    - skill_tools_manifest：按 skill 分组列出每个 skill 已经注入了哪些工具名；配合 System Prompt 里的工具描述检查。
-  • 一句话：**任务结尾 → 调 skill_state_save + mcp_state_save，把"这次配好的环境"落盘；下次新对话开头 → 调 session_bootstrap，一个工具全部恢复，省 N 次工具调用。** 代码绝不自动做这两步，全由你自己决定何时 save/restore。
 - 常见包名速查（仅供参考）：微信=com.tencent.mm, 抖音=com.ss.android.ugc.aweme, 小红书=com.xingin.xhs, 微博=com.sina.weibo, B站=tv.danmaku.bili, QQ=com.tencent.mobileqq, 支付宝=com.eg.android.AlipayGphone, 明日方舟=com.hypergryph.arknights, 设置=com.android.settings, 应用商店=com.android.vending 或 com.sec.android.app.samsungapps。
 ''';
 }

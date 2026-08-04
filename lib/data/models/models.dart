@@ -154,9 +154,9 @@ enum ModelSource { local, cloud }
 class CloudModelConfig {
   const CloudModelConfig({
     this.provider = 'openai',
-    this.baseUrl = '',
+    this.baseUrl = 'https://api.openai.com/v1',
     this.apiKey = '',
-    this.model = '',
+    this.model = 'gpt-4o',
     this.systemPrompt = '',
     this.temperature = 0.7,
     this.maxTokens = 2048,
@@ -219,8 +219,8 @@ class ModelInfo {
     required this.id,
     required this.name,
     required this.description,
-    required this.sizeMb,
-    required this.ramMb,
+    this.sizeMb,
+    this.ramMb,
     required this.quant,
     required this.type,
     required this.downloadUrl,
@@ -230,8 +230,8 @@ class ModelInfo {
   final String id;
   final String name;
   final String description;
-  final int sizeMb;
-  final int ramMb;
+  final int? sizeMb;
+  final int? ramMb;
   final String quant;
   final ModelType type;
   final String downloadUrl;
@@ -241,8 +241,8 @@ class ModelInfo {
         id: j['id'] as String? ?? '',
         name: j['name'] as String? ?? '',
         description: j['description'] as String? ?? '',
-        sizeMb: (j['size_mb'] as num?)?.toInt() ?? 0,
-        ramMb: (j['ram_mb'] as num?)?.toInt() ?? 0,
+        sizeMb: (j['size_mb'] as num?)?.toInt(),
+        ramMb: (j['ram_mb'] as num?)?.toInt(),
         quant: j['quant'] as String? ?? 'Q4',
         type:
             (j['type'] as String?) == 'omni' ? ModelType.omni : ModelType.text,

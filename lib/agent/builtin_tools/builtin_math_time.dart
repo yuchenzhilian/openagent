@@ -256,6 +256,24 @@ class _ExprParser {
       if (_pos < _input.length && _input[_pos] == ')') _pos++;
       return v;
     }
+    // Function call: sqrt(...), sin(...), cos(...), etc.
+    if (_input[_pos].contains(RegExp(r'[a-zA-Z]'))) {
+      final nameStart = _pos;
+      while (
+          _pos < _input.length && _input[_pos].contains(RegExp(r'[a-zA-Z]'))) {
+        _pos++;
+      }
+      final fnName = _input.substring(nameStart, _pos);
+      _skipWs();
+      if (_pos < _input.length && _input[_pos] == '(') {
+        _pos++;
+        final arg = parseExpression();
+        _skipWs();
+        if (_pos < _input.length && _input[_pos] == ')') _pos++;
+        return _applyFunction(fnName, arg);
+      }
+      throw FormatException('expected ( after $fnName');
+    }
     // Number
     final start = _pos;
     while (_pos < _input.length && (_input[_pos].contains(RegExp(r'[0-9.]')))) {
@@ -265,6 +283,25 @@ class _ExprParser {
       throw FormatException('expected number at $_pos');
     }
     return double.parse(_input.substring(start, _pos));
+  }
+
+  static double _applyFunction(String name, double arg) {
+    switch (name) {
+      case 'sqrt':
+        return math.sqrt(arg);
+      case 'sin':
+        return math.sin(arg);
+      case 'cos':
+        return math.cos(arg);
+      case 'tan':
+        return math.tan(arg);
+      case 'log':
+        return math.log(arg);
+      case 'abs':
+        return arg.abs();
+      default:
+        throw FormatException('unknown function: $name');
+    }
   }
 }
 
