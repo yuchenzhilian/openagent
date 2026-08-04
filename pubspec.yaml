@@ -13,13 +13,11 @@ dependencies:
   # Local FFI plugin to MNN-LLM.
   mnn_llm:
     path: packages/mnn_llm
-  # State management & routing.
-  flutter_riverpod: ^2.5.1
+  # Routing.
   go_router: ^14.0.0
   # Storage & networking.
   dio: ^5.4.0
   path_provider: ^2.1.0
-  shared_preferences: ^2.2.0
   # UI.
   flutter_markdown: ^0.7.0
   # Multimodal input (image picker for gallery / camera).
@@ -31,6 +29,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  mocktail: ^1.0.0
 
 # Force the record package family to a mutually compatible set. The default
 # resolve (with record: ^5.1.0) keeps record_linux at 0.7.2 which is missing

@@ -1,8 +1,7 @@
 // System Prompt 模板 — 外置以便维护。
 // 被 agent_runtime.dart 引用，不包含业务逻辑。
 
-const _kToolCallOpen = '<tool_call>';
-const _kToolCallClose = '</tool_call>';
+import 'agent_constants.dart';
 
 /// Build the full system prompt with tool list and Android rules.
 String buildSystemPrompt({
@@ -20,10 +19,9 @@ String buildSystemPrompt({
 $toolList
 
 使用工具时，请严格按以下格式输出:
-$_kToolCallOpen
+$kToolCallOpen
 {"name": "工具名", "arguments": {"参数名": "参数值"}}
-$_kToolCallClose
-
+$kToolCallClose
 规则:
 1. 不需要工具时直接回答用户问题。
 2. 每次只调用一个工具。

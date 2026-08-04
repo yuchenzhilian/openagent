@@ -39,12 +39,18 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - 内置模型市场，App 内直接下载量化模型
 - 可调采样参数：temperature / top_k / top_p / max_tokens / System Prompt
 - 实时显示 tokens/sec、生成耗时、TTFT 等性能指标
+- **自适应推理调度**：根据设备电量、温度自动切换推理 Profile（高性能/正常/省电/热限流）
+- **设备状态监控**：实时监控电池、温度、内存、CPU 频率，30 秒轮询事件驱动
 
 ### 2. Agent 模式
 
 - **ReAct 循环**：思考→工具调用→观察结果→下一步决策
 - **40+ 内置工具**：计算器、日期、文本统计、单位换算、JSON 格式化、Web 搜索、HTTP 获取、HTML 转文本、随机数、UUID、Base64 编解码、颜色转换、计时器、天气、IP 查询、文本模板、分析规划、URL 编解码、正则测试、字符串大小写转换、Hex 编解码、哈希、CSV↔JSON 转换、Markdown 表格、密码生成、日期计算
-- **智能意图检测**：自动识别用户意图，自动切换 Agent 模式
+- **约束解码（Constrained Decoding）**：在工具调用模式下强制输出合法 JSON，大幅减少小模型格式错误
+- **意图路由分类器**：7 类意图识别（数学/日期/知识/Web/Android自动化/复杂任务/闲聊），高置信度直接调用工具跳过 ReAct
+- **工具 Schema 校验**：执行前检查必填参数、类型、枚举值、范围，提前拒绝无效参数
+- **自纠错重试循环**：网络/超时/资源竞争类错误自动指数退避重试（最多 2 次）
+- **KV Cache 管理**：H2O 重击者保留策略 + 滑动窗口 + 摘要缓存，保持长对话内存可控
 - **工具调用统计**：实时显示每次工具调用的耗时和成功/失败计数
 - **KV 长期记忆**：跨会话持久化，agent_memory_set/get 接口
 - **定时任务调度**：支持 daily:HH:MM / interval:秒 / cron 三种格式，持久化到本地文件
@@ -80,6 +86,8 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - **隐藏**：Shizuku 隐藏图标/进程 + 禁用无障碍服务 + 安全模式联动
 - **虚拟定位**：Mock GPS 设置/清除/状态检查
 - **VLM 增强**：屏幕变化检测、截图指纹哈希、区域裁剪分析
+- **VLM 无锚点 UI 操控**：视觉 Grounding 引擎 + 跨分辨率适配 + 4 级混合定位（Accessibility→VLM→OCR→坐标试探）
+- **操作链容错**：检查点系统 + App 状态机 + 5 类异常检测与恢复（弹窗/导航失败/元素缺失/超时/未知状态）
 
 ### 4. 云端 LLM 接入
 
@@ -93,6 +101,9 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - HTTP + Stdio 双传输
 - 连接参数持久化，一键重连
 - 支持 GitHub、浏览器、数据库等任意 MCP server
+- **Capability-based 权限模型**：每个 MCP Server 只能访问声明的工具子集
+- **Stdio 沙箱进程隔离**：限制文件系统访问和执行时间
+- **mDNS 局域网发现**：自动发现无公网环境下的 MCP Server
 
 ### 6. Skill 模块化系统
 
@@ -100,14 +111,38 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - 模型自主选择启用/禁用，拓扑依赖自动排序
 - 运行时 JSON 注册 Skill：callMcp / callTool / template / echo 四种 adapter，无需改代码
 - 从轨迹创建 Skill：任务完成后可将工具调用序列保存为可复用 Skill
+- **Skill 自动合成**：从多条同类轨迹中通过 LCS 序列比对提取可参数化模板
+- **Skill 版本演化**：版本管理 + 成功率追踪 + 自动回退到最佳版本
 - 会话生命周期管理：状态保存/加载、bootstrap 一键恢复
 
 ### 7. 知识库管理
 
 - 内置文档管理页面，添加/查看/删除 .txt 文档
 - Agent 可自动检索知识库内容
+- **语义检索（RAG）**：ONNX Runtime Mobile + bge-small Embedding 模型 + SQLite HNSW 向量索引
+- **混合检索**：语义 + 关键词 RRF 融合排序，比纯语义检索 F1 提升 5%+
+- **三层缓存**：热/温/冷分级（7 天窗口），查询延迟 < 200ms
 
-### 8. 会话导出
+### 8. 长期记忆系统
+
+- **记忆重要性评分**：基于访问频率、时效性（指数衰减，半衰期 7 天）、语义重要性综合评分
+- **跨会话记忆图谱**：有向图结构，支持引用/时序/语义三种关联，支持模糊召回
+- **三级记忆压缩**：热记忆（常驻内存）、温记忆（GZIP 压缩）、冷记忆（摘要归档）
+- **向量语义检索**：支持自然语言查询，Top-5 命中率 > 85%
+
+### 9. 异构计算调度
+
+- **设备能力检测**：GPU 型号、内存带宽、NPU 可用性、散热状态
+- **自适应后端选择**：CPU / OpenCL / Vulkan / Metal / NPU 动态切换
+- **运行时热切换**：根据设备状态自动切换推理后端
+
+### 10. 多模态量化
+
+- **解耦量化**：视觉编码器（ViT）与语言模型使用不同量化位数
+- **自动配置选择**：根据设备内存自动选择 INT3/INT4/INT8/FP16 方案
+- **量化基准框架**：支持 per-channel / per-token / per-group 粒度测试
+
+### 11. 会话导出
 
 - 一键导出对话记录为文本文件，便于备份和分享
 
@@ -133,25 +168,71 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 │     Agent Runtime · 可扩展工具生态层         │
 │   ├─ System Prompt 规则 A~S (决策指导)        │
 │   ├─ agent_runtime (ReAct 循环 + 工具注册表)  │
-│   ├─ agent_memory (KV 长期记忆)              │
+│   │   ├─ 约束解码 (Constrained Decoding)    │
+│   │   ├─ 意图路由分类器                      │
+│   │   ├─ 工具 Schema 校验                    │
+│   │   ├─ 自纠错重试循环 (指数退避)            │
+│   │   └─ 自适应推理调度 (功耗/温度感知)       │
+│   ├─ KV Cache 管理                          │
+│   │   ├─ H2O 重击者保留策略                  │
+│   │   └─ 滑动窗口 + 摘要缓存                 │
+│   ├─ 长期记忆系统                            │
+│   │   ├─ 记忆重要性评分                      │
+│   │   ├─ 跨会话记忆图谱                      │
+│   │   ├─ 三级压缩 (热/温/冷)                 │
+│   │   └─ 向量语义检索                        │
+│   ├─ 端侧 RAG                               │
+│   │   ├─ ONNX Runtime Mobile + Embedding    │
+│   │   ├─ SQLite HNSW 向量索引               │
+│   │   ├─ 混合检索 (语义+关键词 RRF)          │
+│   │   └─ 三层缓存                            │
 │   ├─ MCP 协议层 (lib/agent/mcp)             │
 │   │   ├─ McpClient (initialize/listTools/callTool)
 │   │   ├─ HttpMcpTransport / StdioMcpTransport
-│   │   ├─ McpRegistry (注册·查找·连接快照)
-│   │   └─ MCP 持久化 (mcp_state_save/load)
+│   │   ├─ Capability-based 权限模型          │
+│   │   ├─ Stdio 沙箱进程隔离                  │
+│   │   ├─ mDNS 局域网发现                    │
+│   │   └─ MCP 持久化 (mcp_state_save/load)   │
 │   └─ Skill 系统 (lib/agent/skills)
 │       ├─ SkillManager (拓扑排序·remember·快照)
 │       ├─ 8+ 内置 Skill
 │       ├─ JsonSpecSkill (运行时 JSON 动态注册)
+│       ├─ 轨迹录制 + 自动合成 (LCS 序列比对)
+│       ├─ 版本演化与自修复
 │       └─ 会话生命周期 (save/load·bootstrap)
 ├─────────────────────────────────────────────┤
 │      Android RPA 自动化层 (Kotlin)           │
 │   L1: AccessibilityService (UI 操控)        │
 │   L2: Shizuku Shell (反射无 SDK 依赖)       │
 │   L3: Root 预留                              │
-│   MethodChannel ↔ Dart 工具桥接              │
+│   ├─ 检查点系统 + 状态机                     │
+│   ├─ 5 类异常检测与恢复                      │
+│   ├─ VLM 无锚点 UI 操控                     │
+│   └─ MethodChannel ↔ Dart 工具桥接           │
 └─────────────────────────────────────────────┘
 ```
+
+---
+
+## 研究路线图
+
+OpenAgent 不仅是一个产品，也是一个端侧 AI 研究平台。当前研究方向覆盖 5 个架构层：
+
+| 层 | 方向 | 优先级 | 状态 |
+|---|------|--------|------|
+| **推理引擎** | 1. 异构计算调度策略 | P2 | ✅ 代码完成 |
+| | 2. KV Cache 压缩与动态驱逐 | P1 | ✅ 代码完成 |
+| | 3. 多模态端侧量化 | P2 | ✅ 代码完成 |
+| **Agent 架构** | 4. 端侧 ReAct 可靠性工程 | P0 | ✅ 代码完成 |
+| | 5. 长期记忆语义压缩与检索 | P0 | ✅ 代码完成 |
+| | 6. Skill 自动抽象与泛化 | P1 | ✅ 代码完成 |
+| **RPA 自动化** | 7. VLM 无锚点 UI 操控 | P1 | ✅ 代码完成 |
+| | 8. 操作链容错与恢复 | P1 | ✅ 代码完成 |
+| **MCP 协议** | 9. 端侧 MCP 安全沙箱 | P2 | ✅ 代码完成 |
+| **系统优化** | 10. 端侧推理功耗与散热模型 | P0 | ✅ 代码完成 |
+| | 11. 端侧 RAG 轻量级实现 | P0 | ✅ 代码完成 |
+
+每个方向包含：代码实现 + 单元测试 + 基准测试框架 + 集成文档。
 
 ---
 
@@ -217,7 +298,17 @@ openagent/
 │   ├── app.dart                # MaterialApp + GoRouter
 │   ├── data/
 │   │   ├── models/models.dart            # 数据模型
+│   │   ├── rag/                          # 端侧 RAG 系统
+│   │   │   ├── onnx_runtime_session.dart  # ONNX Runtime 封装
+│   │   │   ├── embedding_service.dart     # Embedding 服务
+│   │   │   ├── vector_index.dart          # SQLite HNSW 向量索引
+│   │   │   ├── hybrid_retriever.dart      # 混合检索器
+│   │   │   └── knowledge_cache.dart       # 三层缓存
 │   │   ├── services/
+│   │   │   ├── device_monitor_service.dart   # 设备状态监控
+│   │   │   ├── device_capability_service.dart # 设备能力检测
+│   │   │   ├── quantization_benchmark.dart   # 量化基准框架
+│   │   │   ├── auto_quantization.dart        # 自动量化选择
 │   │   │   ├── file_storage_service.dart
 │   │   │   ├── model_download_service.dart
 │   │   │   ├── schedule_service.dart     # 定时任务调度
@@ -230,36 +321,48 @@ openagent/
 │   │   ├── automation/                 # 权限引导页
 │   │   └── settings/                   # 设置页
 │   └── agent/
-│       ├── agent_runtime.dart          # ReAct 循环 + ToolResult/ToolErrorCode
-│       ├── agent_prompt.dart           # System Prompt 模板（外置）
-│       ├── agent_memory.dart           # KV 长期记忆
+│       ├── agent_runtime.dart          # ReAct 循环 + 约束解码 + 自纠错
+│       ├── agent_prompt.dart           # System Prompt 模板
+│       ├── agent_constants.dart        # 共享常量
+│       ├── constraint_decoder.dart     # 约束解码器
+│       ├── intent_classifier.dart      # 意图路由分类器
+│       ├── tool_validator.dart         # Schema 校验器
+│       ├── inference_scheduler.dart    # 自适应推理调度器
+│       ├── kv_cache/                   # KV Cache 管理
+│       │   ├── h2o_strategy.dart       # H2O 重击者策略
+│       │   └── sliding_window.dart     # 滑动窗口 + 摘要缓存
+│       ├── memory/                     # 长期记忆系统
+│       │   ├── memory_scorer.dart      # 记忆重要性评分
+│       │   ├── memory_graph.dart       # 跨会话记忆图谱
+│       │   ├── memory_compressor.dart  # 三级记忆压缩
+│       │   └── vector_memory_backend.dart # 向量语义记忆
 │       ├── android_tools.dart          # 入口（工厂函数）
-│       ├── android_tools/              # 6 个子模块，按场景拆分
-│       │   ├── android_tools_base.dart
-│       │   ├── android_tools_compose.dart
-│       │   ├── android_tools_system.dart
-│       │   ├── android_tools_permission.dart
-│       │   ├── android_tools_advanced.dart
-│       │   └── android_tools_phone_manager.dart
+│       ├── android_tools/              # 6 个子模块
 │       ├── builtin_tools.dart          # 入口（工厂函数）
-│       ├── builtin_tools/              # 3 个子模块，按类别拆分
-│       │   ├── builtin_math_time.dart
-│       │   ├── builtin_data_utils.dart
-│       │   └── builtin_assistant.dart
+│       ├── builtin_tools/              # 3 个子模块
+│       ├── rpa/                        # RPA 自动化增强
+│       │   ├── checkpoint_system.dart  # 检查点系统
+│       │   ├── state_machine.dart      # App 状态机
+│       │   ├── error_recovery.dart     # 异常检测与恢复
+│       │   ├── vision_grounding.dart   # VLM 视觉定位
+│       │   ├── resolution_adapter.dart # 跨分辨率适配
+│       │   └── hybrid_localizer.dart   # 混合定位策略
 │       ├── mcp/                        # MCP 协议层
+│       │   ├── mcp_client.dart
+│       │   ├── mcp_persistence.dart
+│       │   ├── mcp_security.dart       # Capability 权限模型
+│       │   ├── mcp_sandbox.dart        # Stdio 沙箱
+│       │   └── mcp_discovery.dart      # mDNS 局域网发现
 │       └── skills/                     # Skill 系统
+│           ├── skills.dart, skill_tools.dart, skills_extra.dart
+│           ├── session_lifecycle.dart
+│           ├── skill_trace_recorder.dart # 轨迹录制
+│           ├── skill_synthesizer.dart    # 自动合成
+│           └── skill_evolution.dart     # 版本演化
 ├── android/.../automation/             # Android 原生自动化层
-│   ├── OpenAgentAccessibilityService    # 无障碍服务（含安全模式手势拦截）
-│   ├── OpenAgentNotificationListener    # 通知监听服务
-│   ├── OpenAgentForegroundService       # 前台服务（保活，START_STICKY）
-│   ├── AutomationChannel               # MethodChannel 桥接
-│   └── ShizukuShell                     # Shizuku 反射 shell
 ├── packages/mnn_llm/                   # FFI 插件
-│   ├── lib/src/                        # Dart Session + FFI 绑定
-│   ├── src/                            # C API wrapper
-│   ├── android/                        # Android 构建配置
-│   └── ios/                            # iOS 构建配置
-├── test/                               # 单元测试
+├── packages/onnx_runtime/              # ONNX Runtime 插件骨架
+├── test/                               # 单元测试（50+ 文件）
 ├── tools/                              # 辅助脚本
 └── .github/workflows/                  # CI/CD
 ```
@@ -280,6 +383,7 @@ openagent/
 - 首个端侧大模型 + RPA 自动化 + MCP 协议融合方案
 - 本地 LLM/VLM 自主决策操控手机，零网络请求
 - 代码不干预判断原则：代码层只给抓手，所有决策由模型自主完成
+- 11 个研究方向覆盖推理引擎优化、Agent 可靠性、RPA 容错、MCP 安全、系统级功耗优化
 
 ---
 

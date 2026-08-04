@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../data/services/android_automation_service.dart';
+import 'agent_constants.dart';
 import 'agent_runtime.dart';
 
 part 'android_tools/android_tools_base.dart';

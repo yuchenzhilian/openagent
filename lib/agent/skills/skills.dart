@@ -23,9 +23,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import '../agent_constants.dart';
 import '../agent_runtime.dart';
 import '../android_tools.dart';
+import '../android_tools/android_tools_advanced.dart' show AgentMemoryBackend;
 import '../builtin_tools.dart';
+import '../data/services/android_automation_service.dart';
 import '../mcp/mcp_client.dart';
 
 /// A Skill = an on-demand bundle of Agent tools.
@@ -281,7 +284,9 @@ class SkillManager {
     } catch (e, st) {
       // roll back any tools registered before the error
       for (final name in registered) {
-        try { unregisterAgentTool(name); } catch (_) {}
+        try { unregisterAgentTool(name); } catch (_) {
+          // 工具注销失败不影响主流程
+        }
       }
       return 'ERROR: skill $id failed onEnable: $e\nStack:\n$st';
     }
@@ -303,7 +308,9 @@ class SkillManager {
     }
     final tools = _toolIdsBySkill.remove(id) ?? const [];
     for (final name in tools) {
-      try { unregisterAgentTool(name); } catch (_) {}
+      try { unregisterAgentTool(name); } catch (_) {
+        // 工具注销失败不影响主流程
+      }
     }
     _enabled[id] = false;
     _changed.add('disabled:$id');
@@ -508,10 +515,10 @@ class AndroidRpaSkill extends Skill {
     this.memoryBackend,
   });
 
-  final dynamic androidService;
+  final AndroidAutomationService? androidService;
   final Future<String> Function(String screenshotPath, String prompt)? visionAnalyze;
   final Future<ToolResult> Function(String toolName, Map<String, dynamic> args)? executeCallback;
-  final dynamic memoryBackend;
+  final AgentMemoryBackend? memoryBackend;
 
   @override
   String get id => 'android_rpa';

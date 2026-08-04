@@ -235,7 +235,7 @@ Tool httpFetchTool() => Tool(
           sb.writeln('状态码: ${response.statusCode}');
           sb.writeln('内容长度: ${content.length} 字符');
           sb.writeln('--- 内容开始 ---');
-          sb.writeln(content.length > 8000 ? '${content.substring(0, 8000)}\n…(内容过长，截断前 8000 字符)' : content);
+          sb.writeln(content.length > kContentPreviewMax ? '${content.substring(0, kContentPreviewMax)}\n…(内容过长，截断前 $kContentPreviewMax 字符)' : content);
           sb.writeln('--- 内容结束 ---');
           return ToolResult.ok(sb.toString());
         } catch (e) {
@@ -284,8 +284,8 @@ Tool htmlToTextTool() => Tool(
               .where((l) => l.isNotEmpty)
               .toList();
           final result = lines.join('\n');
-          return ToolResult.ok(result.length > 10000
-              ? '${result.substring(0, 10000)}\n…(内容过长，截断前 10000 字符)'
+          return ToolResult.ok(result.length > kContentPreviewLong
+              ? '${result.substring(0, kContentPreviewLong)}\n…(内容过长，截断前 $kContentPreviewLong 字符)'
               : result);
         } catch (e) {
           return ToolResult.error('HTML 转换失败: $e');

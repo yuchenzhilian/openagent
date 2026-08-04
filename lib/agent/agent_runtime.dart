@@ -1,4 +1,4 @@
-﻿// Agent runtime with ReAct loop — tool-calling / multi-step planning.
+// Agent runtime with ReAct loop — tool-calling / multi-step planning.
 //
 // Threading model
 // ---------------
@@ -20,8 +20,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:mnn_llm/mnn_llm.dart';
+import 'package:path_provider/path_provider.dart';
 
+import 'agent_constants.dart';
 import 'agent_prompt.dart';
+import 'constraint_decoder.dart';
+import 'data/services/device_monitor_service.dart';
+import 'inference_scheduler.dart';
+import 'intent_classifier.dart';
+import 'kv_cache/h2o_strategy.dart';
+import 'kv_cache/sliding_window.dart';
+import 'tool_validator.dart';
 
 /// A JSON-Schema fragment describing a tool's parameters.
 typedef ToolSchema = Map<String, dynamic>;
@@ -129,17 +138,14 @@ abstract class AgentRuntime {
 
 // ---- Tool-call parser ----------------------------------------------------
 
-const _kToolCallOpen = '<tool_call>';
-const _kToolCallClose = '</tool_call>';
-
 /// Tries to extract a tool call from [buffer].
 /// Returns (jsonString, remainder) if a complete tool_call block is found,
 /// otherwise returns (null, buffer).
 ({String? json, String remainder}) _tryParseToolCall(String buffer) {
-  final openIdx = buffer.indexOf(_kToolCallOpen);
+  final openIdx = buffer.indexOf(kToolCallOpen);
   if (openIdx < 0) return (json: null, remainder: buffer);
 
-  final closeIdx = buffer.indexOf(_kToolCallClose, openIdx);
+  final closeIdx = buffer.indexOf(kToolCallClose, openIdx);
   if (closeIdx < 0) {
     // Tag opened but not closed yet — keep buffering.
     // Emit text before the tag so the user sees partial output.
@@ -147,9 +153,9 @@ const _kToolCallClose = '</tool_call>';
   }
 
   final jsonStr = buffer
-      .substring(openIdx + _kToolCallOpen.length, closeIdx)
+      .substring(openIdx + kToolCallOpen.length, closeIdx)
       .trim();
-  final remainder = buffer.substring(closeIdx + _kToolCallClose.length);
+  final remainder = buffer.substring(closeIdx + kToolCallClose.length);
   return (json: jsonStr, remainder: remainder);
 }
 
@@ -180,16 +186,27 @@ const _kToolCallClose = '</tool_call>';
 ///      and its result is fed back for the next round.
 ///   3. If no tool call is found, the response is the final answer.
 class LocalMnnAgentRuntime implements AgentRuntime {
-  LocalMnnAgentRuntime(this._session, {this.maxSteps = 5, this.androidMode = false});
+  LocalMnnAgentRuntime(this._session, {this.maxSteps = 5, this.androidMode = false}) {
+    _h2o = H2OStrategy();
+    _slidingWindow = SlidingWindowCache();
+    _scheduler = InferenceScheduler(monitor: DeviceMonitorService());
+    _scheduler.start();
+  }
 
   final MnnLlmSession _session;
   final Map<String, Tool> _tools = {};
   int maxSteps;
-  static const Duration _defaultToolTimeout = Duration(seconds: 30);
-  static const Duration _logMaxAge = Duration(hours: 24);
+  static const Duration _defaultToolTimeout = kDefaultToolTimeout;
   static const int _logMaxLines = 5000;
   static const int _logTrimTarget = 3000;
   int _consecutivePermissionErrors = 0;
+
+  // KV Cache management.
+  late final H2OStrategy _h2o;
+  late final SlidingWindowCache _slidingWindow;
+
+  // Adaptive inference scheduling.
+  late final InferenceScheduler _scheduler;
 
   /// When true the system prompt adds Android-automation specific rules
   /// (dump the UI first, prefer click_by_text/click_by_id, wait for page
@@ -208,6 +225,23 @@ class LocalMnnAgentRuntime implements AgentRuntime {
 
   @override
   Stream<AgentEvent> run(String userInput) async* {
+    // 0. Adaptive profile — adjust inference parameters based on device state.
+    final profile = _scheduler.currentProfile;
+    maxSteps = profile.maxSteps;
+
+    // 0. Intent classification — skip unnecessary ReAct for simple requests.
+    final classifier = IntentClassifier();
+    final intent = classifier.classify(userInput);
+    if (intent.confidence == 'high' && intent.suggestedTool != null) {
+      // Direct tool call for simple intents.
+      final result = await executeTool(intent.suggestedTool!, {});
+      if (!result.isError) {
+        yield AgentDoneEvent(result.output, steps: 0);
+        return;
+      }
+      // Fall through to ReAct loop if the direct call fails.
+    }
+
     final conversation = StringBuffer();
 
     // System prompt with tool descriptions.
@@ -229,7 +263,7 @@ class LocalMnnAgentRuntime implements AgentRuntime {
           if (parsed.json != null) {
             // Emit any text before the tool call tag.
             final beforeTool = buffer.toString().substring(0,
-                buffer.toString().indexOf(_kToolCallOpen));
+                buffer.toString().indexOf(kToolCallOpen));
             if (beforeTool.isNotEmpty) {
               yield AgentTokenEvent(beforeTool);
             }
@@ -249,12 +283,16 @@ class LocalMnnAgentRuntime implements AgentRuntime {
 
               // Feed the tool result back into the conversation.
               conversation.write(buffer.toString().substring(0,
-                  buffer.toString().indexOf(_kToolCallClose) +
-                  _kToolCallClose.length));
+                  buffer.toString().indexOf(kToolCallClose) +
+                  kToolCallClose.length));
               conversation.writeln(
                   '\n[工具结果] ${result.output}');
 
               toolCallDetected = true;
+
+              // KV Cache management: feed conversation into sliding window
+              // to keep context within memory budget.
+              _slidingWindow.add(conversation.toString());
               break;
             } else {
               // Malformed tool call — emit as text.
@@ -320,41 +358,106 @@ class LocalMnnAgentRuntime implements AgentRuntime {
       return ToolResult.error(
           toolError('未知工具: $name', advice: '用 skill_list 查看可用工具，或 skill_enable 启用对应技能。'));
     }
-    final stopwatch = Stopwatch()..start();
-    try {
-      final result = await tool.handler(args).timeout(_defaultToolTimeout);
-      stopwatch.stop();
-      _logExecution(name, args, result, stopwatch.elapsedMilliseconds);
-      // 检测权限相关错误，累计计数
-      if (result.isError && _isPermissionError(result.output)) {
-        _consecutivePermissionErrors++;
-        if (_consecutivePermissionErrors >= 2) {
-          _consecutivePermissionErrors = 0;
-          return ToolResult.error(
-              toolError('连续多次操作因权限失败',
-                  code: ToolErrorCode.permission,
-                  advice: '调用 android_permission_self_heal action=check_and_fix 自动修复权限。\n'
-                      '或调用 android_shizuku_simplified action=check 查看权限状态。'));
-        }
-      } else {
-        _consecutivePermissionErrors = 0;
+
+    // 1. Schema validation (fast path — reject invalid args early).
+    {
+      final validator = ToolValidator();
+      final validation = validator.validate(tool, args);
+      if (!validation.isValid) {
+        return validator.toErrorResult(validation);
       }
-      return result;
-    } on TimeoutException {
-      stopwatch.stop();
-      final err = ToolResult.error(
-          toolError('工具执行超时 (${_defaultToolTimeout.inSeconds}秒): $name',
-              code: ToolErrorCode.timeout, advice: '如果操作确实需要更长时间，可增大超时设置。'));
-      _logExecution(name, args, err, stopwatch.elapsedMilliseconds);
-      return err;
-    } catch (e) {
-      stopwatch.stop();
-      final err = ToolResult.error(
-          toolError('工具执行失败: $e',
-              advice: '检查工具参数是否正确，或查看 agent_execution.log 获取详细错误信息。'));
-      _logExecution(name, args, err, stopwatch.elapsedMilliseconds);
-      return err;
     }
+
+    // 2. Self-correcting retry loop with exponential backoff.
+    const maxRetries = 2;
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      final stopwatch = Stopwatch()..start();
+      try {
+        final result = await tool.handler(args).timeout(_defaultToolTimeout);
+        stopwatch.stop();
+        await _logExecution(name, args, result, stopwatch.elapsedMilliseconds);
+
+        // 检测权限相关错误，累计计数
+        if (result.isError && _isPermissionError(result.output)) {
+          _consecutivePermissionErrors++;
+          if (_consecutivePermissionErrors >= 2) {
+            _consecutivePermissionErrors = 0;
+            return ToolResult.error(
+                toolError('连续多次操作因权限失败',
+                    code: ToolErrorCode.permission,
+                    advice: '调用 android_permission_self_heal action=check_and_fix 自动修复权限。\n'
+                        '或调用 android_shizuku_simplified action=check 查看权限状态。'));
+          }
+        } else {
+          _consecutivePermissionErrors = 0;
+        }
+
+        // If the result is OK, return immediately.
+        if (!result.isError) return result;
+
+        // If the error is retryable, attempt a retry.
+        if (attempt < maxRetries && _isRetryableError(result.output)) {
+          final delay = Duration(milliseconds: 500 * (1 << attempt)); // 500ms, 1s
+          await _logExecution(name, args, ToolResult.ok('等待重试 #${attempt + 1} ($delay)'),
+              stopwatch.elapsedMilliseconds);
+          await Future.delayed(delay);
+          continue; // Retry
+        }
+
+        // Non-retryable error or max retries exceeded.
+        return result;
+      } on TimeoutException {
+        stopwatch.stop();
+        if (attempt < maxRetries) {
+          final delay = Duration(milliseconds: 500 * (1 << attempt));
+          await _logExecution(name, args, ToolResult.ok('超时重试 #${attempt + 1} ($delay)'),
+              stopwatch.elapsedMilliseconds);
+          await Future.delayed(delay);
+          continue; // Retry with increased timeout
+        }
+        final err = ToolResult.error(
+            toolError('工具执行超时 (${_defaultToolTimeout.inSeconds}秒): $name',
+                code: ToolErrorCode.timeout, advice: '如果操作确实需要更长时间，可增大超时设置。'));
+        await _logExecution(name, args, err, stopwatch.elapsedMilliseconds);
+        return err;
+      } catch (e) {
+        stopwatch.stop();
+        if (attempt < maxRetries && _isRetryableException(e)) {
+          final delay = Duration(milliseconds: 500 * (1 << attempt));
+          await _logExecution(name, args, ToolResult.ok('异常重试 #${attempt + 1} ($delay)'),
+              stopwatch.elapsedMilliseconds);
+          await Future.delayed(delay);
+          continue;
+        }
+        final err = ToolResult.error(
+            toolError('工具执行失败: $e',
+                advice: '检查工具参数是否正确，或查看 agent_execution.log 获取详细错误信息。'));
+        await _logExecution(name, args, err, stopwatch.elapsedMilliseconds);
+        return err;
+      }
+    }
+    // Should never reach here.
+    return ToolResult.error(toolError('工具执行异常: 重试耗尽'));
+  }
+
+  /// 判断错误是否可重试。
+  bool _isRetryableError(String message) {
+    final lower = message.toLowerCase();
+    // 网络/超时/资源竞争类错误可重试
+    if (lower.contains('timeout') || lower.contains('超时')) return true;
+    if (lower.contains('network') || lower.contains('网络')) return true;
+    if (lower.contains('not found') || lower.contains('找不到')) return true;
+    if (lower.contains('busy') || lower.contains('忙')) return true;
+    if (lower.contains('try again') || lower.contains('重试')) return true;
+    return false;
+  }
+
+  /// 判断异常是否可重试。
+  bool _isRetryableException(Object e) {
+    if (e is TimeoutException) return true;
+    if (e is SocketException) return true;
+    if (e is HttpException) return true;
+    return false;
   }
 
   /// 检测错误信息是否与权限相关。支持 toolError 格式（🔒 前缀）和传统文本。
@@ -370,34 +473,39 @@ class LocalMnnAgentRuntime implements AgentRuntime {
   }
 
   /// 记录工具执行日志到文件。
-  void _logExecution(String toolName, Map<String, dynamic> args, ToolResult result, int ms) {
+  Future<void> _logExecution(String toolName, Map<String, dynamic> args, ToolResult result, int ms) async {
     try {
-      final logPath = '/sdcard/Android/data/com.openagent.openagent/files/agent_execution.log';
-      final file = File(logPath);
-      final argSummary = args.toString().length > 80
-          ? '${args.toString().substring(0, 80)}...'
+      final logDir = await getApplicationDocumentsDirectory();
+      final logFile = File('${logDir.path}/agent_execution.log');
+      final argSummary = args.toString().length > kLogArgMaxLen
+          ? '${args.toString().substring(0, kLogArgMaxLen)}...'
           : args.toString();
       final line = '[${DateTime.now().toIso8601String()}] $toolName | $argSummary | ${result.isError ? "ERROR" : "OK"} | ${ms}ms\n';
-      file.writeAsStringSync(line, mode: FileMode.append);
+      await logFile.writeAsString(line, mode: FileMode.append);
       // 控制日志大小：超过 5000 行时截断
-      _trimLogIfNeeded(file);
+      await _trimLogIfNeeded(logFile);
     } catch (_) {
       // 日志写入失败不影响主流程
     }
   }
 
   /// 日志文件超过 5000 行时保留后 3000 行。
-  void _trimLogIfNeeded(File file) {
+  Future<void> _trimLogIfNeeded(File file) async {
     try {
-      if (!file.existsSync()) return;
-      final lines = file.readAsLinesSync();
+      if (!await file.exists()) return;
+      final lines = await file.readAsLines();
       if (lines.length > _logMaxLines) {
         final trimmed = lines.sublist(lines.length - _logTrimTarget);
-        file.writeAsStringSync('${trimmed.join('\n')}\n');
+        await file.writeAsString('${trimmed.join('\n')}\n');
       }
-    } catch (_) {}
+    } catch (_) {
+      // 日志截断失败不影响主流程
+    }
   }
 
   @override
-  Future<void> dispose() => _session.dispose();
+  Future<void> dispose() {
+    _scheduler.dispose();
+    return _session.dispose();
+  }
 }

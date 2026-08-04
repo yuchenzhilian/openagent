@@ -42,7 +42,7 @@ List<Tool> createSkillTools(SkillManager skillManager) => <Tool>[
         }
         sb.writeln('registered   : ${s['registeredTools']} tools');
         final desc = (s['description'] as String).replaceAll('\n', ' ');
-        sb.writeln('description  : ${desc.length > 200 ? '${desc.substring(0, 200)}…' : desc}');
+        sb.writeln('description  : ${desc.length > kSkillDescPreviewMax ? '${desc.substring(0, kSkillDescPreviewMax)}…' : desc}');
       }
       sb.writeln('-------------------------------------------------------------');
       return ToolResult.ok(sb.toString());

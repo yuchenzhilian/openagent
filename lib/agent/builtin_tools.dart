@@ -8,8 +8,8 @@ library builtin_tools;
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:io' show Platform, File, HttpClient, HttpClientRequest, Directory;
+import 'agent_constants.dart';
 import 'agent_runtime.dart';
-import '../data/services/schedule_service.dart';
 
 part 'builtin_tools/builtin_math_time.dart';
 part 'builtin_tools/builtin_data_utils.dart';

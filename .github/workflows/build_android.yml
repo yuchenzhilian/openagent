@@ -35,6 +35,9 @@ jobs:
       - name: Analyze code
         run: flutter analyze
 
+      - name: Format check
+        run: dart format --set-exit-if-changed lib/ test/
+
       - name: Run tests
         run: flutter test
 

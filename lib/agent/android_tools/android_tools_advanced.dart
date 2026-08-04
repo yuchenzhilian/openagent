@@ -690,7 +690,7 @@ Tool buildExecutePlanTool(
             final output = result.output;
             out.writeln('${isErr ? '❌' : '✅'} #${i + 1}($id) $name: ${isErr ? "ERROR" : "OK"}');
             if (output.isNotEmpty) {
-              final preview = output.length > 500 ? '${output.substring(0, 500)}…(截断)' : output;
+              final preview = output.length > kToolOutputPreviewMax ? '${output.substring(0, kToolOutputPreviewMax)}…(截断)' : output;
               out.writeln('  output: $preview');
             }
             // save_as
@@ -810,7 +810,7 @@ Tool buildAgentMemoryTool(AgentMemoryBackend backend) => Tool(
                 final sb = StringBuffer('✅ LIST prefix="$prefix" 返回 ${entries.length} 条 (limit=$limit)\n');
                 for (final e in entries) {
                   final v = e.value;
-                  final short = v.length > 80 ? '${v.substring(0, 80)}…' : v.replaceAll('\n', '↵');
+                  final short = v.length > kLogArgMaxLen ? '${v.substring(0, kLogArgMaxLen)}…' : v.replaceAll('\n', '↵');
                   sb.writeln('  ${e.key}  len=${v.length}  $short');
                 }
                 return ToolResult.ok(sb.toString());

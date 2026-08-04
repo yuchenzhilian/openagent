@@ -65,10 +65,10 @@ class ChatMessage {
         role: _roleFromString(j['role'] as String? ?? 'user'),
         content: j['content'] as String? ?? '',
         timestamp: j['timestamp'] != null
-            ? DateTime.parse(j['timestamp'] as String)
+            ? (DateTime.tryParse(j['timestamp'] as String? ?? '') ?? DateTime.now())
             : null,
         mediaPaths: (j['media_paths'] as List?)
-                ?.map((e) => e as String)
+                ?.whereType<String>()
                 .toList() ??
             const [],
       );
@@ -89,6 +89,23 @@ class ChatSession {
   List<ChatMessage> messages;
   final DateTime createdAt;
   String? modelId;
+
+  /// Maximum number of messages to keep. When exceeded, oldest messages are
+  /// trimmed from the beginning. Null means no limit.
+  static const int? maxMessages = 200;
+
+  /// Appends a message, trimming oldest if [maxMessages] is exceeded.
+  void addMessage(ChatMessage msg) {
+    messages.add(msg);
+    if (maxMessages != null && messages.length > maxMessages!) {
+      messages = messages.sublist(messages.length - maxMessages!);
+    }
+  }
+
+  /// Clears all messages.
+  void reset() {
+    messages = [];
+  }
 
   ChatSession copyWith({
     String? id,
@@ -114,13 +131,13 @@ class ChatSession {
       };
 
   factory ChatSession.fromJson(Map<String, dynamic> j) => ChatSession(
-        id: j['id'] as String,
+        id: j['id'] as String? ?? '',
         title: j['title'] as String? ?? '新对话',
         messages: (j['messages'] as List? ?? [])
-            .map((m) => ChatMessage.fromJson(m as Map<String, dynamic>))
+            .map((m) => ChatMessage.fromJson(m is Map<String, dynamic> ? m : <String, dynamic>{}))
             .toList(),
         createdAt: j['createdAt'] != null
-            ? DateTime.parse(j['createdAt'] as String)
+            ? (DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now())
             : DateTime.now(),
         modelId: j['modelId'] as String?,
       );
@@ -220,16 +237,16 @@ class ModelInfo {
   final String configFilename;
 
   factory ModelInfo.fromJson(Map<String, dynamic> j) => ModelInfo(
-        id: j['id'] as String,
-        name: j['name'] as String,
+        id: j['id'] as String? ?? '',
+        name: j['name'] as String? ?? '',
         description: j['description'] as String? ?? '',
-        sizeMb: (j['size_mb'] as num).toInt(),
-        ramMb: (j['ram_mb'] as num).toInt(),
+        sizeMb: j['size_mb'] != null ? (j['size_mb'] as num?)?.toInt() : null,
+        ramMb: j['ram_mb'] != null ? (j['ram_mb'] as num?)?.toInt() : null,
         quant: j['quant'] as String? ?? 'Q4',
         type: (j['type'] as String?) == 'omni'
             ? ModelType.omni
             : ModelType.text,
-        downloadUrl: j['download_url'] as String,
+        downloadUrl: j['download_url'] as String? ?? '',
         configFilename: j['config_filename'] as String? ?? 'config.json',
       );
 }
@@ -331,10 +348,10 @@ class AppConfig {
   factory AppConfig.fromJson(Map<String, dynamic> j) => AppConfig(
         activeModelId: j['active_model_id'] as String?,
         systemPrompt: j['system_prompt'] as String? ?? '',
-        sampling: j['sampling'] != null
+        sampling: j['sampling'] != null && j['sampling'] is Map
             ? SamplingConfig.fromJson(j['sampling'] as Map<String, dynamic>)
             : const SamplingConfig(),
-        automation: j['automation'] != null
+        automation: j['automation'] != null && j['automation'] is Map
             ? AutomationPermissionStatus.fromJson(
                 j['automation'] as Map<String, dynamic>)
             : const AutomationPermissionStatus(),
@@ -342,7 +359,7 @@ class AppConfig {
           (e) => e.name == (j['model_source'] as String? ?? 'local'),
           orElse: () => ModelSource.local,
         ),
-        cloud: j['cloud'] != null
+        cloud: j['cloud'] != null && j['cloud'] is Map
             ? CloudModelConfig.fromJson(j['cloud'] as Map<String, dynamic>)
             : const CloudModelConfig(),
       );
@@ -351,7 +368,9 @@ class AppConfig {
   static AppConfig decode(String s) {
     if (s.isEmpty) return const AppConfig();
     try {
-      return AppConfig.fromJson(jsonDecode(s) as Map<String, dynamic>);
+      final decoded = jsonDecode(s);
+      if (decoded is! Map) return const AppConfig();
+      return AppConfig.fromJson(decoded as Map<String, dynamic>);
     } catch (_) {
       return const AppConfig();
     }

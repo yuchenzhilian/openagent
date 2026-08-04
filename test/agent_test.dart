@@ -237,9 +237,16 @@ void main() {
   group('builtinTools', () {
     test('returns all built-in tools', () {
       final tools = builtinTools();
-      expect(tools.length, 5);
+      expect(tools.length, greaterThanOrEqualTo(25));
       expect(tools.map((t) => t.name).toList(),
-          containsAll(['calculator', 'datetime', 'text_counter', 'unit_converter', 'json_formatter']));
+          containsAll(['calculator', 'datetime', 'text_counter', 'unit_converter',
+                       'json_formatter', 'web_search', 'http_fetch', 'html_to_text',
+                       'random_number', 'uuid', 'base64_codec', 'color_converter',
+                       'timer', 'weather', 'ip_info', 'text_template',
+                       'agent_analyze_and_plan', 'url_codec', 'regex_tester',
+                       'string_case', 'encode_decode', 'hash', 'text_stats_advanced',
+                       'csv_json', 'markdown_table', 'password_generator',
+                       'date_calculator']));
     });
   });
 }

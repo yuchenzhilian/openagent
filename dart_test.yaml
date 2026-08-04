@@ -1,0 +1,18 @@
+# Dart test configuration
+# See https://pub.dev/packages/dart_test_yaml for details.
+
+# Default timeout for all tests (overridden per-test with `timeout`).
+timeout: 30s
+
+# Randomize test order to catch hidden dependencies.
+order: random
+
+# Enable verbose stack traces for debugging.
+# verbose_trace: false
+
+# Tags for grouping related tests.
+tags:
+  unit:
+    description: Pure unit tests, no external dependencies or I/O.
+  integration:
+    description: Tests that call external APIs or require real filesystem.

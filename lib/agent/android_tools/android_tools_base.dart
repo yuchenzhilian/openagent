@@ -448,13 +448,13 @@ Tool _gshellTool(AndroidAutomationService s) => Tool(
         final cmd = args['command'] as String?;
         if (cmd == null || cmd.isEmpty) return const ToolResult.error('缺少 command');
         final r = await s.gshell(cmd);
-        final preview = r.stdout.length > 2000
-            ? '${r.stdout.substring(0, 2000)}\n…(stdout 截断，共 ${r.stdout.length} 字符)'
+        final preview = r.stdout.length > kUiDumpPreviewMax
+            ? '${r.stdout.substring(0, kUiDumpPreviewMax)}\n…(stdout 截断，共 ${r.stdout.length} 字符)'
             : r.stdout;
         final body = StringBuffer('命令：`$cmd`\n');
         body.writeln('退出码：${r.exitCode} (${r.ok ? "成功" : "失败"})');
         if (r.stderr.isNotEmpty) {
-          body.writeln('stderr:\n```\n${r.stderr.substring(0, r.stderr.length > 1000 ? 1000 : r.stderr.length)}\n```');
+          body.writeln('stderr:\n```\n${r.stderr.substring(0, r.stderr.length > kUiDumpPreviewShort ? kUiDumpPreviewShort : r.stderr.length)}\n```');
         }
         if (preview.isNotEmpty) body.writeln('stdout:\n```\n$preview\n```');
         return ToolResult.ok(body.toString());

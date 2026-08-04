@@ -13,9 +13,11 @@ class ChatRepository {
     final file = await _storage.sessionsFile();
     if (!await file.exists()) return const [];
     try {
-      final list = jsonDecode(await file.readAsString()) as List<dynamic>;
+      final list = jsonDecode(await file.readAsString());
+      if (list is! List) return const [];
       return list
-          .map((j) => ChatSession.fromJson(j as Map<String, dynamic>))
+          .whereType<Map<String, dynamic>>()
+          .map((j) => ChatSession.fromJson(j))
           .toList();
     } catch (_) {
       return const [];

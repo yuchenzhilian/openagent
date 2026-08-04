@@ -83,7 +83,7 @@ class ScheduleTask {
         schedule: j['schedule'] as String? ?? '',
         enabled: j['enabled'] as bool? ?? true,
         createdAt: DateTime.tryParse(j['created_at'] as String? ?? '') ?? DateTime.now(),
-        lastRunAt: j['last_run_at'] != null ? DateTime.tryParse(j['last_run_at'] as String) : null,
+        lastRunAt: j['last_run_at'] != null ? DateTime.tryParse(j['last_run_at'] as String? ?? '') : null,
         runCount: j['run_count'] as int? ?? 0,
         lastResult: j['last_result'] as String?,
       );

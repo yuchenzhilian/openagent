@@ -1133,8 +1133,9 @@ class AndroidAutomationService {
           sb.writeln('\n===== 原生 Build.* 字段 =====');
           sb.writeln(native);
         }
-      } catch (_) {}
-    }
+      } catch (_) {
+        // 非关键信息，忽略
+      }
     return sb.toString();
   }
 
@@ -1360,8 +1361,9 @@ class AndroidAutomationService {
         if (r != null && r.toLowerCase().contains('ok')) {
           return ShellResult(ok: true, exitCode: 0, stdout: '✅ 壁纸已设置 ($which)\n$r', stderr: '');
         }
-      } catch (_) {}
-    // Fallback: 调系统 ACTION_ATTACH_DATA 壁纸裁剪面板
+      } catch (_) {
+        // 壁纸设置失败，尝试 fallback 方法
+      }
     final intentR = await sendIntent(
       action: 'android.intent.action.ATTACH_DATA',
       data: 'file://$p',
