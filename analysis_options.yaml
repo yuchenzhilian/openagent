@@ -19,17 +19,15 @@ analyzer:
 
 linter:
   rules:
-    # Naming & style.
-    - non_constant_identifier_names
-    # Code quality.
-    - avoid_print
-    - await_only_futures
-    - unnecessary_null_checks
-    - unnecessary_overrides
-    - sort_child_properties_last
-    - use_super_parameters
-    - avoid_unnecessary_containers
-    - sized_box_for_whitespace
+    non_constant_identifier_names: true
+    avoid_print: true
+    await_only_futures: true
+    unnecessary_null_checks: true
+    unnecessary_overrides: true
+    sort_child_properties_last: true
+    use_super_parameters: true
+    avoid_unnecessary_containers: true
+    sized_box_for_whitespace: true
     # 关闭 flutter_lints 中的噪声规则
     prefer_const_constructors: false
     prefer_const_declarations: false
@@ -46,3 +44,4 @@ linter:
     prefer_function_declarations_over_variables: false
     collection_methods_unrelated_type: false
     unnecessary_nullable_for_final_variable_declarations: false
+    prefer_initializing_formals: false

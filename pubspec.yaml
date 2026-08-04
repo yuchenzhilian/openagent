@@ -18,6 +18,7 @@ dependencies:
   # Storage & networking.
   dio: ^5.4.0
   path_provider: ^2.1.0
+  path: ^1.9.0
   # UI.
   flutter_markdown: ^0.7.0
   # Multimodal input (image picker for gallery / camera).
