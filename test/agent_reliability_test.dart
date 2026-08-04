@@ -6,7 +6,6 @@ import 'package:openagent/agent/tool_validator.dart';
 import 'package:openagent/agent/agent_runtime.dart';
 import 'package:openagent/agent/agent_constants.dart';
 import 'dart:async';
-import 'dart:convert';
 
 Future<String> _runDecoder(StreamTransformerBase<String, String> decoder, List<String> chunks) async {
   final controller = StreamController<String>();

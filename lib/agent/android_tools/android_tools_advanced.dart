@@ -683,7 +683,7 @@ Tool buildExecutePlanTool(
               : <String, dynamic>{};
           // 执行
           try {
-            final result = await executor(name, resolvedArgs as Map<String, dynamic>)
+            final result = await executor(name, resolvedArgs)
                 .timeout(Duration(milliseconds: perStepTimeout));
             ran++;
             final isErr = result.isError;
@@ -981,7 +981,7 @@ Tool _recordMacroTool(AndroidAutomationService s) => Tool(
         if (name.contains('/') || name.contains('..')) {
           return const ToolResult.error('name 不能包含路径符号');
         }
-        final r = await s.gshell(
+        await s.gshell(
             'settings put system pointer_location 1 2>/dev/null; '
             'screenrecord --time-limit $maxSec /sdcard/${name}_raw.mp4 2>/dev/null &');
         return ToolResult.ok(
@@ -1003,7 +1003,7 @@ Tool _stopMacroTool(AndroidAutomationService s) => Tool(
       handler: (args) async {
         final name = args['name'] as String? ?? '';
         if (name.isEmpty) return const ToolResult.error('参数 name 不能为空');
-        final r = await s.gshell(
+        await s.gshell(
             'pkill -f "screenrecord.*${name}_raw" 2>/dev/null; '
             'settings put system pointer_location 0 2>/dev/null');
         return ToolResult.ok(
@@ -1228,7 +1228,7 @@ Tool _shizukuSimplifiedTool(AndroidAutomationService s) => Tool(
         if (action == 'setup_wireless_adb') {
           final r1 = await s.gshell('settings put global development_settings_enabled 1 2>/dev/null');
           final r2 = await s.gshell('settings put global adb_wifi_enabled 1 2>/dev/null');
-          final r3 = await s.gshell('setprop service.adb.tcp.port $adbPort 2>/dev/null');
+          await s.gshell('setprop service.adb.tcp.port $adbPort 2>/dev/null');
           final r4 = await s.gshell('stop adbd; start adbd 2>/dev/null');
           sb.writeln('===== 无线 ADB 设置 =====');
           sb.writeln('开发者选项: ${r1.ok ? "已开启" : "失败"}');

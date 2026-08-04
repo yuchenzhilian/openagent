@@ -1,5 +1,4 @@
 /// Hybrid retriever combining semantic and keyword search via RRF fusion.
-import 'embedding_service.dart';
 import 'vector_index.dart';
 
 class HybridSearchResult { final String docId, text, sourceFile; final double semanticScore, keywordScore, combinedScore; const HybridSearchResult({required this.docId, required this.text, required this.sourceFile, this.semanticScore = 0.0, this.keywordScore = 0.0, this.combinedScore = 0.0}); }

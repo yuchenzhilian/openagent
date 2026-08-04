@@ -573,7 +573,6 @@ Tool _composeDouyinBatchSwipe(AndroidAutomationService s) => Tool(
 
         final steps = <String>[];
         String r() => steps.map((l) => '  • $l').join('\n');
-        final log = <String>[];
 
         // 确保在抖音推荐流首页
         final info = await s.getTopApp();
@@ -740,7 +739,6 @@ Tool _composeWechatMomentsLikeBatch(AndroidAutomationService s) => Tool(
         var liked = 0;
         final dotsX = (w * 0.93).round();
         var currentDotsY = (h * 0.42).round(); // 第一条的右下角一般在 42%
-        final perItemDy = (h * 0.40).round();  // 每条动态约 40% 屏高 (纯文字/图片混合)
         final menuY = (h * 0.55).round();       // 弹出菜单内「赞」的位置（菜单位于屏幕中下部）
         // 点赞按钮在微信弹出菜单中通常第一行，contentDescription="赞"
         for (var i = 0; i < n; i++) {
@@ -1213,15 +1211,11 @@ Tool _composeSystemSendSms(AndroidAutomationService s) => Tool(
 
         // Strategy 1: Intent SENDTO 最稳 (直接 调起 写好收件人和正文 的 短信页)
         final toNoBlank = to.replaceAll(' ', '').replaceAll('-', '');
-        final uri = 'smsto:$toNoBlank';
-        final body = Uri.encodeQueryComponent(msg).replaceAll('+', '%20');
-        final shell = 'am start -a android.intent.action.SENDTO -d "$uri" '
-            '--es sms_body "\$msg" --ez exit_on_sent false';
         // Using android.content.extra.TEXT is the conventional way
         final shell2 = 'am start -a android.intent.action.SENDTO -d "smsto:$toNoBlank" '
             '--es android.telephony.extra.SMS_BODY "${msg.replaceAll('\'', '')}" '
             '--activity-clear-top';
-        final ok1 = await s.openApp('com.google.android.apps.messaging') ||
+        await s.openApp('com.google.android.apps.messaging') ||
             await s.openApp('com.android.mms') ||
             await s.openApp('com.android.messaging') ||
             true; // 即使没明确包名也继续
@@ -1395,7 +1389,7 @@ Tool _composeSystemDial(AndroidAutomationService s) => Tool(
         }
 
         // L1 UI Fallback: 打开拨号盘，输号，点绿色电话图标
-        final ok1 = await s.openApp('com.android.dialer') ||
+        await s.openApp('com.android.dialer') ||
             await s.openApp('com.samsung.android.dialer') ||
             await s.openApp('com.miui.dialer') || true;
         steps.add('打开拨号器: OK');
@@ -1434,7 +1428,7 @@ Tool _composeSystemTakePhoto(AndroidAutomationService s) => Tool(
         final steps = <String>[];
         String r() => steps.map((l) => '  • $l').join('\n');
 
-        final ok = await s.openApp('com.android.camera') ||
+        await s.openApp('com.android.camera') ||
             await s.openApp('com.miui.camera') ||
             await s.openApp('com.samsung.android.camera') || true;
         steps.add('打开系统相机: OK');
@@ -1552,8 +1546,6 @@ Tool _composeGameAutoVlmLoop(
         final res = await s.screenResolution();
         final w = res?[0] ?? 1080;
         final h = res?[1] ?? 2400;
-        final cx = (w * 0.5).round();
-        final cy = (h * 0.5).round();
 
         int toPx(num v, int maxPx) => v < 1 ? (v * maxPx).round() : v.toInt(); // 0~1 百分比 or 纯像素
 
@@ -1664,7 +1656,7 @@ Tool _composeGameAutoVlmLoop(
               }
               await Future<void>.delayed(Duration(milliseconds: delay));
             }
-          } catch (e, st) {
+          } catch (e) {
             steps.add('  VLM 解析出错 (跳过本轮): $e');
             // ignore, continue
           }

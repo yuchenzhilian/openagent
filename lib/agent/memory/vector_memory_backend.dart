@@ -27,7 +27,6 @@ class VectorMemoryBackend {
   final EmbeddingService _embeddingService;
   final Map<String, _MemoryValue> _store = {};
   bool _loaded = false;
-  final MemoryScorer _scorer = MemoryScorer();
 
   Future<void> initialize() async { if (_loaded) return; await _embeddingService.load(); await _loadFromFile(); _loaded = true; }
 

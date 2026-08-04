@@ -309,7 +309,6 @@ Tool _ocrScreenTool(AndroidAutomationService s) => Tool(
         },
       }),
       handler: (args) async {
-        final lang = (args['language_hint'] as String?) ?? '';
         // Take screenshot first.
         final imgPath = await s.takeScreenshot();
         if (imgPath == null || imgPath.isEmpty) {
@@ -383,7 +382,7 @@ Tool _doubleClickByTextTool(AndroidAutomationService s) => Tool(
         final exact = args['exact'] as bool? ?? true;
         if (text.isEmpty) return const ToolResult.error('参数 text 不能为空');
         // Find the node first, then perform double-click via coordinates.
-        final dump = await s.dumpUi();
+        await s.dumpUi();
         // Parse dump to find node with text match.
         // For simplicity, find by text and click twice.
         final ok1 = await s.clickByText(text, exact: exact);

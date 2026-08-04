@@ -8,7 +8,6 @@
 ///
 /// Classification is cheap (~1ms) and runs entirely on-device.
 
-import 'agent_runtime.dart' show Tool;
 
 /// Intent categories.
 enum IntentCategory {

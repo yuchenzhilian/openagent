@@ -5,7 +5,7 @@ enum QuantGranularity { perChannel, perToken, perGroup }
 class QuantConfig { final QuantBits visionBits, languageBits; final QuantGranularity granularity; const QuantConfig({required this.visionBits, required this.languageBits, this.granularity = QuantGranularity.perChannel}); String get label => 'V${visionBits.name}_L${languageBits.name}_${granularity.name}'; }
 
 class QuantizationBenchmark {
-  final List<QuantConfig> _configs = []; final List<Map<String, dynamic>> _results = [];
+  final List<QuantConfig> _configs = [];
 
   void addConfig(QuantConfig config) { _configs.add(config); }
 

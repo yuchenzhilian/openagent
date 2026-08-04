@@ -5,11 +5,10 @@ class IndexedChunk { final String docId, text, sourceFile; final int chunkIndex;
 class SearchResult { final String docId, text, sourceFile; final double score; const SearchResult({required this.docId, required this.text, required this.sourceFile, required this.score}); }
 
 class VectorIndex {
-  VectorIndex({required String dbPath, EmbeddingService? embeddingService}) : _dbPath = dbPath, _embeddingService = embeddingService;
-  final String _dbPath; final EmbeddingService? _embeddingService;
-  final List<IndexedChunk> _chunks = []; bool _initialized = false;
+  VectorIndex({required String dbPath, EmbeddingService? embeddingService});
+  final List<IndexedChunk> _chunks = [];
 
-  Future<void> initialize() async { _initialized = true; }
+  Future<void> initialize() async {}
   Future<void> addChunk(IndexedChunk chunk) async { await initialize(); _chunks.add(chunk); }
   Future<void> addChunks(List<IndexedChunk> chunks) async { for (final c in chunks) await addChunk(c); }
 

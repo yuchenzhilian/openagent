@@ -25,9 +25,7 @@ import 'dart:io';
 import '../agent_runtime.dart';
 import '../android_tools.dart';
 import '../mcp/mcp_client.dart';
-import '../mcp/mcp_persistence.dart';
 import 'skills.dart';
-import 'skill_tools.dart';
 
 /// skill_state_save + skill_state_load
 List<Tool> createSkillPersistenceTools(SkillManager skillManager, String statePath) {
@@ -167,8 +165,6 @@ List<Tool> createSkillToolsManifestTools(SkillManager skillManager, AgentRuntime
         },
       },
       handler: (args) async {
-        final showSchema = args['schema_hint'] != false;
-        final maxLen = (args['max_desc_len'] as int?) ?? 120;
         final sb = StringBuffer();
         final bySkill = skillManager.toolIdsBySkill;
         if (bySkill.isEmpty) {

@@ -75,7 +75,6 @@ class AndroidAutomationService {
         final r = await gshell('pm grant com.openagent.openagent android.permission.DUMP 2>/dev/null');
         return (granted: r.ok, message: r.ok ? 'DUMP 权限已授予' : '未授予 DUMP 权限（需要 Shizuku/Root）');
     }
-    return (granted: false, message: '未知权限类型');
   }
 
   /// Throws on non-Android platforms (which is expected — callers should gate
@@ -991,20 +990,17 @@ class AndroidAutomationService {
       sb.writeln(r1.stdout);
     }
     // 原生 Context.checkSelfPermission (通过 MethodChannel)
-    final ch = _channel;
-    if (ch != null) {
-      try {
-        final native = await ch.invokeMethod<String>(
-          'android_check_permissions',
-          <String, dynamic>{'permissions': perms},
-        );
-        if (native != null && native.trim().isNotEmpty) {
-          sb.writeln('\n===== 原生 Context.checkSelfPermission 结果 =====');
-          sb.writeln(native);
-        }
-      } catch (_) {
-        // 旧版 APK 可能没实现这个 method，忽略用 shell 结果就行
+    try {
+      final native = await _channel.invokeMethod<String>(
+        'android_check_permissions',
+        <String, dynamic>{'permissions': perms},
+      );
+      if (native != null && native.trim().isNotEmpty) {
+        sb.writeln('\n===== 原生 Context.checkSelfPermission 结果 =====');
+        sb.writeln(native);
       }
+    } catch (_) {
+      // 旧版 APK 可能没实现这个 method，忽略用 shell 结果就行
     }
     // 如果 perms 为空，另外直接通过 cmd appops 看一下常用的危险权限状态
     if (perms.isEmpty) {
@@ -1036,19 +1032,16 @@ class AndroidAutomationService {
   ///   如果 Activity 前台不可用，则 fallback 打开系统应用详情页让用户点授权）。
   ///   代码层绝不替用户决定"要不要授权某权限"，全由你 (LLM) 指定请求哪几个。
   Future<ShellResult> requestRuntimePermissions(List<String> perms, {bool openSettingsIfNeeded = true}) async {
-    final ch = _channel;
-    if (ch != null) {
-      try {
-        final r = await ch.invokeMethod<String>(
-          'android_request_permissions',
-          <String, dynamic>{'permissions': perms},
-        );
-        if (r != null && r.trim().isNotEmpty) {
-          return ShellResult(ok: true, exitCode: 0, stdout: r, stderr: '');
-        }
-      } catch (e) {
-        // method not implemented => fall through to settings intent
+    try {
+      final r = await _channel.invokeMethod<String>(
+        'android_request_permissions',
+        <String, dynamic>{'permissions': perms},
+      );
+      if (r != null && r.trim().isNotEmpty) {
+        return ShellResult(ok: true, exitCode: 0, stdout: r, stderr: '');
       }
+    } catch (e) {
+      // method not implemented => fall through to settings intent
     }
     if (!openSettingsIfNeeded) {
       return ShellResult(ok: false, exitCode: -2, stdout: '', stderr: '原生权限申请通道不可用，openSettingsIfNeeded=false 已禁用跳转设置');
@@ -1115,17 +1108,14 @@ class AndroidAutomationService {
       sb.writeln(r4.stdout);
     }
     // 原生 Build 字段 (更准确的版本号/Build.SERIAL 脱敏等)
-    final ch = _channel;
-    if (ch != null) {
-      try {
-        final native = await ch.invokeMethod<String>('android_get_build_info');
-        if (native != null && native.trim().isNotEmpty) {
-          sb.writeln('\n===== 原生 Build.* 字段 =====');
-          sb.writeln(native);
-        }
-      } catch (_) {
-        // 非关键信息，忽略
+    try {
+      final native = await _channel.invokeMethod<String>('android_get_build_info');
+      if (native != null && native.trim().isNotEmpty) {
+        sb.writeln('\n===== 原生 Build.* 字段 =====');
+        sb.writeln(native);
       }
+    } catch (_) {
+      // 非关键信息，忽略
     }
     return sb.toString();
   }

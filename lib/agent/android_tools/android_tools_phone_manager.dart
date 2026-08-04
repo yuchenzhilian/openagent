@@ -452,7 +452,6 @@ Tool _phoneAppManagerTool(AndroidAutomationService s) => Tool(
         String r() => steps.map((l) => '  • $l').join('\n');
 
         if (action == 'list_large') {
-          final exclude = keepSystem ? '| grep -v system' : '';
           final sr = await s.gshell(
               'pm list packages ${keepSystem ? "-3" : ""} 2>/dev/null | '
               'head -50 | while read line; do '

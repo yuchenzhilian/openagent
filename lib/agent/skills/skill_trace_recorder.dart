@@ -1,5 +1,5 @@
 /// Enhanced trace recorder for skill creation.
-import 'dart:convert';
+
 
 class TraceStep { final String toolName; final Map<String, dynamic> args; final int timestamp; final String result; final int durationMs; const TraceStep({required this.toolName, required this.args, required this.timestamp, required this.result, required this.durationMs}); }
 class TraceContext { final String appPackage, screenName; final int screenWidth, screenHeight; const TraceContext({required this.appPackage, required this.screenName, this.screenWidth = 1080, this.screenHeight = 2400}); }
