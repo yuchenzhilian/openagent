@@ -296,7 +296,8 @@ class SamplingConfig {
         topK: (j['top_k'] as num?)?.toInt() ?? 20,
         topP: (j['top_p'] as num?)?.toDouble() ?? 0.8,
         maxNewTokens: (j['max_new_tokens'] as num?)?.toInt() ?? 1024,
-        repetitionPenalty: (j['repetition_penalty'] as num?)?.toDouble() ?? 1.05,
+        repetitionPenalty:
+            (j['repetition_penalty'] as num?)?.toDouble() ?? 1.05,
       );
 }
 

@@ -74,8 +74,8 @@ class DeviceMonitorService {
   void start() {
     _timer?.cancel();
     _sampleAsync(); // Immediate first sample.
-    _timer =
-        Timer.periodic(Duration(seconds: sampleIntervalSec), (_) => _sampleAsync());
+    _timer = Timer.periodic(
+        Duration(seconds: sampleIntervalSec), (_) => _sampleAsync());
   }
 
   /// Stop periodic sampling.

@@ -117,9 +117,8 @@ class ChatPageState extends State<ChatPage> {
     _scheduler!.onProfileChange((profile) {
       // Dynamically adjust max tokens when device state changes.
       if (!_usingCloud && _session != null) {
-        final updatedSampling = _config.sampling
-            .copyWith(maxNewTokens: profile.maxTokens)
-            .toJson();
+        final updatedSampling =
+            _config.sampling.copyWith(maxNewTokens: profile.maxTokens).toJson();
         if (_config.systemPrompt.isNotEmpty) {
           updatedSampling['system_prompt'] = _config.systemPrompt;
         }
@@ -235,7 +234,8 @@ class ChatPageState extends State<ChatPage> {
       // Merge dynamic backend config (GPU/OpenCL, thread count, memory mode)
       // based on detected device capability.
       if (_deviceCapability != null) {
-        sampling.addAll(MnnConfigBuilder.buildBackendConfig(_deviceCapability!));
+        sampling
+            .addAll(MnnConfigBuilder.buildBackendConfig(_deviceCapability!));
       }
 
       if (_modelType == ModelType.omni) {

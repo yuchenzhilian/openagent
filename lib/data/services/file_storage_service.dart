@@ -87,8 +87,10 @@ class FileStorageService {
     for (final e in entries) {
       if (e is! File) continue;
       final name = e.uri.pathSegments.last;
-      if (name == 'config.json' || name == 'llm_config.json' ||
-          name == 'tokenizer.txt' || name.startsWith('.')) {
+      if (name == 'config.json' ||
+          name == 'llm_config.json' ||
+          name == 'tokenizer.txt' ||
+          name.startsWith('.')) {
         continue;
       }
       // Found a non-config artifact (e.g. llm.mnn, llm.mnn.weight,
