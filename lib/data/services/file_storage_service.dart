@@ -76,13 +76,26 @@ class FileStorageService {
 
   Future<bool> isModelDownloaded(String modelId) async {
     final dir = await getModelDir(modelId);
-    // Both config.json and llm.mnn.weight must exist — the weight file is
-    // the largest (often 99 % of total size) and is downloaded last.
-    // Checking only config.json would give false positives for interrupted
-    // downloads where config.json arrived but the weight file didn't.
+    // config.json must exist - it's required by MnnLlmSession.load.
     final hasConfig = await File('${dir.path}/config.json').exists();
     if (!hasConfig) return false;
-    return File('${dir.path}/llm.mnn.weight').exists();
+    // The weight file name varies across MNN model repos
+    // (llm.mnn.weight, llm.mnn, model.mnn, ...). Instead of hard-coding
+    // one name, check that at least one model artifact exists besides
+    // config.json / llm_config.json / tokenizer.txt.
+    final entries = await dir.list().toList();
+    for (final e in entries) {
+      if (e is! File) continue;
+      final name = e.uri.pathSegments.last;
+      if (name == 'config.json' || name == 'llm_config.json' ||
+          name == 'tokenizer.txt' || name.startsWith('.')) {
+        continue;
+      }
+      // Found a non-config artifact (e.g. llm.mnn, llm.mnn.weight,
+      // embedding.mnn, ...). Treat the model as downloaded.
+      return true;
+    }
+    return false;
   }
 
   Future<void> deleteModel(String modelId) async {

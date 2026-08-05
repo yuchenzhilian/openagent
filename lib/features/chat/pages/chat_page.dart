@@ -24,7 +24,10 @@ import '../../../data/models/models.dart';
 import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../data/services/android_automation_service.dart';
+import '../../../data/services/device_capability_service.dart';
 import '../../../data/services/file_storage_service.dart';
+import '../../../data/services/mnn_config_builder.dart';
+import '../../../agent/inference_scheduler.dart';
 import '../widgets/message_bubble.dart';
 
 class ChatPage extends StatefulWidget {
@@ -60,6 +63,12 @@ class ChatPageState extends State<ChatPage> {
   String? _loadedModelId;
   String? _statusLine;
 
+  /// Cached device capability for backend config and model recommendation.
+  DeviceCapability? _deviceCapability;
+
+  /// Adaptive inference scheduler for dynamic profile switching.
+  InferenceScheduler? _scheduler;
+
   /// Stats for the current agent run (reset on AgentDoneEvent).
   int _toolCallCount = 0;
   int _toolCallErrorCount = 0;
@@ -89,6 +98,35 @@ class ChatPageState extends State<ChatPage> {
   Future<void> _bootstrap() async {
     _config = await widget.storage.loadAppConfig();
     _sessions = await _chatRepo.loadSessions();
+
+    // Detect device capability once on startup for backend config and
+    // model recommendation.
+    _deviceCapability = await DeviceCapabilityService().detect();
+
+    // Auto-recommend a model if the user hasn't selected one yet.
+    if (_config.activeModelId == null && _deviceCapability != null) {
+      final recommended =
+          DeviceCapability.recommendModel(_deviceCapability!.totalMemoryMb);
+      _config = _config.copyWith(activeModelId: recommended);
+      await widget.storage.saveAppConfig(_config);
+    }
+
+    // Start adaptive inference scheduler for dynamic profile switching.
+    _scheduler = InferenceScheduler();
+    _scheduler!.start();
+    _scheduler!.onProfileChange((profile) {
+      // Dynamically adjust max tokens when device state changes.
+      if (!_usingCloud && _session != null) {
+        final updatedSampling = _config.sampling
+            .copyWith(maxNewTokens: profile.maxTokens)
+            .toJson();
+        if (_config.systemPrompt.isNotEmpty) {
+          updatedSampling['system_prompt'] = _config.systemPrompt;
+        }
+        _session!.setConfig(updatedSampling);
+      }
+    });
+
     if (_sessions.isEmpty) {
       _current = ChatSession(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -194,6 +232,12 @@ class ChatPageState extends State<ChatPage> {
         sampling['system_prompt'] = _config.systemPrompt;
       }
 
+      // Merge dynamic backend config (GPU/OpenCL, thread count, memory mode)
+      // based on detected device capability.
+      if (_deviceCapability != null) {
+        sampling.addAll(MnnConfigBuilder.buildBackendConfig(_deviceCapability!));
+      }
+
       if (_modelType == ModelType.omni) {
         _omniSession = await MnnOmniSession.create();
         await _omniSession!.load(configPath);
@@ -202,6 +246,23 @@ class ChatPageState extends State<ChatPage> {
         _session = await MnnLlmSession.create();
         await _session!.load(configPath);
         await _session!.setConfig(sampling);
+
+        // Warm-up: run a minimal dummy inference to trigger MNN kernel
+        // compilation and OpenCL cache generation. This significantly
+        // reduces TTFA (time to first token) on the first real query.
+        if (_deviceCapability != null) {
+          final warmupConfig =
+              MnnConfigBuilder.buildWarmupConfig(_deviceCapability!);
+          await _session!.setConfig(warmupConfig);
+          try {
+            await for (final _ in _session!.chatStream('hi')) {}
+          } catch (_) {
+            // Warm-up failure is non-fatal - just skip.
+          }
+          // Restore the real sampling config and clear warm-up KV cache.
+          await _session!.setConfig(sampling);
+          _session!.reset();
+        }
       }
       _loadedModelId = modelId;
       _statusLine = null;
@@ -417,7 +478,11 @@ class ChatPageState extends State<ChatPage> {
     final prompt = _inputCtrl.text.trim();
     final media = List<String>.of(_attachedMedia);
     if (prompt.isEmpty && media.isEmpty) return;
-    if (!_hasSession || _isGenerating) return;
+    if (!_hasSession) {
+      _snack('模型尚未加载完成，请稍候或前往模型市场选择已下载的模型');
+      return;
+    }
+    if (_isGenerating) return;
 
     // Smart intent detection — auto-enable agent mode if needed.
     if (!_agentMode && prompt.isNotEmpty) {
@@ -514,6 +579,7 @@ class ChatPageState extends State<ChatPage> {
       _session!,
       maxSteps: enableAndroidAutomation ? 20 : 5,
       androidMode: enableAndroidAutomation,
+      totalMemoryMb: _deviceCapability?.totalMemoryMb,
     );
     for (final tool in builtinTools()) {
       agent.registerTool(tool);
@@ -968,6 +1034,7 @@ class ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
+    _scheduler?.dispose();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
     _audioRecorder.dispose();
@@ -1243,7 +1310,7 @@ class ChatPageState extends State<ChatPage> {
                       tooltip: '停止',
                     )
                   : IconButton.filled(
-                      onPressed: _send,
+                      onPressed: _hasSession ? _send : null,
                       icon: const Icon(Icons.arrow_upward),
                       tooltip: '发送',
                     ),
