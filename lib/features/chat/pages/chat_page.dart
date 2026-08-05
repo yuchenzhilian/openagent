@@ -1013,6 +1013,10 @@ class ChatPageState extends State<ChatPage> {
     if (_config.systemPrompt.isNotEmpty) {
       sampling['system_prompt'] = _config.systemPrompt;
     }
+    // Apply dynamic backend config for GPU acceleration and thread optimization.
+    if (_deviceCapability != null) {
+      sampling.addAll(MnnConfigBuilder.buildBackendConfig(_deviceCapability!));
+    }
     final session = await MnnOmniSession.create();
     try {
       await session.load(configPath);

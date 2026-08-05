@@ -185,8 +185,12 @@ abstract class AgentRuntime {
 ///   3. If no tool call is found, the response is the final answer.
 class LocalMnnAgentRuntime implements AgentRuntime {
   LocalMnnAgentRuntime(this._session,
-      {this.maxSteps = 5, this.androidMode = false}) {
-    _slidingWindow = SlidingWindowCache();
+      {this.maxSteps = 5, this.androidMode = false, int? totalMemoryMb}) {
+    // Use adaptive KV cache window if device memory is known, otherwise
+    // fall back to the default 2048-token window.
+    _slidingWindow = totalMemoryMb != null
+        ? SlidingWindowCache.forDevice(totalMemoryMb)
+        : SlidingWindowCache();
     _scheduler = InferenceScheduler(monitor: DeviceMonitorService());
     _scheduler.start();
   }

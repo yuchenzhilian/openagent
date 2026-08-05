@@ -61,11 +61,22 @@ class InferenceProfile {
     idleTimeout: Duration(minutes: 2),
   );
 
-  /// Thermal-throttled profile — device is overheating.
+  /// Thermal-throttled profile - device is overheating.
   static const thermalThrottled = InferenceProfile(
     modelId: 'Qwen3-0.6B-MNN',
     maxTokens: 256,
     maxSteps: 5,
+    enableVlm: false,
+    enableWebSearch: false,
+    idleTimeout: Duration(minutes: 1),
+  );
+
+  /// Ultra-lite profile - very low-end devices (<4GB RAM).
+  /// Uses the smallest model, minimal tokens, and disables all heavy features.
+  static const ultraLite = InferenceProfile(
+    modelId: 'Qwen3-0.6B-MNN',
+    maxTokens: 256,
+    maxSteps: 3,
     enableVlm: false,
     enableWebSearch: false,
     idleTimeout: Duration(minutes: 1),
@@ -109,6 +120,10 @@ class InferenceScheduler {
   InferenceProfile selectProfile(DeviceState state) {
     if (state.isOverheating) {
       return InferenceProfile.thermalThrottled;
+    }
+    // Ultra-lite for very low memory devices (<2GB available).
+    if (state.availableMemoryMb < 2048) {
+      return InferenceProfile.ultraLite;
     }
     if (state.isLowPower) {
       return InferenceProfile.powerSaving;

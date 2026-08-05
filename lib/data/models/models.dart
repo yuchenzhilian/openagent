@@ -255,10 +255,10 @@ class ModelInfo {
 class SamplingConfig {
   const SamplingConfig({
     this.temperature = 0.7,
-    this.topK = 40,
-    this.topP = 0.9,
+    this.topK = 20,
+    this.topP = 0.8,
     this.maxNewTokens = 1024,
-    this.repetitionPenalty = 1.1,
+    this.repetitionPenalty = 1.05,
   });
 
   final double temperature;
@@ -293,10 +293,10 @@ class SamplingConfig {
 
   factory SamplingConfig.fromJson(Map<String, dynamic> j) => SamplingConfig(
         temperature: (j['temperature'] as num?)?.toDouble() ?? 0.7,
-        topK: (j['top_k'] as num?)?.toInt() ?? 40,
-        topP: (j['top_p'] as num?)?.toDouble() ?? 0.9,
+        topK: (j['top_k'] as num?)?.toInt() ?? 20,
+        topP: (j['top_p'] as num?)?.toDouble() ?? 0.8,
         maxNewTokens: (j['max_new_tokens'] as num?)?.toInt() ?? 1024,
-        repetitionPenalty: (j['repetition_penalty'] as num?)?.toDouble() ?? 1.1,
+        repetitionPenalty: (j['repetition_penalty'] as num?)?.toDouble() ?? 1.05,
       );
 }
 

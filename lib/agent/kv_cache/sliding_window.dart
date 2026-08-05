@@ -18,6 +18,18 @@ class SummaryEntry {
 
 class SlidingWindowCache {
   SlidingWindowCache({this.windowSize = 2048, this.summaryCacheSize = 1024});
+
+  /// Factory: create a cache sized for the device's memory capacity.
+  /// Smaller windows reduce prefill latency on low-end devices.
+  factory SlidingWindowCache.forDevice(int totalMemoryMb) {
+    final windowSize = switch (totalMemoryMb) {
+      >= 6144 => 2048,
+      >= 4096 => 1024,
+      _ => 512,
+    };
+    return SlidingWindowCache(windowSize: windowSize);
+  }
+
   final int windowSize;
   final int summaryCacheSize;
   final List<_CacheEntry> _window = [];

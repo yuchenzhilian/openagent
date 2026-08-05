@@ -10,6 +10,8 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'device_probe_service.dart';
+
 /// Thermal levels for decision-making.
 enum ThermalLevel { normal, warm, hot, critical }
 
@@ -71,9 +73,9 @@ class DeviceMonitorService {
   /// Start periodic sampling.
   void start() {
     _timer?.cancel();
-    _sample(); // Immediate first sample.
+    _sampleAsync(); // Immediate first sample.
     _timer =
-        Timer.periodic(Duration(seconds: sampleIntervalSec), (_) => _sample());
+        Timer.periodic(Duration(seconds: sampleIntervalSec), (_) => _sampleAsync());
   }
 
   /// Stop periodic sampling.
@@ -83,12 +85,12 @@ class DeviceMonitorService {
   }
 
   /// Force an immediate sample.
-  Future<void> sampleNow() async => _sample();
+  Future<void> sampleNow() async => _sampleAsync();
 
-  void _sample() {
-    // On real devices this would read from /sys/class/power_supply/,
-    // /sys/class/thermal/, /proc/meminfo, etc.  For now we simulate
-    // with reasonable defaults.
+  /// Async sampling: probe the native layer first, then read the cached state.
+  Future<void> _sampleAsync() async {
+    await DeviceProbeService().probe(force: true);
+    if (_controller?.isClosed ?? true) return;
     final newState = _readDeviceState();
     if (_hasSignificantChange(newState, _lastState)) {
       _lastState = newState;
@@ -96,23 +98,57 @@ class DeviceMonitorService {
     }
   }
 
-  /// Read actual device state.  Falls back to defaults on non-Android.
+  void _sample() {
+    // Synchronous fallback: read last cached probe data.
+    if (_controller?.isClosed ?? true) return;
+    final newState = _readDeviceState();
+    if (_hasSignificantChange(newState, _lastState)) {
+      _lastState = newState;
+      _controller?.add(newState);
+    }
+  }
+
+  /// Read actual device state via the native DeviceProbe MethodChannel.
+  /// Falls back to defaults on non-Android.
   DeviceState _readDeviceState() {
     if (!Platform.isAndroid) {
       return const DeviceState();
     }
 
-    // In production, these would be read from:
-    // - Battery: /sys/class/power_supply/battery/capacity
-    // - Temperature: /sys/class/thermal/thermal_zone0/temp
-    // - Memory: /proc/meminfo (MemAvailable)
-    // - CPU: /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq
-    // - Screen: dumpsys power | grep mScreenOn
     try {
-      // TODO: implement real device file reads via MethodChannel or shell.
-      return const DeviceState();
+      // Synchronous access to the cached probe result. The probe is
+      // refreshed asynchronously by [sampleNow] / [_sample] which calls
+      // the native layer.  Here we just read the last known values.
+      final info = DeviceProbeService()._cached;
+      if (info == null) return const DeviceState();
+
+      return DeviceState(
+        batteryPercent: info.batteryPercent,
+        isCharging: info.isCharging,
+        temperatureCelsius: info.temperatureCelsius,
+        availableMemoryMb: info.availableMemoryMb,
+        cpuFrequencyMhz: info.cpuMaxFreqMhz,
+        thermalLevel: _thermalLevelFromStatus(info.thermalStatus),
+      );
     } catch (_) {
       return const DeviceState();
+    }
+  }
+
+  /// Map Android PowerManager thermal status to our ThermalLevel enum.
+  ThermalLevel _thermalLevelFromStatus(int status) {
+    // 0 = NONE, 1 = LIGHT, 2 = MODERATE, 3 = SEVERE,
+    // 4 = CRITICAL, 5 = EMERGENCY, 6 = SHUTDOWN
+    switch (status) {
+      case 0:
+      case 1:
+        return ThermalLevel.normal;
+      case 2:
+        return ThermalLevel.warm;
+      case 3:
+        return ThermalLevel.hot;
+      default:
+        return ThermalLevel.critical;
     }
   }
 

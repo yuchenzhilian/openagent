@@ -143,7 +143,7 @@ void main() {
     test('default constructor values', () {
       const config = SamplingConfig();
       expect(config.temperature, 0.7);
-      expect(config.topK, 40);
+      expect(config.topK, 20);
       expect(config.maxNewTokens, 1024);
     });
 
@@ -178,7 +178,7 @@ void main() {
     test('fromJson handles missing fields with defaults', () {
       final config = SamplingConfig.fromJson({});
       expect(config.temperature, 0.7);
-      expect(config.topK, 40);
+      expect(config.topK, 20);
       expect(config.maxNewTokens, 1024);
     });
   });
