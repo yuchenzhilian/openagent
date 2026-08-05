@@ -98,16 +98,6 @@ class DeviceMonitorService {
     }
   }
 
-  void _sample() {
-    // Synchronous fallback: read last cached probe data.
-    if (_controller?.isClosed ?? true) return;
-    final newState = _readDeviceState();
-    if (_hasSignificantChange(newState, _lastState)) {
-      _lastState = newState;
-      _controller?.add(newState);
-    }
-  }
-
   /// Read actual device state via the native DeviceProbe MethodChannel.
   /// Falls back to defaults on non-Android.
   DeviceState _readDeviceState() {
@@ -119,7 +109,7 @@ class DeviceMonitorService {
       // Synchronous access to the cached probe result. The probe is
       // refreshed asynchronously by [sampleNow] / [_sample] which calls
       // the native layer.  Here we just read the last known values.
-      final info = DeviceProbeService()._cached;
+      final info = DeviceProbeService().cachedInfo;
       if (info == null) return const DeviceState();
 
       return DeviceState(

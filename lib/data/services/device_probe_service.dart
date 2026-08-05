@@ -88,6 +88,10 @@ class DeviceProbeService {
   DeviceProbeInfo? _cached;
   bool _probed = false;
 
+  /// Synchronous access to the last cached probe result.
+  /// Returns null if [probe] has not been called yet.
+  DeviceProbeInfo? get cachedInfo => _cached;
+
   /// Probe the device once and cache the result. Subsequent calls return
   /// the cache unless [force] is true.
   Future<DeviceProbeInfo> probe({bool force = false}) async {
