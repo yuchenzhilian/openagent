@@ -9,6 +9,8 @@ Pure Local Inference · Multimodal Interaction · Cross-Platform · Privacy-Firs
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green.svg)](#)
 [![Engine](https://img.shields.io/badge/engine-MNN--LLM%203.6.1-orange.svg)](#)
+[![Android CI](https://github.com/yuchenzhilian/openagent/actions/workflows/build_android.yml/badge.svg)](https://github.com/yuchenzhilian/openagent/actions/workflows/build_android.yml)
+[![iOS CI](https://github.com/yuchenzhilian/openagent/actions/workflows/build_ios.yml/badge.svg)](https://github.com/yuchenzhilian/openagent/actions/workflows/build_ios.yml)
 
 English (current) | [简体中文](README.zh.md)
 
@@ -370,6 +372,21 @@ flutter run --release
 adb push Qwen3-0.6B-MNN /sdcard/Android/data/com.openagent.openagent/files/models/
 flutter run --release
 ```
+
+---
+
+## CI/CD
+
+| Platform | Workflow | Runner | Artifact | Trigger |
+|---|---|---|---|---|
+| Android | `build_android.yml` | ubuntu-latest | `openagent-release-apk` (APK) | push / PR / tag |
+| iOS | `build_ios.yml` | macos-latest | `openagent-release-ios-unsigned` (IPA) | push / PR / tag |
+
+**Pipeline**: checkout -> Flutter setup -> `pub get` -> `flutter analyze` -> `dart format --set-exit-if-changed` -> `flutter test` -> download/build MNN -> `flutter build` -> upload artifact -> GitHub Release (on tag `v*`)
+
+- Android: downloads prebuilt MNN `.so` from GitHub Releases (cached)
+- iOS: builds `MNN.framework` from source with Metal acceleration (cached by `build_ios.sh` hash), generates Xcode project via `flutter create`, builds unsigned IPA
+- Tag a release (`git tag v1.0.0 && git push --tags`) to auto-publish APK + IPA to GitHub Releases
 
 ---
 

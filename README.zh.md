@@ -9,6 +9,8 @@
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green.svg)](#)
 [![Engine](https://img.shields.io/badge/engine-MNN--LLM%203.6.1-orange.svg)](#)
+[![Android CI](https://github.com/yuchenzhilian/openagent/actions/workflows/build_android.yml/badge.svg)](https://github.com/yuchenzhilian/openagent/actions/workflows/build_android.yml)
+[![iOS CI](https://github.com/yuchenzhilian/openagent/actions/workflows/build_ios.yml/badge.svg)](https://github.com/yuchenzhilian/openagent/actions/workflows/build_ios.yml)
 
 [English](README.md) | 简体中文（当前）
 
@@ -370,6 +372,21 @@ flutter run --release
 adb push Qwen3-0.6B-MNN /sdcard/Android/data/com.openagent.openagent/files/models/
 flutter run --release
 ```
+
+---
+
+## CI/CD
+
+| 平台 | 工作流 | Runner | 产物 | 触发条件 |
+|---|---|---|---|---|
+| Android | `build_android.yml` | ubuntu-latest | `openagent-release-apk`（APK） | push / PR / tag |
+| iOS | `build_ios.yml` | macos-latest | `openagent-release-ios-unsigned`（IPA） | push / PR / tag |
+
+**流水线**：checkout -> Flutter 环境 -> `pub get` -> `flutter analyze` -> `dart format --set-exit-if-changed` -> `flutter test` -> 下载/构建 MNN -> `flutter build` -> 上传产物 -> GitHub Release（tag `v*` 时）
+
+- Android：从 GitHub Releases 下载预编译 MNN `.so`（带缓存）
+- iOS：从源码构建 `MNN.framework`（Metal 加速，按 `build_ios.sh` 哈希缓存），通过 `flutter create` 生成 Xcode 项目，构建未签名 IPA
+- 打 tag 发布（`git tag v1.0.0 && git push --tags`）自动将 APK + IPA 发布到 GitHub Releases
 
 ---
 
