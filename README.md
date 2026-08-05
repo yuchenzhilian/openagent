@@ -129,6 +129,61 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 
 **Skill 模块**：`ios_shortcuts` + `ios_live_activity`，模型按需启用，Android 上自动 no-op。
 
+**In-App WebView 自动化（跨平台 RPA 替代方案）**：
+
+iOS 上无法像 Android 那样通过 AccessibilityService 操控原生 App。作为替代，OpenAgent 提供了基于内置 WebView 的网页版自动化能力，在 Android 和 iOS 上均可使用：
+
+- `web_navigate` - 在内置 WebView 中导航到 URL（微信网页版、抖音 H5 等）
+- `web_execute_js` - 执行任意 JavaScript 代码操作 DOM
+- `web_get_page_text` - 提取页面文本内容
+- `web_click_element` - 通过 CSS 选择器点击元素
+- `web_fill_form` - 填写表单输入框
+- `web_get_url` - 获取当前页面 URL
+- `web_screenshot` - 对 WebView 截图（可用于 VLM 分析）
+- `web_wait_for_element` - 等待元素出现（带超时）
+
+**iOS RPA 落地路径说明**：
+
+| 方案 | 适用场景 | 上架限制 |
+|---|---|---|
+| **Siri Shortcuts + URL Scheme** | 系统级操作（拨号/短信/地图）+ 打开第三方 App | App Store 可用 |
+| **In-App WebView 自动化** | 网页版微信/抖音/H5 应用操控 | App Store 可用 |
+| **Live Activities 保活** | Agent 运行时状态常驻锁屏/灵动岛 | iOS 16.1+，App Store 可用 |
+| **XCTest UI 测试框架** | 深度原生 App 操控 | 仅限 TestFlight / 企业签名，无法上 App Store |
+
+> **上架建议**：App Store 版本只走 Shortcuts + In-App 自动化路线。TestFlight / 企业包可额外启用 XCTest UI 能力，但需明确标注。
+
+**iOS 能力边界（明确标注）**：
+
+| 能力 | Android | iOS (App Store) | iOS (TestFlight/企业) | 说明 |
+|---|---|---|---|---|
+| 无障碍服务 RPA | ✅ 完整支持 | ❌ 不可用 | ❌ 不可用 | iOS 无 AccessibilityService 等价物 |
+| 屏幕点击/滑动/输入 | ✅ AccessibilityService | ❌ | ⚠️ XCTest UI | XCTest 仅限开发者模式 |
+| UI 层级 Dump | ✅ | ❌ | ⚠️ XCTest UI | |
+| 截屏分析 | ✅ MediaProjection | ✅ ReplayKit | ✅ ReplayKit | iOS 需用户授权屏幕录制 |
+| App 启动 | ✅ Intent + gshell | ✅ URL Scheme | ✅ URL Scheme | iOS 仅限已注册 scheme 的 App |
+| 系统操作（拨号/短信） | ✅ Intent | ✅ URL Scheme | ✅ URL Scheme | `tel:` `sms:` `maps:` |
+| Siri 语音快捷指令 | ❌ | ✅ App Intents | ✅ App Intents | iOS 16+ |
+| Live Activities 保活 | ❌ | ✅ ActivityKit | ✅ ActivityKit | iOS 16.1+，锁屏/灵动岛 |
+| In-App WebView 自动化 | ✅ | ✅ | ✅ | 跨平台，网页版应用操控 |
+| 文件系统访问 | ✅ 完整 | ⚠️ 沙箱限制 | ⚠️ 沙箱限制 | iOS App Sandbox |
+| Shell 命令执行 | ✅ Shizuku/Root | ❌ | ❌ | iOS 不允许 |
+| 通知监听 | ✅ NotificationListenerService | ❌ | ❌ | iOS 无等价 API |
+| 通话日志/通讯录 | ✅ ContentProvider | ⚠️ 有限 Contacts | ⚠️ 有限 Contacts | iOS 仅限通讯录读取 |
+| 传感器访问 | ✅ 完整 | ⚠️ 有限 | ⚠️ 有限 | iOS 后台传感器受限 |
+| 前台服务保活 | ✅ Foreground Service | ❌ | ❌ | iOS 无前台服务，靠 Live Activity 替代 |
+| 防检测/隐藏 | ✅ Shizuku 隐藏 | ❌ | ❌ | iOS 不需要（沙箱隔离） |
+
+> **总结**：iOS 上 RPA 能力约为 Android 的 30%，主要依赖 Shortcuts + URL Scheme + WebView 三条路径。核心限制是无法操控其他原生 App 的 UI。
+
+**跨平台 #ifdef 治理**：
+
+平台差异通过统一的抽象层管理，不散落在 UI 代码中：
+- `PlatformAutomationService` 接口：统一 `isSupported` 闸门契约
+- `PlatformToolFactory` 接口：Android/iOS 工厂各自实现，统一注册入口 `createPlatformTools()`
+- `ToolFactoryContext`：收敛工厂参数（service/visionAnalyze/memoryBackend 等）
+- 优雅降级：不支持的平台上注册降级 stub 工具，返回"当前功能仅在 XX 平台可用"提示
+
 ### 5. 云端 LLM 接入
 
 - 支持任意 OpenAI 兼容端点（OpenAI / DeepSeek / 通义千问 / 豆包 / Groq / Ollama / Anthropic / 自定义）
@@ -145,7 +200,7 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - **Stdio 沙箱进程隔离**：限制文件系统访问和执行时间
 - **mDNS 局域网发现**：自动发现无公网环境下的 MCP Server
 
-### 6. Skill 模块化系统
+### 7. Skill 模块化系统
 
 - 8+ 内置模块：android_rpa / ios_shortcuts / ios_live_activity / builtin_math_time / knowledge_rag / longterm_memory / execute_plan / vision_analyze / mcp_gateway 等
 - 模型自主选择启用/禁用，拓扑依赖自动排序
@@ -342,7 +397,8 @@ openagent/
 │   │   │   ├── model_download_service.dart
 │   │   │   ├── schedule_service.dart     # 定时任务调度
 │   │   │   ├── android_automation_service.dart
-│   │   │   └── ios_automation_service.dart  # iOS 自动化 (Shortcuts + Live Activities)
+│   │   │   ├── ios_automation_service.dart  # iOS 自动化 (Shortcuts + Live Activities)
+│   │   │   └── platform_automation_service.dart # 平台抽象接口 (PlatformAutomationService)
 │   │   └── repositories/
 │   ├── features/
 │   │   ├── chat/                       # 对话页
@@ -369,6 +425,8 @@ openagent/
 │       ├── android_tools.dart          # 入口（工厂函数）
 │       ├── android_tools/              # 6 个子模块
 │       ├── ios_tools.dart              # iOS 自动化工具 (Shortcuts + Live Activities)
+│       ├── web_tools.dart              # 跨平台 WebView 自动化工具
+│       ├── tool_registry.dart          # 统一平台工具注册 (PlatformToolFactory)
 │       ├── builtin_tools.dart          # 入口（工厂函数）
 │       ├── builtin_tools/              # 3 个子模块
 │       ├── rpa/                        # RPA 自动化增强

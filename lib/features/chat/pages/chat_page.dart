@@ -14,6 +14,8 @@ import 'package:mnn_llm/mnn_llm.dart';
 import '../../../agent/agent_runtime.dart';
 import '../../../agent/android_tools.dart';
 import '../../../agent/builtin_tools.dart';
+import '../../../agent/tool_registry.dart';
+import '../../../agent/web_tools.dart';
 import '../../../agent/mcp/mcp_client.dart';
 import '../../../agent/mcp/mcp_persistence.dart';
 import '../../../agent/skills/skills.dart';
@@ -700,6 +702,27 @@ class ChatPageState extends State<ChatPage> {
       )) {
         agent.registerTool(t);
       }
+    }
+
+    // Register cross-platform WebView automation tools (available on all
+    // platforms - the iOS RPA alternative for web-based workflows).
+    for (final t in createWebAutomationTools()) {
+      agent.registerTool(t);
+    }
+
+    // Register platform tools via the unified ToolRegistry. On each platform
+    // this registers the native tools + degradation stubs for the other
+    // platform's tools (so the Agent gets "not available" instead of a
+    // missing tool error).
+    final platformTools = createPlatformTools(ToolFactoryContext(
+      androidService: _android,
+      iosService: _ios,
+      visionAnalyze: _visionAnalyzeImage,
+      executeCallback: (name, args) => agent.executeTool(name, args),
+      memoryBackend: FileAgentMemoryBackend(memPath),
+    ));
+    for (final t in platformTools) {
+      agent.registerTool(t);
     }
 
     // Auto-start Live Activity on iOS so the user sees Agent status in

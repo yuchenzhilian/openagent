@@ -1,0 +1,84 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Format check
+        run: dart format --set-exit-if-changed lib/ test/
+
+      - name: Run tests
+        run: flutter test
+
+      # ---- Build MNN.framework for iOS ----
+      # The framework is built from source (MNN 3.3.0) with Metal acceleration.
+      # This step takes ~15-20 min; cached by hash of build_ios.sh.
+      - name: Cache MNN framework
+        id: cache-mnn-ios
+        uses: actions/cache@v4
+        with:
+          path: packages/mnn_llm/third_party/mnn/ios/MNN.framework
+          key: mnn-ios-framework-${{ hashFiles('packages/mnn_llm/scripts/build_ios.sh') }}
+
+      - name: Build MNN framework
+        if: steps.cache-mnn-ios.outputs.cache-hit != 'true'
+        run: |
+          chmod +x packages/mnn_llm/scripts/build_ios.sh
+          bash packages/mnn_llm/scripts/build_ios.sh
+
+      # ---- Build iOS app ----
+      # Build without code signing for CI. The .app can be manually signed
+      # or distributed via TestFlight with a signing certificate.
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      # ---- Package .ipa ----
+      # Create a Payload directory and zip it into an .ipa file.
+      # This unsigned .ipa can be installed via tools like iOS App Signer
+      # or signed with a development/distribution certificate.
+      - name: Package IPA
+        run: |
+          mkdir -p build/Payload
+          cp -R build/ios/iphoneos/Runner.app build/Payload/
+          cd build
+          zip -r openagent-release-unsigned.ipa Payload
+          rm -rf Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: openagent-release-ios-unsigned
+          path: build/openagent-release-unsigned.ipa
+          retention-days: 30
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/openagent-release-unsigned.ipa
+          generate_release_notes: true

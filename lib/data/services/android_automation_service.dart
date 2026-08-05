@@ -10,8 +10,9 @@ import 'package:flutter/services.dart';
 
 import '../models/models.dart';
 import 'file_storage_service.dart';
+import 'platform_automation_service.dart';
 
-class AndroidAutomationService {
+class AndroidAutomationService implements PlatformAutomationService {
   AndroidAutomationService._();
   static final AndroidAutomationService instance = AndroidAutomationService._();
 
@@ -105,7 +106,11 @@ class AndroidAutomationService {
 
   /// Throws on non-Android platforms (which is expected — callers should gate
   /// on [isSupported] before invoking anything else).
+  @override
   bool get isSupported => defaultTargetPlatform == TargetPlatform.android;
+
+  @override
+  String get platformName => 'Android';
 
   // ---- Permission checks / intents -----------------------------------------
 

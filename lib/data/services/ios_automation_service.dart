@@ -13,6 +13,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'platform_automation_service.dart';
+
 /// A shortcut invocation received from Siri / Shortcuts app.
 class ShortcutInvocation {
   const ShortcutInvocation({
@@ -26,14 +28,19 @@ class ShortcutInvocation {
   final Map<String, dynamic> userInfo;
 }
 
-class IosAutomationService {
+class IosAutomationService
+    implements PlatformAutomationService, LiveActivityHost, ShortcutHost {
   IosAutomationService._();
   static final IosAutomationService instance = IosAutomationService._();
 
   static const _channel = MethodChannel('com.openagent.ios.automation');
 
   /// Whether this service is supported on the current platform.
+  @override
   bool get isSupported => defaultTargetPlatform == TargetPlatform.iOS;
+
+  @override
+  String get platformName => 'iOS';
 
   /// Stream of shortcut invocations received from Siri / Shortcuts app.
   ///
@@ -46,6 +53,7 @@ class IosAutomationService {
 
   /// Call once at app startup (e.g. in initState) to begin listening for
   /// incoming `shortcut_invoked` callbacks from the native side.
+  @override
   void startListening() {
     if (!isSupported) return;
     _channel.setMethodCallHandler((call) async {
@@ -63,6 +71,7 @@ class IosAutomationService {
 
   /// Whether a Live Activity is currently active.
   bool _activityActive = false;
+  @override
   bool get isActivityActive => _activityActive;
 
   // ---- Shortcuts ----------------------------------------------------------
@@ -73,6 +82,7 @@ class IosAutomationService {
   /// [id] must be unique within the app. [title] is the user-visible name.
   /// [description] is shown in the Shortcuts app. [phrase] is the suggested
   /// Siri voice phrase (e.g. "用 OpenAgent 搜索").
+  @override
   Future<bool> donateShortcut({
     required String id,
     required String title,
@@ -94,6 +104,7 @@ class IosAutomationService {
   }
 
   /// List all previously donated Shortcuts.
+  @override
   Future<List<Map<String, dynamic>>> listShortcuts() async {
     if (!isSupported) return const [];
     try {
@@ -107,6 +118,7 @@ class IosAutomationService {
 
   /// Trigger a system-level action via URL scheme (e.g. tel:, sms:, maps:).
   /// This is the iOS equivalent of Android's `am start` / `sendIntent`.
+  @override
   Future<bool> triggerShortcut(String url) async {
     if (!isSupported) return false;
     try {
@@ -120,6 +132,7 @@ class IosAutomationService {
   }
 
   /// Delete a previously donated Shortcut by id.
+  @override
   Future<bool> deleteShortcut(String id) async {
     if (!isSupported) return false;
     try {
@@ -168,6 +181,7 @@ class IosAutomationService {
   ///
   /// [title] is the activity title (e.g. "Agent 运行中").
   /// [content] is the status text (e.g. "正在思考...").
+  @override
   Future<bool> startActivity({
     required String title,
     required String content,
@@ -186,6 +200,7 @@ class IosAutomationService {
   }
 
   /// Update the Live Activity content (e.g. "正在执行工具: calculator").
+  @override
   Future<bool> updateActivity(String content) async {
     if (!isSupported) return false;
     try {
@@ -199,6 +214,7 @@ class IosAutomationService {
   }
 
   /// End the Live Activity (call when the Agent finishes its task).
+  @override
   Future<bool> endActivity() async {
     if (!isSupported) return false;
     try {
