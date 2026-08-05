@@ -32,9 +32,13 @@ jobs:
       - name: Generate iOS project
         run: flutter create --platforms=ios --project-name=openagent .
 
-      # Ensure Podfile uses iOS 16.1 (required by mnn_llm podspec + Live Activities)
+      # Ensure Podfile uses iOS 16.1 (required by mnn_llm podspec + Live Activities).
+      # The generated Podfile has the platform line commented out: "# platform :ios, '13.0'"
+      # This sed uncomments and replaces it with 16.1.
       - name: Set iOS deployment target
-        run: sed -i '' 's/platform :ios, .*/platform :ios, '\''16.1'\''/' ios/Podfile
+        run: |
+          sed -i '' "s/^# *platform :ios,.*/platform :ios, '16.1'/" ios/Podfile
+          grep "platform :ios" ios/Podfile
 
       - name: Analyze code
         run: flutter analyze
