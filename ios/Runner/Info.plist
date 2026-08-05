@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Flutter will replace these with the correct values -->
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>OpenAgent</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>openagent</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(FLUTTER_BUILD_NAME)</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleVersion</key>
+    <string>$(FLUTTER_BUILD_NUMBER)</string>
+
+    <!-- Enable Live Activities (iOS 16.1+) -->
+    <key>NSSupportsLiveActivities</key>
+    <true/>
+
+    <!-- Microphone usage (for record plugin / voice input) -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>OpenAgent 需要麦克风权限以录制语音输入和语音消息</string>
+
+    <!-- Photo library usage (for image_picker plugin) -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>OpenAgent 需要相册权限以选择图片进行多模态分析</string>
+
+    <!-- Camera usage (for image capture) -->
+    <key>NSCameraUsageDescription</key>
+    <string>OpenAgent 需要相机权限以拍照进行多模态分析</string>
+
+    <!-- URL schemes we want to open (canOpenURL query) -->
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>weixin</string>
+        <string>snssdk1128</string>
+        <string>alipay</string>
+        <string>taobao</string>
+        <string>mqq</string>
+        <string>sinaweibo</string>
+        <string>zhihu</string>
+        <string>bilibili</string>
+        <string>tel</string>
+        <string>sms</string>
+        <string>mailto</string>
+        <string>maps</string>
+    </array>
+
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    <key>UIMainStoryboardFile</key>
+    <string>Main</string>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+</dict>
+</plist>

@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
   s.source_files        = '../src/**/*.{h,cpp}'
   s.public_header_files = '../src/mnn_llm_capi.h'
 
-  s.ios.deployment_target = '13.0'
+  s.ios.deployment_target = '16.1'
   s.osx.deployment_target = '11.0'
 
   # MNN.framework is built by scripts/build_ios.sh and placed under

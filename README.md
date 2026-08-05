@@ -24,6 +24,8 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - **多模态**：文本对话 + 图像理解 + 语音输入（Qwen2.5-Omni）
 - **Agent 模式**：ReAct 循环 + 170+ 工具，可自主操控手机
 - **Android RPA 自动化**：三层权限体系，替代人工操作手机
+- **iOS Shortcuts 集成**：Agent 注册 Siri 语音快捷指令，通过 URL scheme 触发系统级操作
+- **iOS Live Activities 保活**：Agent 运行时在锁屏/灵动岛显示实时状态（iOS 16.1+）
 - **保活与隐藏**：前台服务保活 + 安全模式 + Shizuku 隐藏特征 + 防检测弹窗策略
 - **云端 LLM 接入（可选）**：支持 OpenAI / Anthropic / 通义千问 / 豆包 / Groq / Ollama 等
 - **MCP 协议支持**：HTTP + Stdio 双传输，可连接任意 MCP server
@@ -95,13 +97,45 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - **VLM 无锚点 UI 操控**：视觉 Grounding 引擎 + 跨分辨率适配 + 4 级混合定位（Accessibility→VLM→OCR→坐标试探）
 - **操作链容错**：检查点系统 + App 状态机 + 5 类异常检测与恢复（弹窗/导航失败/元素缺失/超时/未知状态）
 
-### 4. 云端 LLM 接入
+### 4. iOS 自动化与保活
+
+由于 iOS 没有 AccessibilityService，RPA 能力受限，但通过以下方式补充：
+
+**Siri Shortcuts 集成**：
+- Agent 可注册语音快捷指令（`ios_shortcut_donate`），用户通过 Siri 触发 Agent 任务
+- 通过 URL scheme 触发系统级操作（拨打电话 `tel:`、发送短信 `sms:`、打开地图 `maps:`）
+- 打开第三方 App（微信 `weixin://`、抖音 `snssdk1128://`、支付宝 `alipay://` 等）
+- 双向通信：Siri 触发快捷指令时，AppDelegate 通过 MethodChannel 回调到 Agent
+
+**Live Activities 保活（iOS 16.1+）**：
+- Agent 开始运行时自动启动 Live Activity，在锁屏和灵动岛显示状态
+- 每次工具调用时实时更新状态文本（"正在思考..." / "正在执行工具: xxx"）
+- Agent 完成或退出时自动结束 Live Activity
+- 基于 ActivityKit + WidgetKit 实现
+
+**9 个 iOS 专属工具**：
+
+| 工具 | 说明 |
+|---|---|
+| `ios_shortcut_donate` | 注册 Siri 语音快捷指令 |
+| `ios_shortcut_list` | 列出已注册的快捷指令 |
+| `ios_shortcut_trigger` | 通过 URL scheme 触发系统操作 |
+| `ios_shortcut_delete` | 删除快捷指令 |
+| `ios_open_url` | 打开 URL（浏览器/Deeplink） |
+| `ios_open_app` | 通过 URL scheme 打开第三方 App |
+| `ios_live_activity_start` | 启动 Live Activity 保活 |
+| `ios_live_activity_update` | 更新 Live Activity 状态 |
+| `ios_live_activity_end` | 结束 Live Activity |
+
+**Skill 模块**：`ios_shortcuts` + `ios_live_activity`，模型按需启用，Android 上自动 no-op。
+
+### 5. 云端 LLM 接入
 
 - 支持任意 OpenAI 兼容端点（OpenAI / DeepSeek / 通义千问 / 豆包 / Groq / Ollama / Anthropic / 自定义）
 - 纯 Dart HTTP 流式实现，不引入第三方 SDK
 - 设置页「测试连接」按钮一键验证
 
-### 5. MCP 协议支持
+### 6. MCP 协议支持
 
 - 统一 Model Context Protocol 客户端抽象
 - HTTP + Stdio 双传输
@@ -113,7 +147,7 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 
 ### 6. Skill 模块化系统
 
-- 8+ 内置模块：android_rpa / builtin_math_time / knowledge_rag / longterm_memory / execute_plan / vision_analyze / mcp_gateway 等
+- 8+ 内置模块：android_rpa / ios_shortcuts / ios_live_activity / builtin_math_time / knowledge_rag / longterm_memory / execute_plan / vision_analyze / mcp_gateway 等
 - 模型自主选择启用/禁用，拓扑依赖自动排序
 - 运行时 JSON 注册 Skill：callMcp / callTool / template / echo 四种 adapter，无需改代码
 - 从轨迹创建 Skill：任务完成后可将工具调用序列保存为可复用 Skill
@@ -121,7 +155,7 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - **Skill 版本演化**：版本管理 + 成功率追踪 + 自动回退到最佳版本
 - 会话生命周期管理：状态保存/加载、bootstrap 一键恢复
 
-### 7. 知识库管理
+### 8. 知识库管理
 
 - 内置文档管理页面，添加/查看/删除 .txt 文档
 - Agent 可自动检索知识库内容
@@ -129,14 +163,14 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - **混合检索**：语义 + 关键词 RRF 融合排序，比纯语义检索 F1 提升 5%+
 - **三层缓存**：热/温/冷分级（7 天窗口），查询延迟 < 200ms
 
-### 8. 长期记忆系统
+### 9. 长期记忆系统
 
 - **记忆重要性评分**：基于访问频率、时效性（指数衰减，半衰期 7 天）、语义重要性综合评分
 - **跨会话记忆图谱**：有向图结构，支持引用/时序/语义三种关联，支持模糊召回
 - **三级记忆压缩**：热记忆（常驻内存）、温记忆（GZIP 压缩）、冷记忆（摘要归档）
 - **向量语义检索**：支持自然语言查询，Top-5 命中率 > 85%
 
-### 9. 异构计算调度
+### 10. 异构计算调度
 
 - **设备能力检测**：通过 MethodChannel 读取真实硬件指标（GPU 型号、CPU 大小核、内存带宽、NPU 可用性、散热状态）
 - **自适应后端选择**：CPU / OpenCL / Vulkan / Metal / NPU 动态切换
@@ -145,13 +179,13 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 - **模型预热**：加载后执行 dummy 推理触发内核编译 + OpenCL 缓存生成
 - **运行时热切换**：根据设备状态自动切换推理后端和采样参数
 
-### 10. 多模态量化
+### 11. 多模态量化
 
 - **解耦量化**：视觉编码器（ViT）与语言模型使用不同量化位数
 - **自动配置选择**：根据设备内存自动选择 INT3/INT4/INT8/FP16 方案
 - **量化基准框架**：支持 per-channel / per-token / per-group 粒度测试
 
-### 11. 会话导出
+### 12. 会话导出
 
 - 一键导出对话记录为文本文件，便于备份和分享
 
@@ -217,6 +251,12 @@ OpenAgent 是一款运行在手机本地的开源大模型应用，基于阿里�
 │   ├─ 检查点系统 + 状态机                     │
 │   ├─ 5 类异常检测与恢复                      │
 │   ├─ VLM 无锚点 UI 操控                     │
+│   └─ MethodChannel ↔ Dart 工具桥接           │
+├─────────────────────────────────────────────┤
+│      iOS 自动化层 (Swift)                    │
+│   ├─ Siri Shortcuts (AppIntents/NSUserActivity)│
+│   ├─ URL Scheme (UIApplication.shared.open)  │
+│   ├─ Live Activities (ActivityKit)           │
 │   └─ MethodChannel ↔ Dart 工具桥接           │
 └─────────────────────────────────────────────┘
 ```
@@ -301,7 +341,8 @@ openagent/
 │   │   │   ├── file_storage_service.dart
 │   │   │   ├── model_download_service.dart
 │   │   │   ├── schedule_service.dart     # 定时任务调度
-│   │   │   └── android_automation_service.dart
+│   │   │   ├── android_automation_service.dart
+│   │   │   └── ios_automation_service.dart  # iOS 自动化 (Shortcuts + Live Activities)
 │   │   └── repositories/
 │   ├── features/
 │   │   ├── chat/                       # 对话页
@@ -327,6 +368,7 @@ openagent/
 │       │   └── vector_memory_backend.dart # 向量语义记忆
 │       ├── android_tools.dart          # 入口（工厂函数）
 │       ├── android_tools/              # 6 个子模块
+│       ├── ios_tools.dart              # iOS 自动化工具 (Shortcuts + Live Activities)
 │       ├── builtin_tools.dart          # 入口（工厂函数）
 │       ├── builtin_tools/              # 3 个子模块
 │       ├── rpa/                        # RPA 自动化增强
@@ -348,9 +390,14 @@ openagent/
 │           ├── skill_trace_recorder.dart # 轨迹录制
 │           ├── skill_synthesizer.dart    # 自动合成
 │           └── skill_evolution.dart     # 版本演化
+│           └── ios_skills.dart          # iOS Shortcuts + Live Activity Skills
 ├── android/.../                         # Android 原生层
 │   ├── DeviceProbe.kt                  # 设备硬件检测 (MethodChannel)
 │   └── automation/                     # 自动化层
+├── ios/Runner/                         # iOS 原生层
+│   ├── AppDelegate.swift               # Channel 注册 + Siri 回调
+│   ├── IosAutomationChannel.swift       # Shortcuts + URL + ActivityKit
+│   └── Info.plist                      # NSSupportsLiveActivities + 权限
 ├── packages/mnn_llm/                   # FFI 插件
 ├── packages/onnx_runtime/              # ONNX Runtime 插件骨架
 ├── test/                               # 单元测试（50+ 文件）

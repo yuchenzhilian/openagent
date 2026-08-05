@@ -27,6 +27,8 @@ dependencies:
   record: ^6.2.1
   # State management.
   flutter_riverpod: ^2.5.0
+  # iOS Live Activities / Dynamic Island (no-op on Android).
+  live_activities: ^2.0.0
 
 dev_dependencies:
   flutter_test:

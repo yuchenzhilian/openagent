@@ -17,6 +17,7 @@ import '../../../agent/builtin_tools.dart';
 import '../../../agent/mcp/mcp_client.dart';
 import '../../../agent/mcp/mcp_persistence.dart';
 import '../../../agent/skills/skills.dart';
+import '../../../agent/skills/ios_skills.dart';
 import '../../../agent/skills/skill_tools.dart';
 import '../../../agent/skills/skills_extra.dart';
 import '../../../agent/skills/session_lifecycle.dart';
@@ -26,6 +27,7 @@ import '../../../data/repositories/model_repository.dart';
 import '../../../data/services/android_automation_service.dart';
 import '../../../data/services/device_capability_service.dart';
 import '../../../data/services/file_storage_service.dart';
+import '../../../data/services/ios_automation_service.dart';
 import '../../../data/services/mnn_config_builder.dart';
 import '../../../agent/inference_scheduler.dart';
 import '../widgets/message_bubble.dart';
@@ -75,6 +77,7 @@ class ChatPageState extends State<ChatPage> {
   final Map<String, DateTime> _toolCallStartTimes = {};
 
   final AndroidAutomationService _android = AndroidAutomationService.instance;
+  final IosAutomationService _ios = IosAutomationService.instance;
 
   /// Media file paths attached to the next outgoing message. Cleared on send.
   final List<String> _attachedMedia = [];
@@ -84,6 +87,8 @@ class ChatPageState extends State<ChatPage> {
     super.initState();
     _chatRepo = ChatRepository(widget.storage);
     _modelRepo = ModelRepository(widget.storage);
+    // Listen for Siri Shortcut invocations on iOS.
+    _ios.startListening();
     _bootstrap();
   }
 
@@ -620,6 +625,9 @@ class ChatPageState extends State<ChatPage> {
         AgentLongTermMemorySkill(memBackend),
         ExecutePlanSkill((name, args) => agent.executeTool(name, args)),
         VisionAnalyzeSkill(_visionAnalyzeImage),
+        // --- iOS platform skills (no-op on Android, gated by Platform.isIOS) -
+        IosShortcutsSkill(),
+        IosLiveActivitySkill(),
       ],
     );
     // ---- Meta-tools: skill_* (+ JSON register) + mcp_state_* + skill_state_* + session_bootstrap + manifests ----
@@ -694,8 +702,17 @@ class ChatPageState extends State<ChatPage> {
       }
     }
 
+    // Auto-start Live Activity on iOS so the user sees Agent status in
+    // the Lock Screen / Dynamic Island while the ReAct loop runs.
+    if (_ios.isSupported) {
+      await _ios.startActivity(title: 'Agent 运行中', content: '正在思考...');
+    }
+
     await for (final event in agent.run(prompt)) {
-      if (!mounted) return;
+      if (!mounted) {
+        if (_ios.isActivityActive) await _ios.endActivity();
+        return;
+      }
       switch (event) {
         case AgentTokenEvent(:final chunk):
           assistantMsg.content += chunk;
@@ -704,6 +721,10 @@ class ChatPageState extends State<ChatPage> {
         case AgentToolCallEvent(:final toolName, :final arguments):
           _toolCallStartTimes[toolName] = DateTime.now();
           _toolCallCount++;
+          // Update Live Activity with current tool being executed.
+          if (_ios.isActivityActive) {
+            _ios.updateActivity('正在执行工具: $toolName');
+          }
           final prettyArgs =
               const JsonEncoder.withIndent('  ').convert(arguments);
           assistantMsg.content += '\n\n---\n\n🔧 **调用工具**: `$toolName`\n\n'
@@ -743,6 +764,9 @@ class ChatPageState extends State<ChatPage> {
           setState(() {});
       }
     }
+
+    // End Live Activity when the agent run completes.
+    if (_ios.isActivityActive) await _ios.endActivity();
   }
 
   void _stop() {
@@ -1039,6 +1063,7 @@ class ChatPageState extends State<ChatPage> {
   @override
   void dispose() {
     _scheduler?.dispose();
+    _ios.dispose();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
     _audioRecorder.dispose();
