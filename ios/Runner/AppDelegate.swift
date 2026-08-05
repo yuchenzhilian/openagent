@@ -24,7 +24,7 @@ import AppIntents
 
 // MARK: - Live Activity attributes
 
-@available(iOS 16.1, *)
+@available(iOS 16.2, *)
 struct AgentActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         var title: String
@@ -35,7 +35,7 @@ struct AgentActivityAttributes: ActivityAttributes {
 
 // MARK: - iOS Automation Channel
 
-@available(iOS 16.1, *)
+@available(iOS 16.2, *)
 class IosAutomationChannel: NSObject, FlutterPlugin {
     static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
@@ -99,7 +99,6 @@ class IosAutomationChannel: NSObject, FlutterPlugin {
         let activity = NSUserActivity(activityType: "com.openagent.openagent.shortcut.\(id)")
         activity.title = title
         activity.userInfo = ["id": id, "description": description]
-        if let phrase = phrase { activity.suggestedInvocationPhrase = phrase }
         activity.isEligibleForSearch = true
         activity.isEligibleForPrediction = true
         activity.persistentIdentifier = id
@@ -179,8 +178,8 @@ class IosAutomationChannel: NSObject, FlutterPlugin {
     ) -> Bool {
         let controller = window?.rootViewController as? FlutterViewController
 
-        // Register the iOS automation MethodChannel
-        if let controller = controller {
+        // Register the iOS automation MethodChannel (requires iOS 16.2+ for ActivityKit)
+        if let controller = controller, #available(iOS 16.2, *) {
             IosAutomationChannel.register(
                 with: controller.registrar(forPlugin: "IosAutomationChannel")!
             )

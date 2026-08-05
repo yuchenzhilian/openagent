@@ -24,7 +24,7 @@
     <key>CFBundleVersion</key>
     <string>$(FLUTTER_BUILD_NUMBER)</string>
 
-    <!-- Enable Live Activities (iOS 16.1+) -->
+    <!-- Enable Live Activities (iOS 16.2+, ActivityKit) -->
     <key>NSSupportsLiveActivities</key>
     <true/>
 
