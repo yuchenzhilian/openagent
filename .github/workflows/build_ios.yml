@@ -26,6 +26,16 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      # ---- Generate iOS project if not present ----
+      # `flutter create` is idempotent: it only creates missing files and
+      # won't overwrite our custom AppDelegate.swift / Info.plist.
+      - name: Generate iOS project
+        run: flutter create --platforms=ios --project-name=openagent .
+
+      # Ensure Podfile uses iOS 16.1 (required by mnn_llm podspec + Live Activities)
+      - name: Set iOS deployment target
+        run: sed -i '' 's/platform :ios, .*/platform :ios, '\''16.1'\''/' ios/Podfile
+
       - name: Analyze code
         run: flutter analyze
 
