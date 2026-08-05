@@ -1,6 +1,16 @@
 # ProGuard rules for OpenAgent
 # ========================================
 
+# Flutter engine references Play Core classes (SplitCompatApplication,
+# SplitInstallManager, etc.) for deferred components / dynamic feature
+# delivery. This app does not use Play Store deferred delivery, so the
+# play-core dependency is not on the classpath. Tell R8 not to fail on
+# these missing classes instead of adding the (heavy) play-core artifact.
+-dontwarn com.google.android.play.core.**
+-dontwarn com.google.android.play.core.splitcompat.**
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
+
 # Flutter engine classes (keep all)
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugin.** { *; }
